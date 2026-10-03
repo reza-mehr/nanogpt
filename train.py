@@ -23,6 +23,8 @@ This file conntains the code to train nano-GPT model on tiny Shakespeare dataset
 cfg = parseConfig()
 cfg.out_dir.mkdir(parents=True, exist_ok=True)      # create the run folder
 
+torch.manual_seed(cfg.seed)
+
 #%% Data:
 
 # Initialization:
@@ -111,7 +113,7 @@ def estimateLoss():
 m = buildModel(cfg.model).to(cfg.device)
 optim = torch.optim.AdamW(m.parameters(), lr=cfg.learning_rate)
 latest, best = cfg.out_dir / "latest.pt", cfg.out_dir / "best.pt"       # checkpoints
-start_step = 0
+start_step = 1
 best_val = float('inf')
 
 # Load the latest checkpoint if requested:
@@ -121,20 +123,7 @@ if cfg.resume and latest.exists():
     print(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
 
 # Training loop:
-for step in range(start_step, cfg.max_iters):
-    # Report smoothed loss:
-    if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters - 1:
-        losses = estimateLoss()
-        print(f"{step:04d} - training loss: {losses['train']:.4f}, validation loss: {losses['val']:.4f}")
-
-    # Save checkpoint:
-    if step % cfg.ckpt_interval == 0 or step == cfg.max_iters - 1:
-        val_loss = losses['val']
-        saveCheckpoint(latest, m, optim, step, val_loss, cfg)       # latest checkpoint
-        if val_loss < best_val:
-            best_val = val_loss
-            shutil.copyfile(latest, best)                           # latest checkpoint is the best checkpoint
-
+for step in range(start_step, cfg.max_iters+1):
     # Sample a batch of data:
     xb, yb = getBatch("train")
 
@@ -145,6 +134,19 @@ for step in range(start_step, cfg.max_iters):
     optim.zero_grad(set_to_none=True)
     loss.backward()
     optim.step()
+
+    # Report smoothed loss:
+    if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
+        losses = estimateLoss()
+        print(f"{step:04d} - training loss: {losses['train']:.4f}, validation loss: {losses['val']:.4f}")
+
+    # Save checkpoint:
+    if step % cfg.ckpt_interval == 0 or step == cfg.max_iters - 1:
+        val_loss = losses['val']
+        saveCheckpoint(latest, m, optim, step, val_loss, cfg)       # latest checkpoint
+        if val_loss < best_val:
+            best_val = val_loss
+            shutil.copyfile(latest, best)                           # latest checkpoint is the best checkpoint
 
 #%% Inference:
 

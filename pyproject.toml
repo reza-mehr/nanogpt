@@ -20,4 +20,5 @@ nanogpt = "nanogpt:main"
 [dependency-groups]
 dev = [
     "ipykernel>=6.31.0",
+    "pytest>=8.4.2",
 ]
