@@ -4,13 +4,14 @@
 import os
 from os import path
 import urllib.request
-import numpy as np
+import shutil
 import torch
 from dataclasses import replace
 
-from config import parse_config
-from registry import build_model
-from model import device
+from config import parseConfig
+import model                                        # needed to register the models
+from registry import buildModel
+from checkpoint import saveCheckpoint, loadCheckpoint
 
 '''
 This file conntains the code to train nano-GPT model on tiny Shakespeare dataset.
@@ -19,8 +20,8 @@ This file conntains the code to train nano-GPT model on tiny Shakespeare dataset
 
 #%% Config setup:
 
-cfg = parse_config()
-# cfg.out_dir.mkdir(parents=True, exist_ok=True)      # create the run folder
+cfg = parseConfig()
+cfg.out_dir.mkdir(parents=True, exist_ok=True)      # create the run folder
 
 #%% Data:
 
@@ -57,7 +58,7 @@ val_data = data[n:]
 
 #%% Data loader:
 
-def get_batch(split):
+def getBatch(split):
     '''
     Function to generate batches of data.
 
@@ -75,6 +76,7 @@ def get_batch(split):
 
     '''
     # Initialization:
+    device = cfg.device
     batch_size, block_size = cfg.batch_size, cfg.model.block_size
     data = train_data if split == 'train' else val_data
 
@@ -88,14 +90,14 @@ def get_batch(split):
 #%% Loss:
 
 @torch.no_grad()
-def estimate_loss():
+def estimateLoss():
     '''Function to estimate the smoothed loss over 'eval_iters'.'''
     out = {}
     m.eval()
     for split in ['train', 'val']:
         losses = torch.zeros(cfg.eval_iters)
         for k in range(cfg.eval_iters):
-            xb, yb = get_batch(split)
+            xb, yb = getBatch(split)
             _, loss = m(xb, yb)
             losses[k] = loss
         out[split] = losses.mean()
@@ -106,20 +108,35 @@ def estimate_loss():
 #%% Training:
 
 # Initialization:
-m = build_model(cfg.model).to(device)
+m = buildModel(cfg.model).to(cfg.device)
 optim = torch.optim.AdamW(m.parameters(), lr=cfg.learning_rate)
+latest, best = cfg.out_dir / "latest.pt", cfg.out_dir / "best.pt"       # checkpoints
+start_step = 0
+best_val = float('inf')
+
+# Load the latest checkpoint if requested:
+if cfg.resume and latest.exists():
+    start_step, best_val = loadCheckpoint(latest, m, optim, cfg.device)
+    start_step += 1
+    print(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
 
 # Training loop:
-for step in range(cfg.max_iters):
+for step in range(start_step, cfg.max_iters):
     # Report smoothed loss:
-    if step % cfg.eval_interval == 0:
-        loss = estimate_loss()
-        print(
-            f"{step:04d} - training loss: {loss['train']:.4f}, validation loss: {loss['val']:.4f}"
-        )
+    if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters - 1:
+        losses = estimateLoss()
+        print(f"{step:04d} - training loss: {losses['train']:.4f}, validation loss: {losses['val']:.4f}")
+
+    # Save checkpoint:
+    if step % cfg.ckpt_interval == 0 or step == cfg.max_iters - 1:
+        val_loss = losses['val']
+        saveCheckpoint(latest, m, optim, step, val_loss, cfg)       # latest checkpoint
+        if val_loss < best_val:
+            best_val = val_loss
+            shutil.copyfile(latest, best)                           # latest checkpoint is the best checkpoint
 
     # Sample a batch of data:
-    xb, yb = get_batch("train")
+    xb, yb = getBatch("train")
 
     # Forward pass:
     logits, loss = m(xb, yb)
@@ -131,15 +148,15 @@ for step in range(cfg.max_iters):
 
 #%% Inference:
 
-context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, 100)[0].tolist()), "\n\n")
+# context = torch.zeros((1, 1), dtype=torch.long, device=cfg.device)
+# print(decode(m.generate(context, 100)[0].tolist()), "\n\n")
 
 #%% Cosine similarity:
 
-W = m.token_embedding_table.weight.detach()
-W = W / W.norm(dim=1, keepdim=True)  # normalize rows
-sim = W @ W.T  # cosine similarity, (65, 65)
-for ch in ['a', 'A', 'e', ' ']:
-    i = stoi[ch]
-    nearest = sim[i].topk(5).indices[1:]  # skip itself
-    print("- chars similar to", repr(ch), "->", [itos[j.item()] for j in nearest])
+# W = m.token_embedding_table.weight.detach()
+# W = W / W.norm(dim=1, keepdim=True)  # normalize rows
+# sim = W @ W.T  # cosine similarity, (65, 65)
+# for ch in ['a', 'A', 'e', ' ']:
+#     i = stoi[ch]
+#     nearest = sim[i].topk(5).indices[1:]  # skip itself
+#     print("- chars similar to", repr(ch), "->", [itos[j.item()] for j in nearest])

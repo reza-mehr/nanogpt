@@ -4,10 +4,21 @@
 import sys
 import tyro
 from dataclasses import dataclass, field
+import torch
 from typing import Literal
 
 from datetime import datetime
 from pathlib import Path
+
+#%% Global variables:
+
+device = (
+    'cuda'
+    if torch.cuda.is_available()
+    else 'mps'
+    if torch.backends.mps.is_available()
+    else 'cpu'
+)
 
 #%% Main code:
 
@@ -25,21 +36,24 @@ class ModelConfig:
 @dataclass
 class TrainConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
+    device: str = device                                    # device to run the training on
     batch_size: int = 64                                    # batch size
     max_iters: int = 5000                                   # maximum number of training iterations
     learning_rate: float = 3e-4                             # learning rate
     eval_interval: int = 500                                # evaluation interval
     eval_iters: int = 200                                   # evaluation iterations to smooth loss values
+    ckpt_interval: int = 500                                # checkpoint interval
     seed: int = 1337                                        # random seed
     run_name: str = ''                                      # run folder name
     runs_root: str = 'runs'                                 # 'runs' directory
+    resume: bool = False                                    # resume training from
 
     def __post_init__(self):
         if not self.run_name:
             self.run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     @property
-    def out_dir(self) -> Path:               # fine now: deterministic
+    def out_dir(self) -> Path:
         return Path(self.runs_root) / self.run_name
 
 # TODO: to be added
@@ -67,7 +81,7 @@ PRESETS: dict[str, TrainConfig] = {
 
 #%% Function to parse arguments:
 
-def parse_config() -> TrainConfig:
+def parseConfig() -> TrainConfig:
     name = 'main_cfg'           # default preset
     if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
         name = sys.argv.pop(1)

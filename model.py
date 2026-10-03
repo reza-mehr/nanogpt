@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from registry import register_model
+from registry import registerModel
 
 '''
 Notation:
@@ -12,16 +12,6 @@ Notation:
 - C denotes the channel dimension, could be total number of tokens, embedding dimension, etc.
 
 '''
-
-#%% Global variables:
-
-device = (
-    'cuda'
-    if torch.cuda.is_available()
-    else 'mps'
-    if torch.backends.mps.is_available()
-    else 'cpu'
-)
 
 #%% Model primitives:
 
@@ -303,7 +293,7 @@ class LayerNorm(nn.Module):
 
 #%% Transformer model:
 
-@register_model("gpt")
+@registerModel("gpt")
 class GPT(nn.Module):
     '''Class to implement the generative pre-trained transformer (GPT). '''
     def __init__(self, cfg):
@@ -315,8 +305,7 @@ class GPT(nn.Module):
 
         Attributes
         ----------
-        block_size: int
-            Context length or token block size.
+        cfg
 
         token_embedding_table (vocab_size, n_embed): nn.Embedding
             Embedding table mapping from each token index to embedding.
@@ -332,7 +321,7 @@ class GPT(nn.Module):
 
         '''
         super().__init__()
-        self.block_size = cfg.block_size
+        self.cfg = cfg
         self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
         self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
         self.blocks = nn.Sequential(
@@ -364,6 +353,8 @@ class GPT(nn.Module):
             Loss value. None if 'targets' is None.
 
         '''
+        # Attributes:
+        device = self.cfg.device
         B, T = idx.shape
         tok_emb = self.token_embedding_table(idx)  # (B, T, n_embed)
         pos_emb = self.position_embedding_table(
@@ -410,7 +401,7 @@ class GPT(nn.Module):
         self.eval()
 
         # Attributes:
-        block_size = self.block_size
+        block_size = self.cfg.block_size
 
         # Loop over new tokens to be generated:
         for _ in range(new_tokens):
@@ -427,7 +418,7 @@ class GPT(nn.Module):
 
 #%% Bigram model:
 
-@register_model("bigram")
+@registerModel("bigram")
 class BigramLanguageModel(nn.Module):
     '''This class implements the Bigram language model.'''
     def __init__(self, cfg):
