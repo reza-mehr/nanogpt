@@ -1,45 +1,26 @@
-# Imports:
+
+#%% Imports:
+
 import os
 from os import path
 import urllib.request
 import numpy as np
 import torch
+from dataclasses import replace
 
-from model import BigramLanguageModel, GPT, device
+from config import parse_config
+from registry import build_model
+from model import device
 
-#%% Hyper-parameters:
+'''
+This file conntains the code to train nano-GPT model on tiny Shakespeare dataset.
 
-# Large experiment:
-batch_size = 64
-block_size = 256
-n_embed = 384
-head_num = 6
-head_size = n_embed // head_num
-n_blocks = 6
-dropout = 0.2
+'''
 
-max_iters = 5000
-eval_interval = 300
-learning_rate = 3e-4
-eval_iters = 200
+#%% Config setup:
 
-
-# Small experiment:
-batch_size = 32
-block_size = 8
-n_embed = 32
-head_num = 4
-head_size = n_embed // head_num
-n_blocks = 4
-dropout = 0.1
-
-max_iters = 5000
-eval_interval = 300
-learning_rate = 1e-3
-eval_iters = 200
-
-
-torch.manual_seed(1337)
+cfg = parse_config()
+# cfg.out_dir.mkdir(parents=True, exist_ok=True)      # create the run folder
 
 #%% Data:
 
@@ -57,6 +38,7 @@ with open(db_path, "r", encoding="utf-8") as f:
 # Extract unique characters:
 chars = sorted(set(text))
 vocab_size = len(chars)
+cfg.model = replace(cfg.model, vocab_size=vocab_size)
 
 #%% Tokenizer:
 
@@ -92,10 +74,14 @@ def get_batch(split):
         Corresponding target toekn indices.
 
     '''
+    # Initialization:
+    batch_size, block_size = cfg.batch_size, cfg.model.block_size
     data = train_data if split == 'train' else val_data
+
     ix = torch.randint(len(data) - block_size, (batch_size,))       # random indices
     x = torch.stack([data[i : i + block_size] for i in ix])
     y = torch.stack([data[i + 1 : i + block_size + 1] for i in ix])
+
     return x.to(device), y.to(device)
 
 
@@ -107,8 +93,8 @@ def estimate_loss():
     out = {}
     m.eval()
     for split in ['train', 'val']:
-        losses = torch.zeros(eval_iters)
-        for k in range(eval_iters):
+        losses = torch.zeros(cfg.eval_iters)
+        for k in range(cfg.eval_iters):
             xb, yb = get_batch(split)
             _, loss = m(xb, yb)
             losses[k] = loss
@@ -120,15 +106,13 @@ def estimate_loss():
 #%% Training:
 
 # Initialization:
-m = BigramLanguageModel(vocab_size)
-# m = GPT(vocab_size, block_size, n_embed, head_size, head_num, n_blocks, dropout)
-m = m.to(device)
-optim = torch.optim.AdamW(m.parameters(), lr=learning_rate)
+m = build_model(cfg.model).to(device)
+optim = torch.optim.AdamW(m.parameters(), lr=cfg.learning_rate)
 
 # Training loop:
-for step in range(max_iters):
+for step in range(cfg.max_iters):
     # Report smoothed loss:
-    if step % eval_interval == 0:
+    if step % cfg.eval_interval == 0:
         loss = estimate_loss()
         print(
             f"{step:04d} - training loss: {loss['train']:.4f}, validation loss: {loss['val']:.4f}"

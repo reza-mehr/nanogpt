@@ -3,6 +3,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from registry import register_model
+
 '''
 Notation:
 - B denotes batch size
@@ -301,30 +303,20 @@ class LayerNorm(nn.Module):
 
 #%% Transformer model:
 
+@register_model("gpt")
 class GPT(nn.Module):
     '''Class to implement the generative pre-trained transformer (GPT). '''
-    def __init__(self, vocab_size, block_size, n_embed, head_size, head_num, n_blocks, dropout):
+    def __init__(self, cfg):
         '''
         Parameters
         ----------
-        vocab_size: int
-            Total token count.
-        block_size: int
-            Context length or token block size.
-        n_embed: int
-            Token embedding dimension.
-        head_size: int
-            Self-attention head dimension.
-        head_num: int
-            Number of self-attention heads per transformer block.
-        n_blocks: int
-            Number of transformer blocks.
-        dropout: float
-            Dropout ratio.
+        cfg: dataclass instance
+            Model configs; see config.py for details.
 
         Attributes
         ----------
-        block_size
+        block_size: int
+            Context length or token block size.
 
         token_embedding_table (vocab_size, n_embed): nn.Embedding
             Embedding table mapping from each token index to embedding.
@@ -340,17 +332,17 @@ class GPT(nn.Module):
 
         '''
         super().__init__()
-        self.block_size = block_size
-        self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
-        self.position_embedding_table = nn.Embedding(block_size, n_embed)
+        self.block_size = cfg.block_size
+        self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
+        self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
         self.blocks = nn.Sequential(
             *[
-                Block(block_size, n_embed, head_size, head_num, dropout)
-                for _ in range(n_blocks)
+                Block(cfg.block_size, cfg.n_embed, cfg.head_size, cfg.head_num, cfg.dropout)
+                for _ in range(cfg.n_blocks)
             ]
         )
-        self.ln = LayerNorm(n_embed)
-        self.lm_head = nn.Linear(n_embed, vocab_size)
+        self.ln = LayerNorm(cfg.n_embed)
+        self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size)
 
 
     def forward(self, idx, targets=None):
@@ -424,7 +416,7 @@ class GPT(nn.Module):
         for _ in range(new_tokens):
             idx_cond = idx[:, -block_size:]                     # limit to context size (last 'block_size' tokens)
             logits, _ = self(idx_cond)                          # forward pass: (B, T, vocab_size)
-            probs = F.softmax(logits[:, -1, :], dim=-1)         # probabilities over tokens (B, vocab_size)
+            probs = F.softmax(logits[:, -1, :], dim=-1)         # probability distribution over tokens (B, vocab_size)
             idx_next = torch.multinomial(probs, num_samples=1)  # new tokens: (B, 1)
             idx = torch.cat((idx, idx_next), dim=1)             # (B, T+1)
 
@@ -435,14 +427,15 @@ class GPT(nn.Module):
 
 #%% Bigram model:
 
+@register_model("bigram")
 class BigramLanguageModel(nn.Module):
     '''This class implements the Bigram language model.'''
-    def __init__(self, vocab_size):
+    def __init__(self, cfg):
         '''
         Parameters
         ----------
-        vocab_size: int
-            Total number of tokens.
+        cfg: dataclass instance
+            Model configs; see config.py for details.
 
         Attributes
         ----------
@@ -451,8 +444,8 @@ class BigramLanguageModel(nn.Module):
 
         '''
         super().__init__()
-        n_embed = vocab_size            # to produce distribution over tokens in Bigram model
-        self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
+        n_embed = cfg.vocab_size        # to produce distribution over tokens in Bigram model
+        self.token_embedding_table = nn.Embedding(cfg.vocab_size, n_embed)
 
 
     def forward(self, idx, targets=None):
