@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from registry import registerModel
+from registry import register_model
 
 '''
 Notation:
@@ -293,15 +293,15 @@ class LayerNorm(nn.Module):
 
 #%% Transformer model:
 
-@registerModel("gpt")
+@register_model('gpt')
 class GPT(nn.Module):
     '''Class to implement the generative pre-trained transformer (GPT). '''
     def __init__(self, cfg):
         '''
         Parameters
         ----------
-        cfg: dataclass instance
-            Model configs; see config.py for details.
+        cfg: TrainConfig
+            Train configs; see config.py for details.
 
         Attributes
         ----------
@@ -322,6 +322,8 @@ class GPT(nn.Module):
         '''
         super().__init__()
         self.cfg = cfg
+
+        cfg = cfg.model         # ModelConfig instance
         self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
         self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
         self.blocks = nn.Sequential(
@@ -355,6 +357,7 @@ class GPT(nn.Module):
         '''
         # Attributes:
         device = self.cfg.device
+
         B, T = idx.shape
         tok_emb = self.token_embedding_table(idx)  # (B, T, n_embed)
         pos_emb = self.position_embedding_table(
@@ -401,7 +404,7 @@ class GPT(nn.Module):
         self.eval()
 
         # Attributes:
-        block_size = self.cfg.block_size
+        block_size = self.cfg.model.block_size
 
         # Loop over new tokens to be generated:
         for _ in range(new_tokens):
@@ -418,15 +421,15 @@ class GPT(nn.Module):
 
 #%% Bigram model:
 
-@registerModel("bigram")
+@register_model('bigram')
 class BigramLanguageModel(nn.Module):
     '''This class implements the Bigram language model.'''
     def __init__(self, cfg):
         '''
         Parameters
         ----------
-        cfg: dataclass instance
-            Model configs; see config.py for details.
+        cfg: TrainConfig
+            Train configs; see config.py for details.
 
         Attributes
         ----------
@@ -435,8 +438,8 @@ class BigramLanguageModel(nn.Module):
 
         '''
         super().__init__()
-        n_embed = cfg.vocab_size        # to produce distribution over tokens in Bigram model
-        self.token_embedding_table = nn.Embedding(cfg.vocab_size, n_embed)
+        n_embed = cfg.model.vocab_size        # to produce distribution over tokens in Bigram model
+        self.token_embedding_table = nn.Embedding(cfg.model.vocab_size, n_embed)
 
 
     def forward(self, idx, targets=None):

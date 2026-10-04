@@ -8,145 +8,100 @@ import shutil
 import torch
 from dataclasses import replace
 
-from config import parseConfig
+from config import parse_config
+from data import load_splits, get_batch
 import model                                        # needed to register the models
-from registry import buildModel
-from checkpoint import saveCheckpoint, loadCheckpoint
+from registry import build_model
+from checkpoint import save_checkpoint, load_checkpoint
 
 '''
 This file conntains the code to train nano-GPT model on tiny Shakespeare dataset.
 
 '''
 
-#%% Config setup:
+#%% Loss function:
 
-cfg = parseConfig()
-cfg.out_dir.mkdir(parents=True, exist_ok=True)      # create the run folder
-
-torch.manual_seed(cfg.seed)
-
-#%% Data:
-
-# Initialization:
-url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
-db_path = "data/input.txt"
-
-# Download data:
-if not path.exists(db_path): urllib.request.urlretrieve(url, db_path)
-
-# Load and inspect the data:
-with open(db_path, "r", encoding="utf-8") as f:
-    text = f.read()
-
-# Extract unique characters:
-chars = sorted(set(text))
-vocab_size = len(chars)
-cfg.model = replace(cfg.model, vocab_size=vocab_size)
-
-#%% Tokenizer:
-
-stoi = {ch: i for i, ch in enumerate(chars)}
-itos = {i: ch for ch, i in stoi.items()}
-encode = lambda string: [stoi[ch] for ch in string]
-decode = lambda codes: "".join(itos[i] for i in codes)
-
-data = torch.tensor(encode(text), dtype=torch.long)
-
-#%% Split:
-
-n = int(0.9 * len(data))
-train_data = data[:n]
-val_data = data[n:]
-
-#%% Data loader:
-
-def getBatch(split):
+@torch.no_grad()
+def estimate_loss(cfg, model, train_data, val_data):
     '''
-    Function to generate batches of data.
+    Function to estimate the smoothed loss over 'eval_iters'.
 
     Parameters
     ----------
-    split: string
-        Split type from 'train, val'.
+    cfg: TrainConfig
+        Configurations to use.
+    model: nn.Module
+        Model to compute the loss for.
+    train_data: torch.Tensor
+        Train data.
+    val_data: torch.Tensor
+        Validation data.
 
     Returns
     -------
-    x (batch_size, block_size): tensor
-        Input token indices.
-    y (batch_size, block_size): tensor
-        Corresponding target toekn indices.
+    losses_smoothed: dict
+        Loss value for train and validation data smoothed over 'eval_iters'.
 
     '''
     # Initialization:
-    device = cfg.device
-    batch_size, block_size = cfg.batch_size, cfg.model.block_size
-    data = train_data if split == 'train' else val_data
+    losses_smoothed = {}
+    model.eval()
 
-    ix = torch.randint(len(data) - block_size, (batch_size,))       # random indices
-    x = torch.stack([data[i : i + block_size] for i in ix])
-    y = torch.stack([data[i + 1 : i + block_size + 1] for i in ix])
-
-    return x.to(device), y.to(device)
-
-
-#%% Loss:
-
-@torch.no_grad()
-def estimateLoss():
-    '''Function to estimate the smoothed loss over 'eval_iters'.'''
-    out = {}
-    m.eval()
-    for split in ['train', 'val']:
+    # Loop over train and validation data:
+    for split, data in zip(['train', 'val'], [train_data, val_data]):
         losses = torch.zeros(cfg.eval_iters)
-        for k in range(cfg.eval_iters):
-            xb, yb = getBatch(split)
-            _, loss = m(xb, yb)
+        for k in range(cfg.eval_iters):         # loop over 'eval_iters'
+            xb, yb = get_batch(cfg, data)
+            _, loss = model(xb, yb)
             losses[k] = loss
-        out[split] = losses.mean()
-    m.train()
-    return out
+        losses_smoothed[split] = losses.mean()
+    model.train()
+
+    return losses_smoothed
 
 
-#%% Training:
+#%% Train function:
 
-# Initialization:
-m = buildModel(cfg.model).to(cfg.device)
-optim = torch.optim.AdamW(m.parameters(), lr=cfg.learning_rate)
-latest, best = cfg.out_dir / "latest.pt", cfg.out_dir / "best.pt"       # checkpoints
-start_step = 1
-best_val = float('inf')
+def train(cfg, train_data, val_data):
 
-# Load the latest checkpoint if requested:
-if cfg.resume and latest.exists():
-    start_step, best_val = loadCheckpoint(latest, m, optim, cfg.device)
-    start_step += 1
-    print(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
+    # Initialization:
+    model = build_model(cfg).to(cfg.device)
+    optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
+    latest, best = cfg.out_dir / 'latest.pt', cfg.out_dir / 'best.pt'   # checkpoints
+    start_step = 1
+    best_val = float('inf')
 
-# Training loop:
-for step in range(start_step, cfg.max_iters+1):
-    # Sample a batch of data:
-    xb, yb = getBatch("train")
+    # Load the latest checkpoint if requested:
+    if cfg.resume and latest.exists():
+        start_step, best_val = load_checkpoint(latest, model, optim, cfg.device)
+        start_step += 1
+        print(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
 
-    # Forward pass:
-    logits, loss = m(xb, yb)
+    # Training loop:
+    for step in range(start_step, cfg.max_iters+1):
+        # Forward pass:
+        xb, yb = get_batch(cfg, train_data)
+        _, loss = model(xb, yb)
 
-    # Optimization step:
-    optim.zero_grad(set_to_none=True)
-    loss.backward()
-    optim.step()
+        # Optimization step:
+        optim.zero_grad(set_to_none=True)
+        loss.backward()
+        optim.step()
 
-    # Report smoothed loss:
-    if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
-        losses = estimateLoss()
-        print(f"{step:04d} - training loss: {losses['train']:.4f}, validation loss: {losses['val']:.4f}")
+        # Report smoothed loss:
+        if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
+            losses = estimate_loss(cfg, model, train_data, val_data)
+            print(f"{step:04d} - training loss: {losses['train']:.4f}, validation loss: {losses['val']:.4f}")
 
-    # Save checkpoint:
-    if step % cfg.ckpt_interval == 0 or step == cfg.max_iters - 1:
-        val_loss = losses['val']
-        saveCheckpoint(latest, m, optim, step, val_loss, cfg)       # latest checkpoint
-        if val_loss < best_val:
-            best_val = val_loss
-            shutil.copyfile(latest, best)                           # latest checkpoint is the best checkpoint
+        # Save checkpoint:
+        if step % cfg.ckpt_interval == 0 or step == cfg.max_iters - 1:
+            val_loss = losses['val']
+            save_checkpoint(latest, model, optim, step, val_loss, cfg)      # latest checkpoint
+            if val_loss < best_val:
+                best_val = val_loss
+                shutil.copyfile(latest, best)                               # latest checkpoint is the best checkpoint
+
+    return model
 
 #%% Inference:
 
@@ -162,3 +117,23 @@ for step in range(start_step, cfg.max_iters+1):
 #     i = stoi[ch]
 #     nearest = sim[i].topk(5).indices[1:]  # skip itself
 #     print("- chars similar to", repr(ch), "->", [itos[j.item()] for j in nearest])
+
+#%% Main function:
+
+if __name__=='__main__':
+    # Config setup:
+    cfg = parse_config()
+    cfg.out_dir.mkdir(parents=True, exist_ok=True)      # create the run folder
+    torch.manual_seed(cfg.seed)
+
+    # Download the tiny Shakespeare dataset:
+    url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
+    db_path = "data/input.txt"
+    if not path.exists(db_path): urllib.request.urlretrieve(url, db_path)
+
+    # Load and split the dataset:
+    train_data, val_data, tokenizer = load_splits(db_path, cfg.train_frac)
+    cfg.model = replace(cfg.model, vocab_size=tokenizer.vocab_size)
+
+    # Train the model:
+    model = train(cfg, train_data, val_data)

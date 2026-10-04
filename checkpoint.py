@@ -15,7 +15,7 @@ This file contains the code to save and restore checkpoints.
 
 #%% Utilities:
 
-def gitInfo() -> dict:
+def git_info() -> dict:
     '''Function to git the status of the code at checkpointing time.'''
     try:
         commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
@@ -25,7 +25,7 @@ def gitInfo() -> dict:
         return {"commit": None, "dirty": None}
 
 
-def saveCheckpoint(path: Path, model, optimizer, step: int, best_val: float, cfg) -> None:
+def save_checkpoint(path: Path, model, optimizer, step: int, best_val: float, cfg) -> None:
     '''
     Function to save a checkpoint containing the model weights, optimizer and RNG state, code, configs, and best loss value.
 
@@ -57,14 +57,14 @@ def saveCheckpoint(path: Path, model, optimizer, step: int, best_val: float, cfg
             "mps": torch.mps.get_rng_state() if torch.backends.mps.is_available() else None,
             "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
         },
-        "git": gitInfo(),
+        "git": git_info(),
     }
     tmp = path.with_suffix(".tmp")
     torch.save(ckpt, tmp)
     os.replace(tmp, path)          # atomic: never leaves a half-written checkpoint
 
 
-def loadCheckpoint(path: Path, model, optimizer, device) -> tuple[int, float]:
+def load_checkpoint(path: Path, model, optimizer, device) -> tuple[int, float]:
     '''
     Function to load a checkpoint to fully restore training state.
 

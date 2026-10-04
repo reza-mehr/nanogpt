@@ -37,6 +37,7 @@ class ModelConfig:
 class TrainConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
     device: str = device                                    # device to run the training on
+    train_frac: float = 0.9                                 # fraction of the dataset used for training
     batch_size: int = 64                                    # batch size
     max_iters: int = 5000                                   # maximum number of training iterations
     learning_rate: float = 3e-4                             # learning rate
@@ -81,7 +82,7 @@ PRESETS: dict[str, TrainConfig] = {
 
 #%% Function to parse arguments:
 
-def parseConfig() -> TrainConfig:
+def parse_config() -> TrainConfig:
     name = 'main_cfg'           # default preset
     if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
         name = sys.argv.pop(1)
