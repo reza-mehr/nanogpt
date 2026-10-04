@@ -8,6 +8,11 @@ import torch
 from nanogpt.config import ModelConfig, TrainConfig
 from nanogpt.trainer import train
 
+'''
+This file contains the code to test checkpoint resumption.
+
+'''
+
 #%% Data and config setup for this test:
 
 # Number of words in the synthetic dataset:
@@ -25,7 +30,7 @@ def tiny_cfg(tmp_path, run_name: str) -> TrainConfig:
         model=ModelConfig(name='bigram', vocab_size=VOCAB, block_size=8, n_embed=16,
                           head_num=2, head_size=8, n_blocks=2, dropout=0.1),     # dropout exercises RNG restore
         batch_size=4, max_iters=20, eval_interval=5, eval_iters=2,
-        ckpt_interval=5, learning_rate=1e-3, seed=0, device='cpu',
+        ckpt_interval=5, learning_rate=1e-3,lr_warmup_iters=5, seed=0, device='cpu',
         runs_root=str(tmp_path), run_name=run_name,
     )
 

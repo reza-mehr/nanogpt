@@ -40,7 +40,9 @@ class TrainConfig:
     train_frac: float = 0.9                                 # fraction of the dataset used for training
     batch_size: int = 64                                    # batch size
     max_iters: int = 5000                                   # maximum number of training iterations
+    lr_schedule: Literal['cosine', 'constant'] = 'cosine'   # learning rate schedule
     learning_rate: float = 3e-4                             # learning rate
+    lr_warmup_iters: int = 100                              # number of warm iteratations to reach specified learning rate
     eval_interval: int = 500                                # evaluation interval
     eval_iters: int = 200                                   # evaluation iterations to smooth loss values
     ckpt_interval: int = 500                                # checkpoint interval
@@ -52,13 +54,17 @@ class TrainConfig:
     def __post_init__(self):
         if not self.run_name:
             self.run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        assert 0 < self.lr_warmup_iters < self.max_iters, 'warmup must fit inside the run'
 
     @property
     def out_dir(self) -> Path:
         return Path(self.runs_root) / self.run_name
 
+    @property
+    def min_learning_rate(self) -> float:
+        return self.learning_rate * 0.1                     # 10 percent of the learning rate
+
 # TODO: to be added
-# warmup_iters: int = 100
 # grad_clip: float = 1.0
 
 #%% Preset configs:

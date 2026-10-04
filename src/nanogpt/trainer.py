@@ -10,6 +10,7 @@ from dataclasses import replace
 from nanogpt.data import get_batch
 import nanogpt.model                                        # needed to register the models
 from nanogpt.registry import build_model
+from nanogpt.schedule import set_learning_rate
 from nanogpt.checkpoint import save_checkpoint, load_checkpoint
 
 '''
@@ -109,6 +110,7 @@ def train(cfg, train_data, val_data, stop_after=None):
         _, loss = model(xb, yb)
 
         # Optimization step:
+        set_learning_rate(optim, step, cfg)         # set the learning rate according to the schedule
         optim.zero_grad(set_to_none=True)
         loss.backward()
         optim.step()
@@ -127,6 +129,6 @@ def train(cfg, train_data, val_data, stop_after=None):
                 shutil.copyfile(latest, best)                               # latest checkpoint is the best checkpoint
 
         # Emulate a crash for testing checkpoints:
-        if stop_after is not None and step == stop_after: return model
+        if stop_after is not None and step == stop_after: return model, best_val
 
     return model, best_val
