@@ -20,8 +20,6 @@ This file conntains the code to train nano-GPT model on tiny Shakespeare dataset
 
 # Config setup:
 cfg = parse_config()
-cfg.out_dir.mkdir(parents=True, exist_ok=True)      # create the run folder
-torch.manual_seed(cfg.seed)
 
 # Download the tiny Shakespeare dataset:
 url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
@@ -33,7 +31,7 @@ train_data, val_data, tokenizer = load_splits(db_path, cfg.train_frac)
 cfg.model = replace(cfg.model, vocab_size=tokenizer.vocab_size)
 
 # Train the model:
-model = train(cfg, train_data, val_data)
+train(cfg, train_data, val_data)
 
 #%% Inference:
 

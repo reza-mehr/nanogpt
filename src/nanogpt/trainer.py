@@ -60,7 +60,34 @@ def estimate_loss(cfg, model, train_data, val_data):
 
 #%% Train function:
 
-def train(cfg, train_data, val_data):
+def train(cfg, train_data, val_data, stop_after=None):
+    '''
+    Function to run the loop to train a language model.
+
+    Parameters
+    ----------
+    cfg: TrainConfig
+        Configurations to use.
+    train_data: torch.Tensor
+        Train data.
+    val_data: torch.Tensor
+        Validation data.
+    stop_after: int, optional
+        Step to stop at for testing purposes. The default is None.
+
+    Returns
+    -------
+    model: nn.Module
+        Trained model.
+    best_val: float
+        Best smoothed loss value over validation data.
+
+    '''
+    # Fix the random seed for reproducibility:
+    torch.manual_seed(cfg.seed)
+
+    # Create the run folder:
+    cfg.out_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialization:
     model = build_model(cfg).to(cfg.device)
@@ -99,4 +126,7 @@ def train(cfg, train_data, val_data):
                 best_val = val_loss
                 shutil.copyfile(latest, best)                               # latest checkpoint is the best checkpoint
 
-    return model
+        # Emulate a crash for testing checkpoints:
+        if stop_after is not None and step == stop_after: return model
+
+    return model, best_val
