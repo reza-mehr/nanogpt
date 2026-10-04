@@ -6,6 +6,7 @@ import tyro
 from dataclasses import dataclass, field
 import torch
 from typing import Literal
+import logging
 
 from datetime import datetime
 from pathlib import Path
@@ -50,6 +51,7 @@ class TrainConfig:
     run_name: str = ''                                      # run folder name
     runs_root: str = 'runs'                                 # 'runs' directory
     resume: bool = False                                    # resume training from
+    log_level: int = logging.INFO                           # logging level, 20 for INFO, 10 for DEBUG
 
     def __post_init__(self):
         if not self.run_name:

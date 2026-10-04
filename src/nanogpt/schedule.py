@@ -82,7 +82,14 @@ def set_learning_rate(optimizer, step, cfg):
     cfg: TrainConfig
         Specified configurations.
 
+    Returns
+    -------
+    lr: float
+        Learning rate.
+
     '''
     lr = get_lr(step, cfg)
     for group in optimizer.param_groups:
         group['lr'] = lr
+
+    return lr
