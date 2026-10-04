@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from registry import register_model
+from nanogpt.registry import register_model
 
 '''
 Notation:

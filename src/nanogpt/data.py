@@ -4,7 +4,7 @@
 from pathlib import Path
 import torch
 
-from config import TrainConfig
+from nanogpt.config import TrainConfig
 
 '''
 This file contains the code to construct tokenizer and sample batches from a text dataset.
