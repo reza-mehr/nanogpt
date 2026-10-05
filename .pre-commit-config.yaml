@@ -1,0 +1,28 @@
+
+# Runs the test suite before every commit; a failing test aborts the commit.
+# pre-commit temporarily sets aside unstaged changes first, so the tests run
+# against exactly what is being committed.
+#
+# Setup (once per clone, after `uv sync`):  uv run pre-commit install
+# Emergency bypass (use sparingly):         git commit --no-verify
+
+repos:
+  # "local" = run a command from this project instead of downloading a hook
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+
+        # Run the full suite inside the project's uv environment.
+        # To skip slow tests here (CI still runs them), mark them with
+        # @pytest.mark.slow and use: uv run pytest -q -m "not slow"
+        entry: uv run pytest -q
+
+        # Run the command as-is with the system shell (no isolated hook env)
+        language: system
+
+        # Don't pass changed file names as arguments; pytest finds its own tests
+        pass_filenames: false
+
+        # Run on every commit, regardless of which files changed
+        always_run: true
