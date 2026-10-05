@@ -10,7 +10,7 @@ from nanogpt.registry import build_model
 import nanogpt.model        # noqa: F401  (registers the models)
 
 '''
-This file contains model tests that ensure expected shapes and optimization behavior.
+This file contains model tests that ensure expected shapes, uniform initialization, optimization behavior, and causality of the language model.
 
 '''
 
@@ -91,3 +91,40 @@ def test_overfit():
 
     assert loss.item() < 0.1*loss0.item(), \
         f"loss fell less than 90% when overfitting to a single batch: {loss0.item():.4f} -> {loss.item():.4f}"
+
+#%% Causality tests:
+
+@pytest.mark.parametrize('name', ['bigram', 'gpt'])
+@pytest.mark.parametrize('t', [0, 3, T - 1])
+def test_causality(name, t):
+    '''Tests that changing the token at position t must not affect outputs at positions < t.'''
+
+    model = tiny_model(name).eval()            # eval: no dropout, deterministic
+    idx = torch.randint(0, VOCAB, (B, T))
+    idx2 = idx.clone()
+    idx2[:, t] = (idx[:, t] + 1) % VOCAB       # guaranteed different token at position 't' for all sequences in the batch
+
+    with torch.no_grad():
+        logits, _ = model(idx)
+        logits2, _ = model(idx2)
+
+    # Assert that the past is untouched:
+    assert torch.equal(logits[:, :t], logits2[:, :t]), f'future token {t} leaked into the past'
+
+    # Assert that the change is visible where it should be, so the test isn't vacuous:
+    assert not torch.equal(logits[:, t], logits2[:, t]), f'position {t} ignored its own token'
+
+
+def test_no_leakage_across_batch():
+    '''Tests that changing one sequence in a batch must not affect the others.'''
+
+    model = tiny_model('gpt').eval()            # eval: no dropout, deterministic
+    idx = torch.randint(0, VOCAB, (B, T))
+    idx2 = idx.clone()
+    idx2[0] = (idx[0] + 1) % VOCAB              # change only sequence 0
+
+    with torch.no_grad():
+        logits, _ = model(idx)
+        logits2, _ = model(idx2)
+
+    assert torch.equal(logits[1:], logits2[1:])
