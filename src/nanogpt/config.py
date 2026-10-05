@@ -24,34 +24,45 @@ device = (
 #%% Main code:
 
 @dataclass
+class DataConfig:
+    train_frac: float = 0.9                                 # fraction of tokens used for training, the rest is validation
+
+@dataclass
 class ModelConfig:
-    name: Literal['gpt', 'bigram'] = 'gpt'                  # model name
-    vocab_size: tyro.conf.Suppress[int | None] = None       # number of unique characters in the tiny Shakespeare dataset
-    block_size: int = 256                                   # context length
+    name: Literal['gpt', 'bigram'] = 'gpt'                  # Model architecture, looked up in the model registry
+    vocab_size: tyro.conf.Suppress[int | None] = None       # number of unique tokens, set at runtime
+    block_size: int = 256                                   # maximum context length
     n_embed: int = 384                                      # embedding dimension
     head_num: int = 6                                       # number of attention heads per block
     head_size: int = 64                                     # attention head size
-    n_blocks: int = 6                                       # number of blocks
-    dropout: float = 0.2                                    # dropout ratio
+    n_blocks: int = 6                                       # number of transformer blocks
+    dropout: float = 0.2                                    # dropout probability
 
 @dataclass
 class TrainConfig:
+    data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
-    device: str = device                                    # device to run the training on
-    train_frac: float = 0.9                                 # fraction of the dataset used for training
-    batch_size: int = 64                                    # batch size
-    max_iters: int = 5000                                   # maximum number of training iterations
-    lr_schedule: Literal['cosine', 'constant'] = 'cosine'   # learning rate schedule
-    learning_rate: float = 3e-4                             # learning rate
-    lr_warmup_iters: int = 100                              # number of warm iteratations to reach specified learning rate
+
+    batch_size: int = 64                                    # sequences per training step
+    max_iters: int = 5000                                   # total number of optimization steps
+    lr_schedule: Literal['cosine', 'constant'] = 'constant' # learning rate schedule, constant or linear warmup followed by cosine decay
+    learning_rate: float = 3e-4                             # peak learning rate
+    lr_warmup_iters: int = 100                              # number of warm steps to reach peak learning rate
     grad_clip: float = float('inf')                         # maximum permissible gradient norm
-    eval_interval: int = 500                                # evaluation interval
-    eval_iters: int = 200                                   # evaluation iterations to smooth loss values
-    ckpt_interval: int = 500                                # checkpoint interval
+    weight_decay: float = 0.01                              # AdamW weight decay coefficient (PyTorch default 0.01)
+    decay_groups: bool = False                              # If True, apply weight decay only to 2D+ params (not biases or norms)
+    beta1: float = 0.9                                      # AdamW momentum coefficient
+    beta2: float = 0.999                                    # AdamW second-moment coefficient (LLMs often use 0.95)
+
+    eval_interval: int = 500                                # steps between evaluations
+    eval_iters: int = 200                                   # batches averaged per evaluation
+    ckpt_interval: int = 500                                # steps between saves of latest.pt
+
+    device: str = device                                    # device to run the training on
     seed: int = 1337                                        # random seed
-    run_name: str = ''                                      # run folder name
-    runs_root: str = 'runs'                                 # 'runs' directory
-    resume: bool = False                                    # resume training from
+    run_name: str = ''                                      # run folder name, empty means a timestamp
+    runs_root: str = 'runs'                                 # parent folder for all runs
+    resume: bool = False                                    # resume training from out_dir/latest.pt
     log_level: int = logging.INFO                           # logging level, 20 for INFO, 10 for DEBUG
 
     def __post_init__(self):

@@ -12,7 +12,7 @@ from nanogpt.logs import setup_logger
 from nanogpt.data import get_batch
 import nanogpt.model                                        # needed to register the models
 from nanogpt.registry import build_model
-from nanogpt.schedule import set_learning_rate
+from nanogpt.optimizer import build_optimizer, set_learning_rate
 from nanogpt.checkpoint import save_checkpoint, load_checkpoint
 
 '''
@@ -94,7 +94,7 @@ def train(cfg, train_data, val_data, stop_after=None):
 
     # Initialization:
     model = build_model(cfg).to(cfg.device)
-    optim = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
+    optim = build_optimizer(model, cfg)
     latest = cfg.out_dir / 'latest.pt'          # path to the latest checkpoints
     start_step = 1
     best_val = float('inf')

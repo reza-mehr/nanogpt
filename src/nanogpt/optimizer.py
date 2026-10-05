@@ -1,14 +1,48 @@
 #%% Imports:
 
 import math
+import torch
+from torch import nn
 
 from nanogpt.config import TrainConfig
 
 '''
-This file contains the code for learning rate scheduling.
+This file contains the code for optimizer settings including learning rate scheduling and selective weight decay.
+
 '''
 
-#%% Main code:
+#%% Selective weight decay:
+
+def build_optimizer(model: nn.Module, cfg: TrainConfig) -> torch.optim.AdamW:
+    '''
+    Function to apply weight decay to all or 2D+ tensors only, based on provided configuration file.
+
+    Parameters
+    ----------
+    model: nn.Module
+        Model being trained.
+    cfg: TrainConfig
+        Specified configurations.
+
+    Returns
+    -------
+    optim: torch.optim.AdamW
+        Configured optimizer.
+
+    '''
+    params = [p for p in model.parameters() if p.requires_grad]
+    if cfg.decay_groups:
+        groups = [
+            {'params': [p for p in params if p.dim() >= 2], 'weight_decay': cfg.weight_decay},
+            {'params': [p for p in params if p.dim() < 2], 'weight_decay': 0.0},        # do not decay
+        ]
+    else:
+        groups = [{'params': params, 'weight_decay': cfg.weight_decay}]
+
+    return torch.optim.AdamW(groups, lr=cfg.learning_rate, betas=(cfg.beta1, cfg.beta2))
+
+
+#%% Learning rate scheduling:
 
 def _warmup_cosine(step: int, cfg: TrainConfig) -> float:
     '''

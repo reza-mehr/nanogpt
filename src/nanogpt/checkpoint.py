@@ -8,6 +8,8 @@ from pathlib import Path
 
 import torch
 
+from nanogpt.config import TrainConfig
+
 '''
 This file contains the code to save and restore checkpoints.
 
@@ -25,7 +27,7 @@ def git_info() -> dict:
         return {"commit": None, "dirty": None}
 
 
-def save_checkpoint(path: Path, model, optimizer, step: int, best_val: float, cfg) -> None:
+def save_checkpoint(path: Path, model, optimizer, step: int, best_val: float, cfg: TrainConfig) -> None:
     '''
     Function to save a checkpoint containing the model weights, optimizer and RNG state, code, configs, and best loss value.
 
@@ -46,20 +48,20 @@ def save_checkpoint(path: Path, model, optimizer, step: int, best_val: float, cf
 
     '''
     ckpt = {
-        "model": model.state_dict(),
-        "optimizer": optimizer.state_dict(),
-        "step": step,
-        "best_val": best_val,
-        "cfg": asdict(cfg),
-        "rng": {
-            "python": random.getstate(),
-            "torch": torch.get_rng_state(),
-            "mps": torch.mps.get_rng_state() if torch.backends.mps.is_available() else None,
-            "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+        'model': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'step': step,
+        'best_val': best_val,
+        'cfg': asdict(cfg),
+        'rng': {
+            'python': random.getstate(),
+            'torch': torch.get_rng_state(),
+            'mps': torch.mps.get_rng_state() if torch.backends.mps.is_available() else None,
+            'cuda': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
         },
-        "git": git_info(),
+        'git': git_info(),
     }
-    tmp = path.with_suffix(".tmp")
+    tmp = path.with_suffix('.tmp')
     torch.save(ckpt, tmp)
     os.replace(tmp, path)          # atomic: never leaves a half-written checkpoint
 

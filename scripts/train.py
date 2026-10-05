@@ -27,7 +27,7 @@ db_path = "data/input.txt"
 if not path.exists(db_path): urllib.request.urlretrieve(url, db_path)
 
 # Load and split the dataset:
-train_data, val_data, tokenizer = load_splits(db_path, cfg.train_frac)
+train_data, val_data, tokenizer = load_splits(db_path, cfg.data.train_frac)
 cfg.model = replace(cfg.model, vocab_size=tokenizer.vocab_size)
 
 # Train the model:
