@@ -111,16 +111,16 @@ def train(cfg, train_data, val_data, stop_after=None):
         logger.info(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
 
     # Training loop:
-    for step in range(start_step, cfg.max_iters+1):
-        try:
+    try:
+        for step in range(start_step, cfg.max_iters+1):
             # Run a training step:
             best_val = train_step(cfg, model, optim, step, train_data, val_data, writer, logger, best_val)
 
             # Emulate a crash for testing checkpoints:
             if stop_after is not None and step == stop_after: return model, best_val
 
-        finally:
-            writer.close()                    # flush event files, even on crash or early return
+    finally:
+        writer.close()                    # flush event files, even on crash or early return
 
     return model, best_val
 
@@ -167,11 +167,13 @@ def train_step(cfg, model, optim, step, train_data, val_data, writer, logger, be
     lr = set_learning_rate(optim, step, cfg)                            # set the learning rate according to the schedule
     optim.zero_grad(set_to_none=True)
     loss.backward()
+    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)   # clip large gradients to limit noisy batches' impact
     optim.step()
 
-    # Log training loss and learning rate:
+    # Log training loss, learning rate, and gradient norm:
     writer.add_scalar('train/loss', loss.item(), step)
     writer.add_scalar('train/lr', lr, step)
+    writer.add_scalar('train/grad_norm', grad_norm.item(), step)
 
     # Log smoothed loss:
     if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters:

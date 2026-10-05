@@ -44,6 +44,7 @@ class TrainConfig:
     lr_schedule: Literal['cosine', 'constant'] = 'cosine'   # learning rate schedule
     learning_rate: float = 3e-4                             # learning rate
     lr_warmup_iters: int = 100                              # number of warm iteratations to reach specified learning rate
+    grad_clip: float = float('inf')                         # maximum permissible gradient norm
     eval_interval: int = 500                                # evaluation interval
     eval_iters: int = 200                                   # evaluation iterations to smooth loss values
     ckpt_interval: int = 500                                # checkpoint interval
