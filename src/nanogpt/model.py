@@ -89,22 +89,14 @@ class Head(nn.Module):
         return out
 
 
-class MultiHead(nn.Module):
-    '''Class to implement the multi-head self-attention.'''
-    def __init__(self, block_size, n_embed, head_size, head_num, dropout):
+class MultiHeadLooped(nn.Module):
+    '''Class to implement the multi-head self-attention as a for loop over single heads.'''
+    def __init__(self, cfg):
         '''
         Parameters
         ----------
-        block_size: int
-            Context length or token block size.
-        n_embed: int
-            Token embedding dimension.
-        head_size: int
-            Self-attention head dimension.
-        head_num: int
-            Number of self-attention heads.
-        dropout: float
-            Dropout ratio.
+        cfg: TrainConfig
+            Train configs; see config.py for details.
 
         Attributes
         ----------
@@ -118,10 +110,10 @@ class MultiHead(nn.Module):
         '''
         super().__init__()
         self.multi_head = nn.ModuleList(
-            [Head(block_size, n_embed, head_size, dropout) for _ in range(head_num)]
+            [ Head(cfg.block_size, cfg.n_embed, cfg.head_size, cfg.dropout) for _ in range(cfg.head_num) ]
         )
-        self.proj = nn.Linear(head_size * head_num, n_embed)
-        self.dropout = nn.Dropout(dropout)
+        self.proj = nn.Linear(cfg.head_size * cfg.head_num, cfg.n_embed)
+        self.dropout = nn.Dropout(cfg.dropout)
 
 
     def forward(self, x):
@@ -190,20 +182,12 @@ class FeedForward(nn.Module):
 
 class Block(nn.Module):
     '''Class to implement a single block (attention + feed forward).'''
-    def __init__(self, block_size, n_embed, head_size, head_num, dropout):
+    def __init__(self, cfg):
         '''
         Parameters
         ----------
-        block_size: int
-            Context length or token block size.
-        n_embed: int
-            Token embedding dimension.
-        head_size: int
-            Self-attention head dimension.
-        head_num: int
-            Number of self-attention heads.
-        dropout: float
-            Dropout ratio.
+        cfg: TrainConfig
+            Train configs; see config.py for details.
 
         Attributes
         ----------
@@ -218,10 +202,13 @@ class Block(nn.Module):
 
         '''
         super().__init__()
-        self.sa_head = MultiHead(block_size, n_embed, head_size, head_num, dropout)
-        self.ffwd = FeedForward(n_embed, dropout)
-        self.ln1 = LayerNorm(n_embed)
-        self.ln2 = LayerNorm(n_embed)
+        if cfg.batched_attention:
+            self.sa_head = MultiHead(cfg)
+        else:
+            self.sa_head = MultiHeadLooped(cfg)
+        self.ffwd = FeedForward(cfg.n_embed, cfg.dropout)
+        self.ln1 = LayerNorm(cfg.n_embed)
+        self.ln2 = LayerNorm(cfg.n_embed)
 
 
     def forward(self, x):
@@ -291,6 +278,88 @@ class LayerNorm(nn.Module):
         return self.gamma * xhat + self.beta            # broadcasts over (B, T)
 
 
+#%% Batched multi-head attention:
+
+class MultiHead(nn.Module):
+    '''Class to implement batched multi-head self-attention using vectorization for efficiency.'''
+    def __init__(self, cfg):
+        '''
+        Parameters
+        ----------
+        cfg: TrainConfig
+            Train configs; see config.py for details.
+
+        Attributes
+        ----------
+        head_num
+        head_size
+
+        c_attn (3*head_num*head_size, n_embed): nn.Linear
+            Stacked weights for query, key, value matrices of all self-attention heads.
+        c_proj (n_embed, head_num*head_size): nn.Linear
+            Linear projection layer.
+        mask (block_size, block_size): buffer
+            Constant lower triangular matrix of ones for causal masking.
+        dropout_attn: nn.Dropout
+            Dropout layer for masked weights.
+        dropout_resid: nn.Dropout
+            Dropout layer to be applied to the output of the projection layer.
+
+        '''
+        super().__init__()
+        self.cfg = cfg
+
+        self.c_attn = nn.Linear(in_features=cfg.n_embed, out_features=3 * cfg.head_num * cfg.head_size, bias=False)
+        self.c_proj = nn.Linear(in_features=cfg.head_num * cfg.head_size, out_features=cfg.n_embed)
+        self.register_buffer('mask', torch.tril(torch.ones((cfg.block_size, cfg.block_size))))
+        self.dropout_attn = nn.Dropout(cfg.dropout)
+        self.dropout_resid = nn.Dropout(cfg.dropout)
+
+
+    def forward(self, x):
+        '''
+        Function to compute the forward pass.
+
+        Parameters
+        ----------
+        x (B, T, n_embed): tensor
+            Token embeddings.
+
+        Returns
+        -------
+        out (B, T, n_embed): tensor
+            Multi-head self-attention values.
+
+        '''
+        # Attributes:
+        head_num = self.cfg.head_num
+        head_size = self.cfg.head_size
+
+        # Batched self-attention calculations:
+        B, T, n_embed = x.shape
+        qkv = self.c_attn(x)                                    # x @ W^T : (B, T, n_embed) @ (n_embed, 3 * head_num * head_size) -> (B, T, 3 * head_num * head_size)
+        q, k, v = qkv.split(head_num*head_size, dim=2)          # (B, T, 3 * head_num * head_size) -> 3 x (B, T, head_num * head_size)
+        q = q.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
+        k = k.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
+        v = v.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
+
+        # Causal weight calculations:
+        wei = q @ k.transpose(-2, -1) * head_size ** (-0.5)     # (B, head_num, T, head_size) @ (B, head_num, head_size, T) -> (B, head_num, T, T)
+        wei = wei.masked_fill(self.mask[:T, :T] == 0, float("-inf"))            # (B, head_num, T, T)
+        wei = F.softmax(wei, dim=-1)                            # (B, head_num, T, T)
+        wei = self.dropout_attn(wei)
+
+        # Token communications:
+        out = wei @ v   # (B, head_num, T, T) @ (B, head_num, T, head_size) -> (B, head_num, T, head_size)
+        out = out.transpose(1, 2).contiguous().view(B, T, head_num*head_size)   # (B, T, head_size * head_num)
+
+        # Project back to embedding space:
+        out = self.c_proj(out)                                  # (B, T, head_size * head_num) -> (B, T, n_embed)
+        out = self.dropout_resid(out)                           # (B, T, n_embed)
+
+        return out
+
+
 #%% Transformer model:
 
 @register_model('gpt')
@@ -326,12 +395,7 @@ class GPT(nn.Module):
         cfg = cfg.model         # ModelConfig instance
         self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
         self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
-        self.blocks = nn.Sequential(
-            *[
-                Block(cfg.block_size, cfg.n_embed, cfg.head_size, cfg.head_num, cfg.dropout)
-                for _ in range(cfg.n_blocks)
-            ]
-        )
+        self.blocks = nn.Sequential( *[ Block(cfg) for _ in range(cfg.n_blocks) ] )
         self.ln = LayerNorm(cfg.n_embed)
         self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size)
 
@@ -365,7 +429,7 @@ class GPT(nn.Module):
         )                                           # (T, n_embed)
         x = tok_emb + pos_emb                       # (B, T, n_embed)
 
-        x = self.blocks(x)                         # (B, T, n_embed)
+        x = self.blocks(x)                          # (B, T, n_embed)
         x = self.ln(x)                              # (B, T, n_embed)
         logits = self.lm_head(x)                    # (B, T, n_embed) -> (B, T, vocab_size)
         if targets is None: return logits, None

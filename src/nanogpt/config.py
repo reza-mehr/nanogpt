@@ -37,6 +37,7 @@ class ModelConfig:
     head_size: int = 64                                     # attention head size
     n_blocks: int = 6                                       # number of transformer blocks
     dropout: float = 0.2                                    # dropout probability
+    batched_attention: bool = True                          # if True, compute multi-head self-attention in a batch for efficiency
 
 @dataclass
 class TrainConfig:
@@ -50,7 +51,7 @@ class TrainConfig:
     lr_warmup_iters: int = 100                              # number of warm steps to reach peak learning rate
     grad_clip: float = float('inf')                         # maximum permissible gradient norm
     weight_decay: float = 0.01                              # AdamW weight decay coefficient (PyTorch default 0.01)
-    decay_groups: bool = False                              # If True, apply weight decay only to 2D+ params (not biases or norms)
+    decay_groups: bool = False                              # if True, apply weight decay only to 2D+ params (not biases or norms)
     beta1: float = 0.9                                      # AdamW momentum coefficient
     beta2: float = 0.999                                    # AdamW second-moment coefficient (LLMs often use 0.95)
 
