@@ -38,6 +38,7 @@ class ModelConfig:
     n_blocks: int = 6                                       # number of transformer blocks
     dropout: float = 0.2                                    # dropout probability
     batched_attention: bool = True                          # if True, compute multi-head self-attention in a batch for efficiency
+    scaled_dot_prod: bool = True                            # if True, use scaled dot product instead of manual implementation for efficiency
 
 @dataclass
 class TrainConfig:

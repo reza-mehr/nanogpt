@@ -334,6 +334,8 @@ class MultiHead(nn.Module):
         # Attributes:
         head_num = self.cfg.head_num
         head_size = self.cfg.head_size
+        scaled_dot_prod = self.cfg.scaled_dot_prod
+        dropout = self.cfg.dropout
 
         # Batched self-attention calculations:
         B, T, n_embed = x.shape
@@ -343,17 +345,25 @@ class MultiHead(nn.Module):
         k = k.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
         v = v.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
 
-        # Causal weight calculations:
-        wei = q @ k.transpose(-2, -1) * head_size ** (-0.5)     # (B, head_num, T, head_size) @ (B, head_num, head_size, T) -> (B, head_num, T, T)
-        wei = wei.masked_fill(self.mask[:T, :T] == 0, float("-inf"))            # (B, head_num, T, T)
-        wei = F.softmax(wei, dim=-1)                            # (B, head_num, T, T)
-        wei = self.dropout_attn(wei)
+        # Use torch's scaled dot product implementation for efficiency:
+        if scaled_dot_prod:
+            out = F.scaled_dot_product_attention(
+                q, k, v,
+                is_causal=True,                                 # replaces the tril mask
+                dropout_p=dropout if self.training else 0.0,    # replaces attn_dropout
+            )                                                   # (B, head_num, T, head_size)
+        else:
+            # Causal weight calculations:
+            wei = q @ k.transpose(-2, -1) * head_size ** (-0.5)                     # (B, head_num, T, head_size) @ (B, head_num, head_size, T) -> (B, head_num, T, T)
+            wei = wei.masked_fill(self.mask[:T, :T] == 0, float("-inf"))            # (B, head_num, T, T)
+            wei = F.softmax(wei, dim=-1)                                            # (B, head_num, T, T)
+            wei = self.dropout_attn(wei)
 
-        # Token communications:
-        out = wei @ v   # (B, head_num, T, T) @ (B, head_num, T, head_size) -> (B, head_num, T, head_size)
-        out = out.transpose(1, 2).contiguous().view(B, T, head_num*head_size)   # (B, T, head_size * head_num)
+            # Token communications:
+            out = wei @ v   # (B, head_num, T, T) @ (B, head_num, T, head_size) -> (B, head_num, T, head_size)
 
         # Project back to embedding space:
+        out = out.transpose(1, 2).contiguous().view(B, T, head_num*head_size)       # (B, T, head_size * head_num)
         out = self.c_proj(out)                                  # (B, T, head_size * head_num) -> (B, T, n_embed)
         out = self.dropout_resid(out)                           # (B, T, n_embed)
 
