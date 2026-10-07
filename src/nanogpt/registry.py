@@ -56,9 +56,9 @@ def build_model(cfg) -> nn.Module:
 
     '''
     try:
-        model_cls = MODEL_REGISTRY[cfg.model.name]
+        model_cls = MODEL_REGISTRY[cfg.name]
     except KeyError:
         raise ValueError(
-            f"Unknown model '{cfg.model.name}'. Available: {sorted(MODEL_REGISTRY)}"
+            f"Unknown model '{cfg.name}'. Available: {sorted(MODEL_REGISTRY)}"
         ) from None
     return model_cls(cfg)

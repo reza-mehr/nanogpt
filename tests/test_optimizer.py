@@ -24,7 +24,7 @@ tiny_cfg = TrainConfig(
 #%% Optimizer with selective weight decay:
 
 def test_param_groups():
-    tiny_model = GPT(tiny_cfg)
+    tiny_model = GPT(tiny_cfg.model)
     opt = build_optimizer(tiny_model, tiny_cfg)
 
     decay, no_decay = opt.param_groups

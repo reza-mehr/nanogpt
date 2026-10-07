@@ -93,7 +93,8 @@ def train(cfg, train_data, val_data, stop_after=None):
     cfg.out_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialization:
-    model = build_model(cfg).to(cfg.device)
+    with torch.device(cfg.device):
+        model = build_model(cfg.model)
     optim = build_optimizer(model, cfg)
     latest = cfg.out_dir / 'latest.pt'          # path to the latest checkpoints
     start_step = 1

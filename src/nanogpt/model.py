@@ -3,6 +3,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from nanogpt.config import ModelConfig
 from nanogpt.registry import register_model
 
 '''
@@ -91,12 +92,12 @@ class Head(nn.Module):
 
 class MultiHeadLooped(nn.Module):
     '''Class to implement the multi-head self-attention as a for loop over single heads.'''
-    def __init__(self, cfg):
+    def __init__(self, cfg: ModelConfig):
         '''
         Parameters
         ----------
-        cfg: TrainConfig
-            Train configs; see config.py for details.
+        cfg: ModelConfig
+            Model configs; see config.py for details.
 
         Attributes
         ----------
@@ -182,12 +183,12 @@ class FeedForward(nn.Module):
 
 class Block(nn.Module):
     '''Class to implement a single block (attention + feed forward).'''
-    def __init__(self, cfg):
+    def __init__(self, cfg: ModelConfig):
         '''
         Parameters
         ----------
-        cfg: TrainConfig
-            Train configs; see config.py for details.
+        cfg: ModelConfig
+            Model configs; see config.py for details.
 
         Attributes
         ----------
@@ -282,12 +283,12 @@ class LayerNorm(nn.Module):
 
 class MultiHead(nn.Module):
     '''Class to implement batched multi-head self-attention using vectorization for efficiency.'''
-    def __init__(self, cfg):
+    def __init__(self, cfg: ModelConfig):
         '''
         Parameters
         ----------
-        cfg: TrainConfig
-            Train configs; see config.py for details.
+        cfg: ModelConfig
+            Model configs; see config.py for details.
 
         Attributes
         ----------
@@ -375,12 +376,12 @@ class MultiHead(nn.Module):
 @register_model('gpt')
 class GPT(nn.Module):
     '''Class to implement the generative pre-trained transformer (GPT). '''
-    def __init__(self, cfg):
+    def __init__(self, cfg: ModelConfig):
         '''
         Parameters
         ----------
-        cfg: TrainConfig
-            Train configs; see config.py for details.
+        cfg: ModelConfig
+            Model configs; see config.py for details.
 
         Attributes
         ----------
@@ -402,7 +403,6 @@ class GPT(nn.Module):
         super().__init__()
         self.cfg = cfg
 
-        cfg = cfg.model         # ModelConfig instance
         self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
         self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
         self.blocks = nn.Sequential( *[ Block(cfg) for _ in range(cfg.n_blocks) ] )
@@ -429,13 +429,10 @@ class GPT(nn.Module):
             Loss value. None if 'targets' is None.
 
         '''
-        # Attributes:
-        device = self.cfg.device
-
         B, T = idx.shape
         tok_emb = self.token_embedding_table(idx)  # (B, T, n_embed)
         pos_emb = self.position_embedding_table(
-            torch.arange(T, device=device)
+            torch.arange(T, device=idx.device)
         )                                           # (T, n_embed)
         x = tok_emb + pos_emb                       # (B, T, n_embed)
 
@@ -478,7 +475,7 @@ class GPT(nn.Module):
         self.eval()
 
         # Attributes:
-        block_size = self.cfg.model.block_size
+        block_size = self.cfg.block_size
 
         # Loop over new tokens to be generated:
         for _ in range(new_tokens):
@@ -498,12 +495,12 @@ class GPT(nn.Module):
 @register_model('bigram')
 class BigramLanguageModel(nn.Module):
     '''This class implements the Bigram language model.'''
-    def __init__(self, cfg):
+    def __init__(self, cfg: ModelConfig):
         '''
         Parameters
         ----------
-        cfg: TrainConfig
-            Train configs; see config.py for details.
+        cfg: ModelConfig
+            Model configs; see config.py for details.
 
         Attributes
         ----------
@@ -512,8 +509,8 @@ class BigramLanguageModel(nn.Module):
 
         '''
         super().__init__()
-        n_embed = cfg.model.vocab_size        # to produce distribution over tokens in Bigram model
-        self.token_embedding_table = nn.Embedding(cfg.model.vocab_size, n_embed)
+        n_embed = cfg.vocab_size            # to produce distribution over tokens in Bigram model
+        self.token_embedding_table = nn.Embedding(cfg.vocab_size, n_embed)
 
 
     def forward(self, idx, targets=None):

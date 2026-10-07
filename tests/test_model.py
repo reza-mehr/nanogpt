@@ -27,7 +27,7 @@ def tiny_model(name):
         batch_size=B, device='cpu'
         )
     torch.manual_seed(0)
-    return build_model(cfg)
+    return build_model(cfg.model)
 
 #%% Shape tests:
 
