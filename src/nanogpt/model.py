@@ -208,8 +208,8 @@ class Block(nn.Module):
         else:
             self.sa_head = MultiHeadLooped(cfg)
         self.ffwd = FeedForward(cfg.n_embed, cfg.dropout)
-        self.ln1 = LayerNorm(cfg.n_embed)
-        self.ln2 = LayerNorm(cfg.n_embed)
+        self.ln1 = nn.LayerNorm(cfg.n_embed) if cfg.ln_torch else LayerNorm(cfg.n_embed)
+        self.ln2 = nn.LayerNorm(cfg.n_embed) if cfg.ln_torch else LayerNorm(cfg.n_embed)
 
 
     def forward(self, x):
@@ -246,16 +246,16 @@ class LayerNorm(nn.Module):
         Attributes
         ----------
         eps
-        gamma: nn.Parameter
+        weight: nn.Parameter
             Layer norm scaling.
-        beta: nn.Parameter
+        bias: nn.Parameter
             Layer norm offset.
 
         '''
         super().__init__()
         self.eps = eps
-        self.gamma = nn.Parameter(torch.ones(dim))
-        self.beta = nn.Parameter(torch.zeros(dim))
+        self.weight = nn.Parameter(torch.ones(dim))
+        self.bias = nn.Parameter(torch.zeros(dim))
 
 
     def forward(self, x):
@@ -276,7 +276,7 @@ class LayerNorm(nn.Module):
         xmean = x.mean(-1, keepdim=True)                # (B, T, 1)
         xvar = x.var(-1, keepdim=True, unbiased=False)  # (B, T, 1)
         xhat = (x - xmean) / torch.sqrt(xvar + self.eps)
-        return self.gamma * xhat + self.beta            # broadcasts over (B, T)
+        return self.weight * xhat + self.bias            # broadcasts over (B, T)
 
 
 #%% Batched multi-head attention:
@@ -406,7 +406,7 @@ class GPT(nn.Module):
         self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
         self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
         self.blocks = nn.Sequential( *[ Block(cfg) for _ in range(cfg.n_blocks) ] )
-        self.ln = LayerNorm(cfg.n_embed)
+        self.ln = nn.LayerNorm(cfg.n_embed) if cfg.ln_torch else LayerNorm(cfg.n_embed)
         self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size)
 
 
