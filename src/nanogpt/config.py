@@ -55,6 +55,7 @@ class TrainConfig:
     decay_groups: bool = False                              # if True, apply weight decay only to 2D+ params (not biases or norms)
     beta1: float = 0.9                                      # AdamW momentum coefficient
     beta2: float = 0.999                                    # AdamW second-moment coefficient (LLMs often use 0.95)
+    adamw_fused: bool = True                                # if True, update all tensors in one kernel
 
     eval_interval: int = 500                                # steps between evaluations
     eval_iters: int = 200                                   # batches averaged per evaluation

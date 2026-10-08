@@ -39,7 +39,7 @@ def build_optimizer(model: nn.Module, cfg: TrainConfig) -> torch.optim.AdamW:
     else:
         groups = [{'params': params, 'weight_decay': cfg.weight_decay}]
 
-    return torch.optim.AdamW(groups, lr=cfg.learning_rate, betas=(cfg.beta1, cfg.beta2))
+    return torch.optim.AdamW(groups, lr=cfg.learning_rate, betas=(cfg.beta1, cfg.beta2), fused=cfg.adamw_fused)
 
 
 #%% Learning rate scheduling:

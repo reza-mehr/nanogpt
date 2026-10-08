@@ -16,7 +16,9 @@ mlruns/
 checkpoints/
 logs/
 *.pt
+profiles/
 
 # Claude files:
 .claude/
 CLAUDE.md
+
