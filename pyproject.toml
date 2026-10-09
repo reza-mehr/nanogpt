@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=2.0.2",
     "tensorboard>=2.21.0",
     "torch>=2.8.0",
+    "tqdm>=4.70.1",
     "tyro>=1.0.16",
 ]
 

@@ -57,3 +57,8 @@ class KVCache:
     def advance(self, T: int) -> None:
         '''Function to mark T more positions as filled, called once per forward pass, after all blocks are updated.'''
         self.len += T
+
+
+    def reset(self):
+        '''Function to reset the cache length. Forget all cached positions, buffers are reused, not reallocated.'''
+        self.len = 0

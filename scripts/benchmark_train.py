@@ -3,7 +3,7 @@
 
 import statistics
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 import torch
 import tyro

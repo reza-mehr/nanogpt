@@ -532,7 +532,7 @@ class GPT(nn.Module):
 
 
     @torch.inference_mode()
-    def generate_cached(self, idx, new_tokens: int):
+    def generate_cached(self, idx, new_tokens: int, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
         Training mode is disabled and restored and gradients are not computed in this method.
@@ -543,6 +543,9 @@ class GPT(nn.Module):
             Token indices.
         new_tokens: int
             Number of token indices to generate.
+        cache: KVCache, optional
+            Key-value cache. The default is None in which case, a new cache will be constructed.
+            Ensure that the cache parameters match the model and input batch size.
 
         Returns
         -------
@@ -562,7 +565,10 @@ class GPT(nn.Module):
         assert T0 + new_tokens <= cfg.block_size, 'requested number of new tokens exceeds the context size'
 
         # Construct the cache:
-        cache = KVCache(cfg.n_blocks, B, cfg.head_num, cfg.block_size, cfg.head_size, idx.device, idx.dtype)
+        if cache is None:
+            cache = KVCache(cfg.n_blocks, B, cfg.head_num, cfg.block_size, cfg.head_size, idx.device, idx.dtype)
+        else:
+            cache.reset()                                   # a new generation always starts from an empty cache
 
         # Prefill (cache) the key and values for the input context:
         logits, _ = self(idx, cache=cache)
