@@ -10,7 +10,7 @@ import tyro
 
 from nanogpt.config import ModelConfig
 from nanogpt.model import GPT
-from nanogpt.benchmarking import make_gen_fns, bench_decode
+from nanogpt.benchmarking import make_gen_fns, bench_decode, Col, print_table
 
 '''
 This file contains the code to benchmark token generation throughput with and without key-value caching.
@@ -29,6 +29,7 @@ class BenchConfig:
     block_size: int = 2048
     batch_size: int = 1
     context_inits: tuple[int, ...] = (128, 256, 512, 1024)
+    dtypes: tuple[str, ...] = ('fp32', 'bf16')
     new_tokens: int = 256               # large value to amortize the prefill time
     trials: int = 3
 
@@ -47,32 +48,36 @@ def main(b: BenchConfig):
     cfg = ModelConfig(name='gpt', vocab_size=16, block_size=b.block_size, n_embed=384, head_num=6,
                       head_size=64, n_blocks=6, dropout=0.0)
     model = GPT(cfg).to(b.device).eval()
-    gen_fns = make_gen_fns(model, b.batch_size, b.device)
-    result = {fn_name: [] for fn_name in gen_fns}
 
-    # Loop over initial context lengths:
-    for context in tqdm(b.context_inits):
-        # Generate the initial context:
-        idx = torch.randint(0, cfg.vocab_size, (b.batch_size, context), device=b.device)
+    # Construct generate functions for dtypes:
+    gen_fns = dict()
+    for dtype in b.dtypes:
+        for fn_name, gen_fn in make_gen_fns(model, b.batch_size, b.device, dtype).items():
+             gen_fns[(dtype, fn_name)] = gen_fn
+    results = {key: [] for key in gen_fns}
 
-        # Loop over naive and cached generation functions:
-        for fn_name, gen_fn in gen_fns.items():
-            tok_per_secs = [bench_decode(b.device, gen_fn, idx, b.new_tokens) for _ in range(b.trials)]
-            result[fn_name].append(statistics.median(tok_per_secs))
+    total = len(b.context_inits) * len(gen_fns) * b.trials
+    with tqdm(total=total, desc='benchmark') as pbar:
+        # Loop over initial context lengths:
+        for context in b.context_inits:
+            # Generate the initial context:
+            idx = torch.randint(0, cfg.vocab_size, (b.batch_size, context), device=b.device)
 
-    # Print the results:
-    name_w, col_w = 20, 10
-    header = f"\n{'context':<{name_w}}" + ''.join(f'{c:>{col_w}}' for c in b.context_inits)
-    print(header)
-    print('-' * len(header))
+            # Loop over generation functions:
+            for (dtype, fn_name), gen_fn in gen_fns.items():
+                pbar.set_postfix(context=context, dtype=dtype, method=fn_name)
+                runs = []
+                for _ in range(b.trials):
+                    runs.append(bench_decode(b.device, gen_fn, idx, b.new_tokens))
+                    pbar.update(1)
+                results[(dtype, fn_name)].append(statistics.median(runs))
 
-    for name, values in result.items():
-        label = f'{name} (tokens/sec)'
-        print(f'{label:<{name_w}}' + ''.join(f'{v:>{col_w},.0f}' for v in values))
-    if {'naive', 'cached'} <= result.keys():
-        speedup = [c / n for c, n in zip(result['cached'], result['naive'])]
-        print(f"{'speedup':<{name_w}}" + ''.join(f'{s:>{col_w - 1}.1f}x' for s in speedup))
-    print()
+    # Print the table to terminal:
+    rows = [{'label': f'{name} {dtype} (tok/s)', **{f'c{c}': v for c, v in zip(b.context_inits, vals)}}
+            for (dtype, name), vals in results.items()]
+    cols = [Col('label', 'initial context', 22)] + [Col(f'c{c}', str(c), 10, ',.0f') for c in b.context_inits]
+    print_table(rows, cols)
+
 
 #%% Main call:
 

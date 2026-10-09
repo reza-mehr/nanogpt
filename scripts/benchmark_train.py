@@ -4,6 +4,7 @@
 import statistics
 import time
 from dataclasses import dataclass
+from tqdm import tqdm
 
 import torch
 import tyro
@@ -11,7 +12,7 @@ import tyro
 from nanogpt.config import ModelConfig
 from nanogpt.registry import build_model
 import nanogpt.model  # noqa: F401
-from nanogpt.benchmarking import make_step, sync_device
+from nanogpt.benchmarking import make_step, sync_device, Col, print_table
 
 #%% Benchmarking configurations:
 
@@ -20,6 +21,7 @@ class BenchConfig:
     device: str = 'mps'
     batch_size: int = 16
     seq_lens: tuple[int, ...] = (128, 256, 512, 1024)
+    dtypes: tuple[str, ...] = ('fp32', 'bf16')
     scaled_dot_prod: bool = True
     warmup: int = 5
     iters: int = 20
@@ -40,11 +42,11 @@ def measure_peak_mb(step_fn, device: str) -> float:
     return float('nan')
 
 
-def bench_one(model_cfg: ModelConfig, b: BenchConfig, T: int) -> tuple[float, float]:
+def bench_one(model_cfg: ModelConfig, b: BenchConfig, T: int, dtype) -> tuple[float, float]:
     '''Function to run a single benchmarking experiment.'''
 
     # Construct the model, optimizer, and the corresponding step function:
-    step = make_step(model_cfg, b.device, b.batch_size, T)
+    step = make_step(model_cfg, b.device, b.batch_size, T, dtype)
 
     # Warm-up steps to ensure transient and one-time processes do not affect the benchmarking:
     for _ in range(b.warmup):
@@ -71,22 +73,30 @@ def bench_one(model_cfg: ModelConfig, b: BenchConfig, T: int) -> tuple[float, fl
 
 
 def main(b: BenchConfig) -> None:
-    '''Main function to run and report benchmarking results.'''
+    '''Main function to run the training benchmark sweep and report the results.'''
 
-    header = f"\n{'implementation':<14}{'T':>6}{'tokens/sec':>14}{'memory (MB)':>14}"
-    print(header)
-    print('-' * len(header))
+    # Initialization:
+    rows = []
+    combos = [(T, dtype, sdpa_flag) for T in b.seq_lens for dtype in b.dtypes for sdpa_flag in (False, True)]
 
-    # Loop over context sizes:
-    for T in b.seq_lens:
-        for sdpa_flag in [False, True]:      # manual or scaled dot-product attention
-            cfg = ModelConfig(name='gpt', vocab_size=65, block_size=T, n_embed=384,
-                              head_num=6, head_size=64, n_blocks=6, dropout=0.0, scaled_dot_prod=sdpa_flag)
-            tps, mem = bench_one(cfg, b, T)
-
+    # Loop over combinations:
+    with tqdm(combos, desc='benchmark') as pbar:
+        for T, dtype, sdpa_flag in pbar:
             impl = 'sdpa' if sdpa_flag else 'manual'
-            print(f"{impl:<14}{T:>6}{tps:>14,.0f}{mem:>14,.0f}")
-        print()
+            pbar.set_postfix(T=T, dtype=dtype, impl=impl)
+            cfg = ModelConfig(name='gpt', vocab_size=65, block_size=T, n_embed=384, head_num=6,
+                              head_size=64, n_blocks=6, dropout=0.0, scaled_dot_prod=sdpa_flag)
+            try:
+                tps, mem = bench_one(cfg, b, T, dtype)
+            except RuntimeError as e:                    # e.g. bf16 unsupported on this backend
+                tqdm.write(f'skip {impl}/{dtype}/T={T}: {e}')
+                continue
+            rows.append(dict(impl=impl, dtype=dtype, T=T, tps=tps, mem=mem))
+
+    # Print the table to terminal:
+    cols = [Col('impl', 'impl', 8), Col('dtype', 'dtype', 7), Col('T', 'T', 6, 'd'),
+            Col('tps', 'tokens/sec', 13, ',.0f'), Col('mem', 'memory (MB)', 13, ',.0f')]
+    print_table(rows, cols)
 
 
 #%% Main call:

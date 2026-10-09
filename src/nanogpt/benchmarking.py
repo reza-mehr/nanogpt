@@ -3,16 +3,30 @@
 
 import torch
 import time
+from pathlib import Path
+
+from dataclasses import dataclass
 
 from nanogpt.config import ModelConfig
 from nanogpt.registry import build_model
 import nanogpt.model  # noqa: F401
 from nanogpt.kv_cache import KVCache
+from nanogpt.utils import autocast_ctx
 
 '''
 This file contains the utility functions used in benchmarking.
 
 '''
+
+#%% Global variables:
+
+@dataclass
+class Col:
+    key: str          # dict key in each row
+    title: str        # header text
+    width: int
+    fmt: str = ''     # e.g. ',.0f'; text columns leave it empty
+
 
 #%% Utility functions:
 
@@ -25,7 +39,7 @@ def sync_device(device: str) -> None:
 
 #%% Train utility functions:
 
-def make_step(model_cfg: ModelConfig, device: str, batch_size: int, T: int):
+def make_step(model_cfg: ModelConfig, device: str, batch_size: int, T: int, dtype: str = 'fp32'):
     '''Function to build a model, optimizer, and fixed batch and return a function that conducts one training step.'''
 
     # Initialization:
@@ -36,7 +50,8 @@ def make_step(model_cfg: ModelConfig, device: str, batch_size: int, T: int):
 
     def step(measure_after_forward: bool = False):
         '''One optimization step; optionally return memory right after forward (MPS).'''
-        _, loss = model(x, x)
+        with autocast_ctx(device, dtype):
+            _, loss = model(x, x)
         opt.zero_grad(set_to_none=True)
         mem = torch.mps.current_allocated_memory() / 2**20 if measure_after_forward else None
         loss.backward()
@@ -47,7 +62,7 @@ def make_step(model_cfg: ModelConfig, device: str, batch_size: int, T: int):
 
 #%% Generate utility functions:
 
-def make_gen_fns(model, batch_size, device):
+def make_gen_fns(model, batch_size, device, dtype: str = 'fp32'):
     '''
     Function to construct the key-value cache outside the generate function.
 
@@ -68,13 +83,15 @@ def make_gen_fns(model, batch_size, device):
     '''
     cfg = model.cfg
     cache = KVCache(cfg.n_blocks, batch_size, cfg.head_num, cfg.block_size,
-                    cfg.head_size, device)                      # allocated once, untimed
+                    cfg.head_size, device, dtype)           # allocated once, untimed
 
     def naive(idx, new_tokens):
-        return model.generate(idx, new_tokens)
+        with autocast_ctx(device, dtype):
+            return model.generate(idx, new_tokens)
 
     def cached(idx, new_tokens):
-        return model.generate_cached(idx, new_tokens, cache=cache)
+        with autocast_ctx(device, dtype):
+            return model.generate_cached(idx, new_tokens, cache=cache)
 
     return {'naive': naive, 'cached': cached}
 
@@ -110,3 +127,28 @@ def bench_decode(device, fn, idx, new_tokens: int = 32) -> float:
     sync_device(device)
 
     return new_tokens / (time.perf_counter() - t0)     # tokens/sec at this context
+
+#%% Reporting utility functions:
+
+def print_table(rows: list[dict], cols: list[Col]) -> None:
+    '''Function to print aligned console table, text left-aligned, numbers right-aligned.'''
+    def cell(c, v):
+        s = format(v, c.fmt) if c.fmt else str(v)
+        return f'{s:>{c.width}}' if c.fmt else f'{s:<{c.width}}'
+    header = ''.join(f'{c.title:>{c.width}}' if c.fmt else f'{c.title:<{c.width}}' for c in cols)
+    print('\n' + header)
+    print('-' * len(header))
+    for r in rows:
+        print(''.join(cell(c, r[c.key]) for c in cols))
+    print()
+
+
+def write_markdown(rows: list[dict], cols: list[Col], path, header_note: str = '') -> None:
+    '''Function to save the table as Markdown, for the README.'''
+    lines = [header_note, ''] if header_note else []
+    lines.append('| ' + ' | '.join(c.title for c in cols) + ' |')
+    lines.append('|' + '|'.join('---:' if c.fmt else '---' for c in cols) + '|')
+    for r in rows:
+        lines.append('| ' + ' | '.join(format(r[c.key], c.fmt) if c.fmt else str(r[c.key])
+                                       for c in cols) + ' |')
+    Path(path).write_text('\n'.join(lines) + '\n')

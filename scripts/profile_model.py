@@ -5,6 +5,7 @@ from pathlib import Path
 import torch
 from torch.profiler import ProfilerActivity, profile, schedule
 import tyro
+from typing import Literal
 
 from dataclasses import dataclass
 
@@ -22,8 +23,9 @@ This file contains the profiling code for the model.
 class ProfileConfig:
     scaled_dot_prod: bool = True
     ln_torch: bool = True
-    T: int = 512
     device: str = 'mps'
+    dtype: Literal['fp32', 'bf16'] = 'fp32'
+    T: int = 512
     batch_size: int = 16
     rows: int = 15                  # number of operations to show in the table; -1 shows all
     out_dir: str = 'profiles'       # folder for trace files
@@ -32,12 +34,13 @@ class ProfileConfig:
 #%% Functions:
 
 def main(p: ProfileConfig) -> None:
+    '''Main function to profile the model for the given configurations.'''
 
     # Construct the model, optimizer, and corresponding step function:
     cfg = ModelConfig(name='gpt', vocab_size=65, block_size=p.T, n_embed=384,
                       head_num=6, head_size=64, n_blocks=6, dropout=0.0,
                       scaled_dot_prod=p.scaled_dot_prod, ln_torch=p.ln_torch)
-    step = make_step(cfg, p.device, p.batch_size, p.T)
+    step = make_step(cfg, p.device, p.batch_size, p.T, p.dtype)
 
     # Profiler activities:
     activities = [ProfilerActivity.CPU]
@@ -62,7 +65,7 @@ def main(p: ProfileConfig) -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     impl = 'sdpa' if p.scaled_dot_prod else 'manual'
-    trace = out / f'trace_{impl}_T{p.T}_{p.device}.json'
+    trace = out / f'trace_{impl}_T{p.T}_{p.dtype}_{p.device}.json'
     prof.export_chrome_trace(str(trace))
     print(f'Timeline: open {trace} at https://ui.perfetto.dev')
 
