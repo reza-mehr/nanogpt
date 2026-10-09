@@ -11,13 +11,45 @@ This file contains the code to implement key-value cache for transformer blocks.
 #%% Main code:
 
 class KVCache:
-    def __init__(self, n_blocks, batch_size, head_num, max_len, head_size, device, dtype=torch.float32):
+    '''Class to implement the key-value cache for transformer blocks.'''
+    def __init__(self, n_blocks, batch_size, head_num, max_len, head_size, device, dtype='fp32'):
+        '''
+        Parameters
+        ----------
+        n_blocks: int
+            Number of transformer blocks.
+        batch_size: int
+            Inference batch size.
+        head_num: int
+            Number of attention heads in each block.
+        max_len: int
+            Maximum context legnth to cache.
+        head_size: int
+            Attention head dimension.
+        device: string
+            Device to use.
+        dtype: string, optional
+            The data-type to store keys and values from 'fp32, bf16'. The default is 'fp32'.
 
-        shape = (n_blocks, batch_size, head_num, max_len, head_size)
-        self.k = torch.zeros(shape, device=device, dtype=dtype)
-        self.v = torch.zeros(shape, device=device, dtype=dtype)
+        Attributes
+        ----------
+        max_len
+        len: int
+            Current cache context lengths.
+
+        k (n_blocks, batch_size, head_num, max_len, head_size): tensor
+            To cache keys for all blocks.
+        v (n_blocks, batch_size, head_num, max_len, head_size): tensor
+            To cache values for all blocks.
+
+        '''
         self.max_len = max_len
         self.len = 0                      # tokens stored so far (same for every layer)
+
+        shape = (n_blocks, batch_size, head_num, max_len, head_size)
+        dtype = torch.bfloat16 if dtype == 'bf16' else torch.float32
+        self.k = torch.zeros(shape, device=device, dtype=dtype)
+        self.v = torch.zeros(shape, device=device, dtype=dtype)
 
 
     def update(self, block: int, k: torch.Tensor, v: torch.Tensor):

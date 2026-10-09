@@ -14,6 +14,7 @@ import nanogpt.model                                        # needed to register
 from nanogpt.registry import build_model
 from nanogpt.optimizer import build_optimizer, set_learning_rate
 from nanogpt.checkpoint import save_checkpoint, load_checkpoint
+from nanogpt.utils import autocast_ctx
 
 '''
 This file conntains the trainer code for the model.
@@ -53,7 +54,8 @@ def estimate_loss(cfg, model, train_data, val_data):
         losses = torch.zeros(cfg.eval_iters)
         for k in range(cfg.eval_iters):         # loop over 'eval_iters'
             xb, yb = get_batch(cfg, data)
-            _, loss = model(xb, yb)
+            with autocast_ctx(cfg.device, cfg.dtype):
+                _, loss = model(xb, yb)
             losses[k] = loss
         losses_smoothed[split] = losses.mean()
     model.train()
@@ -162,7 +164,8 @@ def train_step(cfg, model, optim, step, train_data, val_data, writer, logger, be
 
     # Forward pass:
     xb, yb = get_batch(cfg, train_data)
-    _, loss = model(xb, yb)
+    with autocast_ctx(cfg.device, cfg.dtype):
+        _, loss = model(xb, yb)
 
     # Optimization step:
     lr = set_learning_rate(optim, step, cfg)                            # set the learning rate according to the schedule

@@ -5,9 +5,10 @@ import pytest
 import torch
 import math
 
-from nanogpt.config import ModelConfig, TrainConfig
+from nanogpt.config import ModelConfig
 from nanogpt.registry import build_model
 import nanogpt.model        # noqa: F401  (registers the models)
+from nanogpt.utils import autocast_ctx
 
 '''
 This file contains model tests that ensure expected shapes, uniform initialization, optimization behavior, and causality of the language model.
@@ -21,13 +22,10 @@ B, T, VOCAB = 4, 8, 18
 
 def tiny_model(name):
     '''Function to construct a tiny model to run tests on.'''
-    cfg = TrainConfig(
-        model=ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=16, head_num=2, head_size=8, n_blocks=2,
-                          dropout=0.),              # set dropout to 0 to permit overfitting in one of the tests below
-        batch_size=B, device='cpu'
-        )
+    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=16, head_num=2, head_size=8, n_blocks=2,
+                      dropout=0.)       # set dropout to 0 to permit overfitting in one of the tests below
     torch.manual_seed(0)
-    return build_model(cfg.model)
+    return build_model(cfg)
 
 #%% Shape tests:
 
@@ -96,15 +94,17 @@ def test_overfit():
 
 @pytest.mark.parametrize('name', ['bigram', 'gpt'])
 @pytest.mark.parametrize('t', [0, 3, T - 1])
-def test_causality(name, t):
+@pytest.mark.parametrize('dtype', ['fp32', 'bf16'])
+def test_causality(name, t, dtype):
     '''Tests that changing the token at position t must not affect outputs at positions < t.'''
 
-    model = tiny_model(name).eval()            # eval: no dropout, deterministic
+    device = 'cpu'
+    model = tiny_model(name).to(device).eval()  # eval: no dropout, deterministic
     idx = torch.randint(0, VOCAB, (B, T))
     idx2 = idx.clone()
-    idx2[:, t] = (idx[:, t] + 1) % VOCAB       # guaranteed different token at position 't' for all sequences in the batch
+    idx2[:, t] = (idx[:, t] + 1) % VOCAB        # guaranteed different token at position 't' for all sequences in the batch
 
-    with torch.no_grad():
+    with torch.no_grad(), autocast_ctx(device, dtype):
         logits, _ = model(idx)
         logits2, _ = model(idx2)
 
@@ -128,3 +128,18 @@ def test_no_leakage_across_batch():
         logits2, _ = model(idx2)
 
     assert torch.equal(logits[1:], logits2[1:])
+
+#%% Mixed-precision compute test:
+
+def test_bf16_forward_close_to_fp32():
+    '''Function to ensure that the 'bf16' precision on forward pass is close to 'fp16'.'''
+
+    # Initialization:
+    model = tiny_model('gpt').to('cpu').eval()
+    idx = torch.randint(0, VOCAB, (B, T))
+
+    with torch.no_grad():
+        _, loss32 = model(idx, idx)
+        with autocast_ctx('cpu', 'bf16'):
+            _, loss16 = model(idx, idx)
+    assert abs(loss32.item() - loss16.item()) < 0.05

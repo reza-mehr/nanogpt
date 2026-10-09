@@ -6,6 +6,7 @@ from torch.nn import functional as F
 from nanogpt.config import ModelConfig
 from nanogpt.registry import register_model
 from nanogpt.kv_cache import KVCache
+from nanogpt.utils import get_active_dtype
 
 '''
 Notation:
@@ -566,7 +567,8 @@ class GPT(nn.Module):
 
         # Construct the cache:
         if cache is None:
-            cache = KVCache(cfg.n_blocks, B, cfg.head_num, cfg.block_size, cfg.head_size, idx.device, idx.dtype)
+            dtype = get_active_dtype(idx.device)
+            cache = KVCache(cfg.n_blocks, B, cfg.head_num, cfg.block_size, cfg.head_size, idx.device, dtype)
         else:
             cache.reset()                                   # a new generation always starts from an empty cache
 
