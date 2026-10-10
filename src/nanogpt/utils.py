@@ -1,7 +1,11 @@
 
 #%% Imports:
+
 from contextlib import nullcontext
+import copy
+
 import torch
+from torch import nn
 
 #%% Global variables:
 
@@ -16,32 +20,70 @@ def autocast_ctx(device: str, dtype: str):
     return torch.autocast(device_type=device, dtype=torch.bfloat16)
 
 
-def get_active_dtype(device: torch.device) -> str:
+def prepare_for_inference(model, mode: str):
     '''
-    Function to extract dtype in effect.
+    Function to return (model, context) for an inference precision mode.
 
     Parameters
     ----------
-    device: torch.device
-        Device to extract the dtype for.
+    model: nn.Module
+        Model to run inference.
+    mode: str
+        Mode from 'fp32, mixed_bf16, bf16'.
 
     Returns
     -------
-    dtype: string
-        Extracted data type: 'bf16' inside a bf16 autocast block, else 'fp32'.
+    model: nn.Module
+        With parameters cast into requested precision based on 'mode'.
+    context: AbstractContextManager
+        Appropriate context manager for the precision casting.
 
     Raises
     ------
     ValueError
-        If the autocast data-type is unsupported for the device.
+        If an unknown mode is requested.
 
     '''
-    if not torch.is_autocast_enabled(device.type): return 'fp32'
+    if mode == 'fp32':
+        return model, nullcontext()
+    if mode == 'mixed_bf16':
+        return model, torch.autocast(device_type=next(model.parameters()).device.type,
+                                     dtype=torch.bfloat16)
+    if mode == 'bf16':
+        return copy.deepcopy(model).to(torch.bfloat16), nullcontext()
 
-    # Extract the data type:
-    torch_dtype = torch.get_autocast_dtype(device.type)
+    raise ValueError(f'Unknown precision mode: {mode}')
+
+
+def get_active_dtype(model: nn.Module) -> str:
+    '''
+    Function to extract the compute dtype in effect for a model.
+
+    Parameters
+    ----------
+    model: nn.Module
+        Model whose forward pass will run in the current context.
+
+    Returns
+    -------
+    dtype: string
+        'bf16' inside a bf16 autocast block or for bf16 weights, else 'fp32'.
+
+    Raises
+    ------
+    ValueError
+        If the autocast or weight data-type is unsupported.
+
+    '''
+    param = next(model.parameters())
+
+    # Autocast takes precedence over the weight dtype:
+    if torch.is_autocast_enabled(param.device.type):
+        torch_dtype = torch.get_autocast_dtype(param.device.type)
+    else:
+        torch_dtype = param.dtype
 
     # Error handling:
-    if torch_dtype not in _DTYPE_NAMES: raise ValueError(f'Unsupported autocast dtype: {torch_dtype}')
+    if torch_dtype not in _DTYPE_NAMES: raise ValueError(f'Unsupported dtype: {torch_dtype}')
 
     return _DTYPE_NAMES[torch_dtype]

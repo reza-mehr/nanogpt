@@ -11,6 +11,7 @@ import tyro
 from nanogpt.config import ModelConfig
 from nanogpt.model import GPT
 from nanogpt.benchmarking import make_gen_fns, bench_decode, Col, print_table
+from nanogpt.utils import prepare_for_inference
 
 '''
 This file contains the code to benchmark token generation throughput with and without key-value caching.
@@ -29,7 +30,7 @@ class BenchConfig:
     block_size: int = 2048
     batch_size: int = 1
     context_inits: tuple[int, ...] = (128, 256, 512, 1024)
-    dtypes: tuple[str, ...] = ('fp32', 'bf16')
+    precisions: tuple[str, ...] = ('fp32', 'mixed_bf16', 'bf16')
     new_tokens: int = 256               # large value to amortize the prefill time
     trials: int = 3
 
@@ -51,9 +52,10 @@ def main(b: BenchConfig):
 
     # Construct generate functions for dtypes:
     gen_fns = dict()
-    for dtype in b.dtypes:
-        for fn_name, gen_fn in make_gen_fns(model, b.batch_size, b.device, dtype).items():
-             gen_fns[(dtype, fn_name)] = gen_fn
+    for precision in b.precisions:
+        m, ctx = prepare_for_inference(model, precision)
+        for fn_name, gen_fn in make_gen_fns(m, b.batch_size, b.device, ctx).items():
+             gen_fns[(precision, fn_name)] = gen_fn
     results = {key: [] for key in gen_fns}
 
     total = len(b.context_inits) * len(gen_fns) * b.trials
@@ -64,18 +66,18 @@ def main(b: BenchConfig):
             idx = torch.randint(0, cfg.vocab_size, (b.batch_size, context), device=b.device)
 
             # Loop over generation functions:
-            for (dtype, fn_name), gen_fn in gen_fns.items():
-                pbar.set_postfix(context=context, dtype=dtype, method=fn_name)
+            for (precision, fn_name), gen_fn in gen_fns.items():
+                pbar.set_postfix(context=context, precision=precision, method=fn_name)
                 runs = []
                 for _ in range(b.trials):
                     runs.append(bench_decode(b.device, gen_fn, idx, b.new_tokens))
                     pbar.update(1)
-                results[(dtype, fn_name)].append(statistics.median(runs))
+                results[(precision, fn_name)].append(statistics.median(runs))
 
     # Print the table to terminal:
-    rows = [{'label': f'{name} {dtype} (tok/s)', **{f'c{c}': v for c, v in zip(b.context_inits, vals)}}
-            for (dtype, name), vals in results.items()]
-    cols = [Col('label', 'initial context', 22)] + [Col(f'c{c}', str(c), 10, ',.0f') for c in b.context_inits]
+    rows = [{'label': f'{name} {precision} (tok/s)', **{f'c{c}': v for c, v in zip(b.context_inits, vals)}}
+            for (precision, name), vals in results.items()]
+    cols = [Col('label', 'initial context')] + [Col(f'c{c}', str(c), ',.0f') for c in b.context_inits]
     print_table(rows, cols)
 
 

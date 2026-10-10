@@ -21,7 +21,7 @@ class BenchConfig:
     device: str = 'mps'
     batch_size: int = 16
     seq_lens: tuple[int, ...] = (128, 256, 512, 1024)
-    dtypes: tuple[str, ...] = ('fp32', 'bf16')
+    precisions: tuple[str, ...] = ('fp32', 'mixed_bf16')
     scaled_dot_prod: bool = True
     warmup: int = 5
     iters: int = 20
@@ -42,11 +42,11 @@ def measure_peak_mb(step_fn, device: str) -> float:
     return float('nan')
 
 
-def bench_one(model_cfg: ModelConfig, b: BenchConfig, T: int, dtype) -> tuple[float, float]:
+def bench_one(model_cfg: ModelConfig, b: BenchConfig, T: int, precision: str) -> tuple[float, float]:
     '''Function to run a single benchmarking experiment.'''
 
     # Construct the model, optimizer, and the corresponding step function:
-    step = make_step(model_cfg, b.device, b.batch_size, T, dtype)
+    step = make_step(model_cfg, b.device, b.batch_size, T, precision)
 
     # Warm-up steps to ensure transient and one-time processes do not affect the benchmarking:
     for _ in range(b.warmup):
@@ -77,25 +77,25 @@ def main(b: BenchConfig) -> None:
 
     # Initialization:
     rows = []
-    combos = [(T, dtype, sdpa_flag) for T in b.seq_lens for dtype in b.dtypes for sdpa_flag in (False, True)]
+    combos = [(T, precision, sdpa_flag) for T in b.seq_lens for precision in b.precisions for sdpa_flag in (False, True)]
 
     # Loop over combinations:
     with tqdm(combos, desc='benchmark') as pbar:
-        for T, dtype, sdpa_flag in pbar:
+        for T, precision, sdpa_flag in pbar:
             impl = 'sdpa' if sdpa_flag else 'manual'
-            pbar.set_postfix(T=T, dtype=dtype, impl=impl)
+            pbar.set_postfix(T=T, precision=precision, impl=impl)
             cfg = ModelConfig(name='gpt', vocab_size=65, block_size=T, n_embed=384, head_num=6,
                               head_size=64, n_blocks=6, dropout=0.0, scaled_dot_prod=sdpa_flag)
             try:
-                tps, mem = bench_one(cfg, b, T, dtype)
+                tps, mem = bench_one(cfg, b, T, precision)
             except RuntimeError as e:                    # e.g. bf16 unsupported on this backend
-                tqdm.write(f'skip {impl}/{dtype}/T={T}: {e}')
+                tqdm.write(f'skip {impl}/{precision}/T={T}: {e}')
                 continue
-            rows.append(dict(impl=impl, dtype=dtype, T=T, tps=tps, mem=mem))
+            rows.append(dict(impl=impl, precision=precision, T=T, tps=tps, mem=mem))
 
     # Print the table to terminal:
-    cols = [Col('impl', 'impl', 8), Col('dtype', 'dtype', 7), Col('T', 'T', 6, 'd'),
-            Col('tps', 'tokens/sec', 13, ',.0f'), Col('mem', 'memory (MB)', 13, ',.0f')]
+    cols = [Col('impl', 'impl'), Col('precision', 'precision'), Col('T', 'T', 'd'),
+            Col('tps', 'tokens/sec', ',.0f'), Col('mem', 'memory (MB)', ',.0f')]
     print_table(rows, cols)
 
 

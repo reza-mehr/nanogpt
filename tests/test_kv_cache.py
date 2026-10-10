@@ -12,7 +12,7 @@ from nanogpt.utils import autocast_ctx
 #%% Main code:
 
 @pytest.mark.parametrize('sdpa', [True, False])
-@pytest.mark.parametrize('dtype', ['fp32', 'bf16'])
+@pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16', 'bf16'])
 def test_cached_logits_match_full_forward(sdpa, dtype):
     '''Function to test consistency of cahced key-values with the ones generated live.'''
 

@@ -54,7 +54,7 @@ def estimate_loss(cfg, model, train_data, val_data):
         losses = torch.zeros(cfg.eval_iters)
         for k in range(cfg.eval_iters):         # loop over 'eval_iters'
             xb, yb = get_batch(cfg, data)
-            with autocast_ctx(cfg.device, cfg.dtype):
+            with autocast_ctx(cfg.device, cfg.precision):
                 _, loss = model(xb, yb)
             losses[k] = loss
         losses_smoothed[split] = losses.mean()
@@ -164,7 +164,7 @@ def train_step(cfg, model, optim, step, train_data, val_data, writer, logger, be
 
     # Forward pass:
     xb, yb = get_batch(cfg, train_data)
-    with autocast_ctx(cfg.device, cfg.dtype):
+    with autocast_ctx(cfg.device, cfg.precision):
         _, loss = model(xb, yb)
 
     # Optimization step:

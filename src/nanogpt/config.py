@@ -63,7 +63,7 @@ class TrainConfig:
     ckpt_interval: int = 500                                # steps between saves of latest.pt
 
     device: str = device                                    # device to run the training on
-    dtype: Literal['fp32', 'bf16'] = 'fp32'                 # compute dtype for forward passes; bf16 uses autocast, with weights kept in fp32
+    precision: Literal['fp32', 'mixed_bf16'] = 'fp32'       # compute precision for forward passes; bf16 uses autocast, with weights kept in fp32
 
     seed: int = 1337                                        # random seed
     run_name: str = ''                                      # run folder name, empty means a timestamp
