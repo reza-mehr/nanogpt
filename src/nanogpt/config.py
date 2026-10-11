@@ -25,7 +25,7 @@ device = (
 
 @dataclass
 class DataConfig:
-    train_frac: float = 0.9                                 # fraction of tokens used for training, the rest is validation
+    dir: str = 'data/tinyshakespeare'                       # parent folder for the binary dataset split (check scripts/prepare_*.py)
 
 @dataclass
 class ModelConfig:
@@ -83,9 +83,6 @@ class TrainConfig:
     @property
     def min_learning_rate(self) -> float:
         return self.learning_rate * 0.1                     # 10 percent of the learning rate
-
-# TODO: to be added
-# grad_clip: float = 1.0
 
 #%% Preset configs:
 

@@ -53,7 +53,7 @@ def estimate_loss(cfg, model, train_data, val_data):
     for split, data in zip(['train', 'val'], [train_data, val_data]):
         losses = torch.zeros(cfg.eval_iters)
         for k in range(cfg.eval_iters):         # loop over 'eval_iters'
-            xb, yb = get_batch(cfg, data)
+            xb, yb = get_batch(data, cfg)
             with autocast_ctx(cfg.device, cfg.precision):
                 _, loss = model(xb, yb)
             losses[k] = loss
@@ -163,7 +163,7 @@ def train_step(cfg, model, optim, step, train_data, val_data, writer, logger, be
     latest, best = cfg.out_dir / 'latest.pt', cfg.out_dir / 'best.pt'   # checkpoint paths
 
     # Forward pass:
-    xb, yb = get_batch(cfg, train_data)
+    xb, yb = get_batch(train_data, cfg)
     with autocast_ctx(cfg.device, cfg.precision):
         _, loss = model(xb, yb)
 

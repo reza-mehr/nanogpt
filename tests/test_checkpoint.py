@@ -1,11 +1,14 @@
 
 #%% Imports:
+
+import numpy as np
 from dataclasses import replace
 
 import pytest
 import torch
 
 from nanogpt.config import ModelConfig, TrainConfig
+from nanogpt.data import TokenSplit
 from nanogpt.trainer import train
 
 '''
@@ -19,10 +22,12 @@ This file contains the code to test checkpoint resumption.
 VOCAB = 16
 
 @pytest.fixture
-def data():
-    g = torch.Generator().manual_seed(0)
-    tokens = torch.randint(0, VOCAB, (2000,), generator=g)
-    return tokens[:1800], tokens[1800:]
+def data(tmp_path):
+    rng = np.random.default_rng(0)
+    tokens = rng.integers(0, VOCAB, 2000).astype('<u2')
+    tokens[:1800].tofile(tmp_path / 'train.bin')
+    tokens[1800:].tofile(tmp_path / 'val.bin')
+    return TokenSplit(tmp_path / 'train.bin'), TokenSplit(tmp_path / 'val.bin')
 
 
 def tiny_cfg(tmp_path, run_name: str) -> TrainConfig:

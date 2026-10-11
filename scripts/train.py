@@ -1,10 +1,6 @@
 
 #%% Imports:
 
-import os
-from os import path
-import urllib.request
-import torch
 from dataclasses import replace
 
 from nanogpt.config import parse_config
@@ -21,14 +17,9 @@ This file conntains the code to train nano-GPT model on tiny Shakespeare dataset
 # Config setup:
 cfg = parse_config()
 
-# Download the tiny Shakespeare dataset:
-url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
-db_path = "data/input.txt"
-if not path.exists(db_path): urllib.request.urlretrieve(url, db_path)
-
 # Load and split the dataset:
-train_data, val_data, tokenizer = load_splits(db_path, cfg.data.train_frac)
-cfg.model = replace(cfg.model, vocab_size=tokenizer.vocab_size)
+train_data, val_data, meta = load_splits(cfg.data.dir)
+cfg.model = replace(cfg.model, vocab_size=meta['vocab_size'])
 
 # Train the model:
 train(cfg, train_data, val_data)
