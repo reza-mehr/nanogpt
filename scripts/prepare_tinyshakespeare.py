@@ -76,9 +76,7 @@ def main(p: PrepConfig) -> None:
     # Initialization:
     out = Path(p.out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    meta = {'tokenizer': 'char', 'vocab_size': tok.vocab_size, 'dtype': '<u2',
-            'chars': ''.join(tok.itos[i] for i in range(tok.vocab_size)),   # needed to decode
-            'n_tokens': {}}
+    meta = tok.to_meta() | {'dtype': '<u2', 'n_tokens': {}}
 
     # Loop over splits and save the token ids as a flat little-endian uint16 file:
     for split, name in [(train_data, 'train'), (val_data, 'val')]:

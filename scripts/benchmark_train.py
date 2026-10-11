@@ -10,8 +10,7 @@ import torch
 import tyro
 
 from nanogpt.config import ModelConfig
-from nanogpt.registry import build_model
-import nanogpt.model  # noqa: F401
+from nanogpt.model import build_model
 from nanogpt.benchmarking import make_step, sync_device, Col, print_table
 
 #%% Benchmarking configurations:

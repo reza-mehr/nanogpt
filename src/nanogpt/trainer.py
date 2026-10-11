@@ -10,10 +10,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 from nanogpt.logs import setup_logger
 from nanogpt.data import get_batch
-import nanogpt.model                                        # needed to register the models
-from nanogpt.registry import build_model
+from nanogpt.model import build_model
 from nanogpt.optimizer import build_optimizer, set_learning_rate
-from nanogpt.checkpoint import save_checkpoint, load_checkpoint
+from nanogpt.checkpoint import git_info, save_checkpoint, load_checkpoint
 from nanogpt.utils import autocast_ctx
 
 '''
@@ -65,7 +64,7 @@ def estimate_loss(cfg, model, train_data, val_data):
 
 #%% Train function:
 
-def train(cfg, train_data, val_data, stop_after=None):
+def train(cfg, train_data, val_data, tokenizer_meta, stop_after=None):
     '''
     Function to run the loop to train a language model.
 
@@ -77,6 +76,8 @@ def train(cfg, train_data, val_data, stop_after=None):
         Train data.
     val_data: torch.Tensor
         Validation data.
+    tokenizer_meta: dict
+        Containing tokenizer metadata to include in the checkpoint.
     stop_after: int, optional
         Step to stop at for testing purposes. The default is None.
 
@@ -98,6 +99,7 @@ def train(cfg, train_data, val_data, stop_after=None):
     with torch.device(cfg.device):
         model = build_model(cfg.model)
     optim = build_optimizer(model, cfg)
+    git = git_info()                            # commit, dirty flag, and diff to save to checkpoint
     latest = cfg.out_dir / 'latest.pt'          # path to the latest checkpoints
     start_step = 1
     best_val = float('inf')
@@ -117,7 +119,7 @@ def train(cfg, train_data, val_data, stop_after=None):
     try:
         for step in range(start_step, cfg.max_iters+1):
             # Run a training step:
-            best_val = train_step(cfg, model, optim, step, train_data, val_data, writer, logger, best_val)
+            best_val = train_step(cfg, model, optim, step, train_data, val_data, tokenizer_meta, writer, logger, best_val, git)
 
             # Emulate a crash for testing checkpoints:
             if stop_after is not None and step == stop_after: return model, best_val
@@ -128,7 +130,7 @@ def train(cfg, train_data, val_data, stop_after=None):
     return model, best_val
 
 
-def train_step(cfg, model, optim, step, train_data, val_data, writer, logger, best_val):
+def train_step(cfg, model, optim, step, train_data, val_data, tokenizer_meta, writer, logger, best_val, git):
     '''
     Function to run a single training step.
 
@@ -146,6 +148,10 @@ def train_step(cfg, model, optim, step, train_data, val_data, writer, logger, be
         Train data.
     val_data: torch.Tensor
         Validation data.
+    tokenizer_meta: dict
+        Containing tokenizer metadata to include in the checkpoint.
+    git: dict
+        Commit, dirty flag, and diff to save to checkpoint.
     writer: SummaryWriter
         Tensorboard summary writer utility.
     logger: logging instance
@@ -189,7 +195,7 @@ def train_step(cfg, model, optim, step, train_data, val_data, writer, logger, be
     # Save checkpoint:
     if step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
         val_loss = losses['val']
-        save_checkpoint(latest, model, optim, step, val_loss, cfg)      # latest checkpoint
+        save_checkpoint(latest, model, optim, step, tokenizer_meta, val_loss, cfg, git)      # latest checkpoint
         if val_loss < best_val:
             best_val = val_loss
             shutil.copyfile(latest, best)                               # latest checkpoint is the best checkpoint

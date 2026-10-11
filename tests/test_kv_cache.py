@@ -4,8 +4,7 @@ import torch
 import pytest
 
 from nanogpt.config import ModelConfig
-from nanogpt.registry import build_model
-import nanogpt.model        # noqa: F401  (registers the models)
+from nanogpt.model import build_model
 from nanogpt.kv_cache import KVCache
 from nanogpt.utils import autocast_ctx
 

@@ -1,15 +1,51 @@
 
 #%% Imports:
 
+from abc import ABC, abstractmethod
 import tiktoken
+
+from nanogpt.registry import TOKENIZERS
 
 '''
 This file contains the code to construct tokenizers. All tokenizers have consistent interfaces.
 
 '''
 
+#%% Common interface to build tokenizers:
+
+def build_tokenizer(meta):
+    '''Function to build a tokenizer given a relavent 'meta' dictionary.'''
+    return TOKENIZERS.get(meta['tokenizer']).from_meta(meta)
+
+
+#%% Generic tokenizer class:
+
+class Tokenizer(ABC):
+    '''Class to implement a common interface for all tokenizers.'''
+
+    @property
+    @abstractmethod
+    def vocab_size(self) -> int: ...
+
+    @abstractmethod
+    def encode(self, s: str) -> list[int]: ...
+
+    @abstractmethod
+    def decode(self, ids: list[int]) -> str: ...
+
+    @abstractmethod
+    def to_meta(self) -> dict:
+        '''Everything needed to rebuild this tokenizer, saved in meta.json and checkpoints.'''
+
+    @classmethod
+    @abstractmethod
+    def from_meta(cls, meta: dict) -> 'Tokenizer':
+        '''Rebuild the tokenizer from the output of self.to_meta().'''
+
+
 #%% Character tokenizer class:
 
+@TOKENIZERS.register('char')
 class CharTokenizer:
     '''Class to implement character-level tokenizer where the vocabulary is the set of characters in the text dataset.'''
     def __init__(self, text: str | list):
@@ -74,8 +110,22 @@ class CharTokenizer:
         return ''.join(self.itos[i] for i in ids)
 
 
+    def to_meta(self):
+        '''Function to store metadata needed to reconstruct the class instance without needing the dataset.'''
+        meta = {'tokenizer': 'char', 'vocab_size': self.vocab_size,
+                'chars': ''.join(self.itos[i] for i in range(self.vocab_size))}
+        return meta
+
+
+    @classmethod
+    def from_meta(cls, meta: dict) -> 'CharTokenizer':
+        '''Function to construct an instance of the class given the output of self._meta() method.'''
+        return cls(meta['chars'])                   # sorted(set(chars)) reproduces the same mapping
+
+
 #%% OpenAI Tiktoken tokenizer:
 
+@TOKENIZERS.register('gpt2')
 class GPT2Tokenizer:
     '''Class to implement GPT-2 byte-pair encoding (BPE) tokenizer (tiktoken).'''
 
@@ -101,3 +151,10 @@ class GPT2Tokenizer:
 
     def decode(self, ids: list[int]) -> str:
         return self.enc.decode(ids)
+
+    def to_meta(self) -> dict:
+        return {'tokenizer': 'gpt2', 'vocab_size': self.vocab_size, 'eot': self.eot}
+
+    @classmethod
+    def from_meta(cls, meta: dict) -> 'GPT2Tokenizer':
+        return cls()                            # fixed vocabulary: nothing to restore

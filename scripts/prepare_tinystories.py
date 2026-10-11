@@ -66,8 +66,7 @@ def main(p: PrepConfig) -> None:
     out = Path(p.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     ds = load_dataset('roneneldan/TinyStories')
-    meta = {'tokenizer': 'gpt2', 'vocab_size': TOK.vocab_size, 'eot': TOK.eot,
-            'dtype': 'uint16', 'n_tokens': {}}
+    meta = TOK.to_meta() | {'dtype': '<u2', 'n_tokens': {}}
 
     # Loop over splits:
     for split, name in [('train', 'train'), ('validation', 'val')]:

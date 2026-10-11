@@ -4,7 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from nanogpt.config import ModelConfig
-from nanogpt.registry import register_model
+from nanogpt.registry import MODELS
 from nanogpt.kv_cache import KVCache
 from nanogpt.utils import get_active_dtype
 
@@ -16,6 +16,12 @@ Notation:
 - end denotes the total number of cached positions
 
 '''
+
+#%% Common interface to build models:
+
+def build_model(cfg: ModelConfig):
+    '''Function to build a model given a 'TrainConfig'.'''
+    return MODELS.get(cfg.name)(cfg)
 
 #%% Model primitives:
 
@@ -409,7 +415,7 @@ class MultiHead(nn.Module):
 
 #%% Transformer model:
 
-@register_model('gpt')
+@MODELS.register('gpt')
 class GPT(nn.Module):
     '''Class to implement the generative pre-trained transformer (GPT). '''
     def __init__(self, cfg: ModelConfig):
@@ -589,7 +595,7 @@ class GPT(nn.Module):
 
 #%% Bigram model:
 
-@register_model('bigram')
+@MODELS.register('bigram')
 class BigramLanguageModel(nn.Module):
     '''This class implements the Bigram language model.'''
     def __init__(self, cfg: ModelConfig):

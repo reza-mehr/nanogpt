@@ -7,8 +7,7 @@ import math
 import copy
 
 from nanogpt.config import ModelConfig
-from nanogpt.registry import build_model
-import nanogpt.model        # noqa: F401  (registers the models)
+from nanogpt.model import build_model
 from nanogpt.utils import autocast_ctx, prepare_for_inference, get_active_dtype
 
 '''

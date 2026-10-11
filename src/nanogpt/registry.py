@@ -1,64 +1,80 @@
 
 #%% Imports:
 
-import torch.nn as nn
-
 '''
-This file contains the code to register PyTorch models for clean build from a configuration file.
+This file contains the code to register PyTorch toeknizers and models for clean build from a configuration file.
 
 '''
 
-#%% Main code:
+#%% Regirsty class:
 
-# Initialization:
-MODEL_REGISTRY: dict[str, type[nn.Module]] = {}
+class Registry:
+    '''Class to define a registry for certain 'kind' of classes, e.g. models or tokenizers. Maps names to classes; filled by the @register decorator at import time.'''
 
-def register_model(name: str):
-    '''
-    Function to register a model.
+    def __init__(self, kind: str):
+        '''
+        Parameters
+        ----------
+        kind: string
+            Type of registry.
 
-    Parameters
-    ----------
-    name: str
-        Model class name.
+        Attributes
+        ----------
+        kind
+        _classes: dict
+            Registered classes of the desired 'kind'.
 
-    Raises
-    ------
-    If the requested model name is already registered.
-
-    '''
-    def decorator(cls):
-        if name in MODEL_REGISTRY:
-            raise ValueError(f"Model '{name}' is already registered")
-        MODEL_REGISTRY[name] = cls
-        return cls                      # return the class unchanged
-    return decorator
+        '''
+        self.kind, self._classes = kind, {}
 
 
-def build_model(cfg) -> nn.Module:
-    '''
-    Function to build a model instance.
+    def register(self, name: str):
+        '''
+        Function to register a class.
 
-    Parameters
-    ----------
-    cfg: TrainConfig
-        Train configs; see config.py for details.
+        Parameters
+        ----------
+        name: str
+            Class name.
 
-    Returns
-    -------
-    model: nn.Module
-        Constructed model.
+        Raises
+        ------
+        If the requested class name is already registered.
 
-    Raises
-    ------
-    ValueError
-        If an unknown model is requested.
+        '''
+        def decorator(cls):
+            if name in self._classes:
+                raise ValueError(f"{self.kind} '{name}' is already registered")
+            self._classes[name] = cls
+            return cls
+        return decorator
 
-    '''
-    try:
-        model_cls = MODEL_REGISTRY[cfg.name]
-    except KeyError:
-        raise ValueError(
-            f"Unknown model '{cfg.name}'. Available: {sorted(MODEL_REGISTRY)}"
-        ) from None
-    return model_cls(cfg)
+
+    def get(self, name: str):
+        '''
+        Function to get a class object given its name.
+
+        Parameters
+        ----------
+        name: str
+            Class name.
+
+        Returns
+        -------
+        class:
+            Object associated with registered name.
+
+        Raises
+        ------
+        ValueError
+            If an unknown class is requested.
+
+        '''
+        if name not in self._classes:
+            raise ValueError(f"Unknown {self.kind} '{name}'. Available: {sorted(self._classes)}")
+        return self._classes[name]
+
+
+# Registries of 'model' and 'tokenizer' kinds:
+MODELS = Registry('model')
+TOKENIZERS = Registry('tokenizer')

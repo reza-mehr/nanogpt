@@ -18,11 +18,11 @@ This file conntains the code to train nano-GPT model on tiny Shakespeare dataset
 cfg = parse_config()
 
 # Load and split the dataset:
-train_data, val_data, meta = load_splits(cfg.data.dir)
-cfg.model = replace(cfg.model, vocab_size=meta['vocab_size'])
+train_data, val_data, tokenizer_meta = load_splits(cfg.data.dir)
+cfg.model = replace(cfg.model, vocab_size=tokenizer_meta['vocab_size'])
 
 # Train the model:
-train(cfg, train_data, val_data)
+train(cfg, train_data, val_data, tokenizer_meta)
 
 #%% Inference:
 

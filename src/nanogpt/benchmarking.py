@@ -8,8 +8,7 @@ from pathlib import Path
 from dataclasses import dataclass
 
 from nanogpt.config import ModelConfig
-from nanogpt.registry import build_model
-import nanogpt.model  # noqa: F401
+from nanogpt.model import build_model
 from nanogpt.kv_cache import KVCache
 from nanogpt.utils import autocast_ctx, get_active_dtype
 

@@ -1,6 +1,9 @@
 
 #%% Imports:
+
 import os
+import torch
+from torch import nn
 import random
 import subprocess
 from dataclasses import asdict
@@ -8,7 +11,9 @@ from pathlib import Path
 
 import torch
 
-from nanogpt.config import TrainConfig
+from nanogpt.config import TrainConfig, ModelConfig
+from nanogpt.model import build_model
+from nanogpt.tokenizers import Tokenizer, build_tokenizer
 
 '''
 This file contains the code to save and restore checkpoints.
@@ -27,30 +32,36 @@ def git_info() -> dict:
         return {"commit": None, "dirty": None}
 
 
-def save_checkpoint(path: Path, model, optimizer, step: int, best_val: float, cfg: TrainConfig) -> None:
+def save_checkpoint(path: Path, model: nn.Module, optimizer: torch.optim.Optimizer, step: int,
+                    tokenizer_meta: dict, best_val: float, cfg: TrainConfig, git: dict) -> None:
     '''
-    Function to save a checkpoint containing the model weights, optimizer and RNG state, code, configs, and best loss value.
+    Function to save a checkpoint containing the model weights, optimizer and RNG states, tokenizer metadata, code version, configs, and best loss value.
 
     Parameters
     ----------
     path: Path
-        To save the checkpoint.
+        Where to save the checkpoint.
     model: nn.Module
         Model to save.
-    optimizer: torch.optim
-        Optimizer.
+    optimizer: torch.optim.Optimizer
+        Optimizer whose state to save.
     step: int
-        Optimization step.
+        Number of completed optimization steps.
+    tokenizer_meta: dict
+        Output of tok.to_meta(), used to rebuild the tokenizer for generation.
     best_val: float
-        Best loss value.
-    cfg: dataclass
-        Model configurations.
+        Best validation loss so far.
+    cfg: TrainConfig
+        Full training configuration, including the model configuration.
+    git: dict
+        Commit, dirty flag, and diff, captured once at the start of the run.
 
     '''
     ckpt = {
         'model': model.state_dict(),
         'optimizer': optimizer.state_dict(),
         'step': step,
+        'tokenizer': tokenizer_meta,
         'best_val': best_val,
         'cfg': asdict(cfg),
         'rng': {
@@ -59,7 +70,7 @@ def save_checkpoint(path: Path, model, optimizer, step: int, best_val: float, cf
             'mps': torch.mps.get_rng_state() if torch.backends.mps.is_available() else None,
             'cuda': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
         },
-        'git': git_info(),
+        'git': git,
     }
     tmp = path.with_suffix('.tmp')
     torch.save(ckpt, tmp)
@@ -106,3 +117,32 @@ def load_checkpoint(path: Path, model, optimizer, device) -> tuple[int, float]:
         torch.cuda.set_rng_state_all([s.cpu() for s in rng["cuda"]])
 
     return ckpt["step"], ckpt["best_val"]
+
+
+def load_model(path: Path, device: str) -> tuple[nn.Module, Tokenizer, dict]:
+    '''
+    Function to rebuild a model from a checkpoint for inference.
+
+    Parameters
+    ----------
+    path: Path
+        Checkpoint to load.
+    device: string
+        Device to load the model onto: 'cpu', 'cuda', or 'mps'.
+
+    Returns
+    -------
+    model: nn.Module
+        Model in eval mode, built from the checkpoint's saved config.
+    tok: Tokenizer
+        Tokenizer to decode generation.
+    cfg: dict
+        The full saved config, e.g. for block_size or reporting.
+
+    '''
+    ckpt = torch.load(path, map_location=device, weights_only=False)
+    model = build_model(ModelConfig(**ckpt['cfg']['model']))
+    model.load_state_dict(ckpt['model'])
+    tok = build_tokenizer(ckpt['tokenizer'])
+
+    return model.to(device).eval(), tok, ckpt['cfg']

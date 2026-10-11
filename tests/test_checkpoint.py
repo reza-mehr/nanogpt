@@ -46,15 +46,16 @@ def test_resume_matches_continuous_run(tmp_path, data, stop_after):
 
     # Generate synthetic data:
     train_data, val_data = data
+    tok_meta = {}               # placeholder for tokenizer metadata
 
     # Run A: 20 steps without interruption:
-    model_a, best_loss_a = train(tiny_cfg(tmp_path, 'a'), train_data, val_data)
+    model_a, best_loss_a = train(tiny_cfg(tmp_path, 'a'), train_data, val_data, tok_meta)
 
     # Run B: same config, "crashes" after stop_after, then resumes to the end:
     cfg_b = tiny_cfg(tmp_path, 'b')
-    train(cfg_b, train_data, val_data, stop_after=stop_after)
+    train(cfg_b, train_data, val_data, tok_meta, stop_after=stop_after)
     assert (cfg_b.out_dir / 'latest.pt').exists()
-    model_b, best_loss_b = train(replace(cfg_b, resume=True), train_data, val_data)
+    model_b, best_loss_b = train(replace(cfg_b, resume=True), train_data, val_data, tok_meta)
 
     # Assertions:
     assert best_loss_a==best_loss_b
