@@ -194,3 +194,16 @@ def test_get_active_dtype():
 
     with pytest.raises(ValueError):
         get_active_dtype(copy.deepcopy(model).to(torch.float16))        # fp16 is not an acceptable type
+
+
+#%% Generation test:
+
+def test_cached_matches_naive_generation():
+    '''Function to test that the cached and non-cached implementation of the generate function return identical resutls.'''
+    model = tiny_model('gpt').eval()
+    idx = torch.randint(0, VOCAB, (1, 1))
+    torch.manual_seed(0)
+    naive = model.generate(idx, new_tokens=6, use_cache=False)
+    torch.manual_seed(0)
+    cached = model.generate(idx, new_tokens=6, use_cache=True)
+    assert torch.equal(naive, cached)
