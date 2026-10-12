@@ -5,13 +5,67 @@ from contextlib import nullcontext
 import copy
 
 import torch
+from torch.nn import functional as F
 from torch import nn
 
 #%% Global variables:
 
 _DTYPE_NAMES = {torch.float32: 'fp32', torch.bfloat16: 'bf16'}
 
-#%% Main code:
+#%% Utility functions:
+
+def sample_logits(logits, temperature=1.0, top_k=None):
+    '''
+    Function to sample one new token per sequence from the logits.
+
+    Parameters
+    ----------
+    logits (B, vocab_size): tensor
+        Logits of the last position for each sequence in the batch.
+    temperature: float, optional
+        Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding.
+        The default is 1.0, in which case the distribution is unaltered.
+    top_k: int, optional
+        Keep only the top_k most likely tokens; top_k=1 gives greedy decoding.
+        The default is None, in which case all tokens are kept.
+
+    Returns
+    -------
+    idx_next (B, 1): tensor
+        Newly sampled token per sequence in the batch.
+
+    Raises
+    ------
+    ValueError
+        If temperature < 0 or top_k < 1.
+
+    '''
+    # Validate inputs:
+    if temperature < 0:
+        raise ValueError(f"'temperature' must be >= 0, got {temperature}")
+    if top_k is not None and top_k < 1:
+        raise ValueError(f"'top_k' must be >= 1 or None, got {top_k}")
+
+    # Greedy decoding:
+    if temperature == 0 or top_k == 1:
+        return torch.argmax(logits, dim=-1, keepdim=True)               # (B, 1)
+
+    # Scale the logits by temperature (not in place, so the caller's tensor is untouched):
+    logits = logits / temperature
+
+    # Assign '-inf' to all logits outside the top_k:
+    if top_k is not None and top_k < logits.size(-1):
+        kth_largest = torch.topk(logits, top_k, dim=-1).values[:, -1:]  # (B, 1)
+        logits = torch.where(logits >= kth_largest, logits, float('-inf'))
+
+    # Probability distribution over tokens:
+    probs = F.softmax(logits, dim=-1)                                   # (B, vocab_size)
+
+    # Sample from the distribution:
+    idx_next = torch.multinomial(probs, num_samples=1)                  # (B, 1)
+
+    return idx_next
+
 
 def autocast_ctx(device: str, dtype: str):
     '''Function to autocase forward passes for mixed-precision context; no-ops for fp32.'''

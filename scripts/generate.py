@@ -33,6 +33,8 @@ class GenerateConfig:
 
     prompt: str = ''
     new_tokens: int = 200               # number of new tokens to generate
+    temperature: float = 1.0            # divides the logits before softmax, values < 1 sharpen the distribution
+    top_k: int | None = None            # keep only the top_k most likely tokens
     use_cache: bool = True              # use key-value cache if True, ignored for Bigram model
 
     seed: int = 1337                    # random seed
@@ -60,7 +62,7 @@ def main(g: GenerateConfig):
     ckpt_path = g.runs_root / g.run_name / g.ckpt
     model, tok, cfg = load_model_tokenizer(ckpt_path, g.device)
 
-    return generate_text(model, tok, g.prompt, g.new_tokens, g.use_cache, g.seed)
+    return generate_text(model, tok, g.prompt, g.new_tokens, g.temperature, g.top_k, g.use_cache, g.seed)
 
 
 #%% Main call:
