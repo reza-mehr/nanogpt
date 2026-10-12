@@ -27,6 +27,7 @@ device = (
 class DataConfig:
     dir: str = 'data/tinyshakespeare'                       # parent folder for the binary dataset split (check scripts/prepare_*.py)
 
+
 @dataclass
 class ModelConfig:
     name: Literal['gpt', 'bigram'] = 'gpt'                  # Model architecture, looked up in the model registry
@@ -34,12 +35,22 @@ class ModelConfig:
     block_size: int = 256                                   # maximum context length
     n_embed: int = 384                                      # embedding dimension
     head_num: int = 6                                       # number of attention heads per block
+    n_kv_head: int | None = None                            # None -> head_num (MHA), 1 < n_kv_head < head_num (GQA), 1 (MQA)
     head_size: int = 64                                     # attention head size
     n_blocks: int = 6                                       # number of transformer blocks
     dropout: float = 0.2                                    # dropout probability
     batched_attention: bool = True                          # if True, compute multi-head self-attention in a batch for efficiency
     scaled_dot_prod: bool = True                            # if True, use scaled dot product instead of manual implementation for efficiency
     ln_torch: bool = True                                   # if True, use PyTorch implementation of the layer-norm
+
+    def __post_init__(self):
+        '''Function to validate input arguments and assign default values.'''
+        if self.n_kv_head is None: self.n_kv_head = self.head_num
+        if not 1 <= self.n_kv_head <= self.head_num:
+            raise ValueError(f"'n_kv_head' {self.n_kv_head} out of bound, must be between 1 and 'head_num' {self.head_num}.")
+        if self.head_num % self.n_kv_head != 0:
+            raise ValueError(f"'head_num' {self.head_num} must be divisible with 'n_kv_head' {self.n_kv_head}.")
+
 
 @dataclass
 class TrainConfig:
@@ -72,9 +83,10 @@ class TrainConfig:
     log_level: int = logging.INFO                           # logging level, 20 for INFO, 10 for DEBUG
 
     def __post_init__(self):
+        '''Function to validate input arguments and assign default values.'''
+        assert 0 < self.lr_warmup_iters < self.max_iters, 'warmup must fit inside the run'
         if not self.run_name:
             self.run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        assert 0 < self.lr_warmup_iters < self.max_iters, 'warmup must fit inside the run'
 
     @property
     def out_dir(self) -> Path:
@@ -83,6 +95,7 @@ class TrainConfig:
     @property
     def min_learning_rate(self) -> float:
         return self.learning_rate * 0.1                     # 10 percent of the learning rate
+
 
 #%% Preset configs:
 

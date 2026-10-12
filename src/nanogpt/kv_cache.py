@@ -12,7 +12,7 @@ This file contains the code to implement key-value cache for transformer blocks.
 
 class KVCache:
     '''Class to implement the key-value cache for transformer blocks.'''
-    def __init__(self, n_blocks, batch_size, head_num, max_len, head_size, device, dtype='fp32'):
+    def __init__(self, n_blocks, batch_size, n_kv_head, max_len, head_size, device, dtype='fp32'):
         '''
         Parameters
         ----------
@@ -20,8 +20,8 @@ class KVCache:
             Number of transformer blocks.
         batch_size: int
             Inference batch size.
-        head_num: int
-            Number of attention heads in each block.
+        n_kv_head: int
+            Number of key and value heads in each block: n_kv_head <= heads_num
         max_len: int
             Maximum context legnth to cache.
         head_size: int
@@ -33,6 +33,9 @@ class KVCache:
 
         Attributes
         ----------
+        n_kv_head
+        head_size
+
         max_len
         len: int
             Current cache context lengths.
@@ -43,10 +46,12 @@ class KVCache:
             To cache values for all blocks.
 
         '''
+        self.n_kv_head = n_kv_head
+        self.head_size = head_size
         self.max_len = max_len
         self.len = 0                      # tokens stored so far (same for every layer)
 
-        shape = (n_blocks, batch_size, head_num, max_len, head_size)
+        shape = (n_blocks, batch_size, n_kv_head, max_len, head_size)
         dtype = torch.bfloat16 if dtype == 'bf16' else torch.float32
         self.k = torch.zeros(shape, device=device, dtype=dtype)
         self.v = torch.zeros(shape, device=device, dtype=dtype)
@@ -60,22 +65,28 @@ class KVCache:
         ----------
         block: int
             Transformer block index.
-        k (B, head_num, T, head_size): torch.Tensor
+        k (B, n_kv_head, T, head_size): torch.Tensor
             Keys to cache for the block.
-        v (B, head_num, T, head_size): torch.Tensor
+        v (B, n_kv_head, T, head_size): torch.Tensor
             Values to cache for the block.
 
         Returns
         -------
-        k (B, head_num, end, head_size): torch.Tensor
+        k (B, n_kv_head, end, head_size): torch.Tensor
             Keys cached so far for the block.
-        v (B, head_num, end, head_size): torch.Tensor
+        v (B, n_kv_head, end, head_size): torch.Tensor
             Values cached so far for the block.
 
         '''
         # Attributes:
+        n_kv_head = self.n_kv_head
+        head_size = self.head_size
         len = self.len
         max_len = self.max_len
+
+        # Dimension assertions:
+        assert k.size(1)==n_kv_head and k.size(3)==head_size, f"Unexpected key shape: {k.shape}"
+        assert v.size(1)==n_kv_head and v.size(3)==head_size, f"Unexpected value shape: {v.shape}"
 
         T = k.shape[2]
         end = len + T

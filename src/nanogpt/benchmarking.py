@@ -81,7 +81,7 @@ def make_gen_fns(model, batch_size, device, context):
     '''
     cfg = model.cfg
     dtype = get_active_dtype(model)
-    cache = KVCache(cfg.n_blocks, batch_size, cfg.head_num, cfg.block_size,
+    cache = KVCache(cfg.n_blocks, batch_size, cfg.n_kv_head, cfg.block_size,
                     cfg.head_size, device, dtype)           # allocated once, untimed
 
     def naive(idx, new_tokens):

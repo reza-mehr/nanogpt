@@ -7,7 +7,7 @@ from nanogpt.config import ModelConfig
 from nanogpt.registry import MODELS
 from nanogpt.utils import sample_logits
 from nanogpt.kv_cache import KVCache
-from nanogpt.utils import get_active_dtype
+from nanogpt.utils import expand_kv, get_active_dtype
 
 '''
 Notation:
@@ -340,7 +340,10 @@ class MultiHead(nn.Module):
         self.cfg = cfg
         self.block_ind = block_ind
 
-        self.c_attn = nn.Linear(in_features=cfg.n_embed, out_features=3 * cfg.head_num * cfg.head_size, bias=False)
+        # Grouped-query attention dimensions (Q, K, V, respectively):
+        out_features = cfg.head_num * cfg.head_size + 2 * cfg.n_kv_head * cfg.head_size
+        self.c_attn = nn.Linear(in_features=cfg.n_embed, out_features=out_features, bias=False)
+
         self.c_proj = nn.Linear(in_features=cfg.head_num * cfg.head_size, out_features=cfg.n_embed)
         self.register_buffer('mask', torch.tril(torch.ones((cfg.block_size, cfg.block_size))))
         self.dropout_attn = nn.Dropout(cfg.dropout)
@@ -366,18 +369,23 @@ class MultiHead(nn.Module):
         '''
         # Attributes:
         head_num = self.cfg.head_num
+        n_kv_head = self.cfg.n_kv_head
         head_size = self.cfg.head_size
         scaled_dot_prod = self.cfg.scaled_dot_prod
         dropout = self.cfg.dropout
         block_ind = self.block_ind
 
-        # Batched self-attention calculations:
+        # Dimensions:
         B, T, n_embed = x.shape
-        qkv = self.c_attn(x)                                    # x @ W^T : (B, T, n_embed) @ (n_embed, 3 * head_num * head_size) -> (B, T, 3 * head_num * head_size)
-        q, k, v = qkv.split(head_num*head_size, dim=2)          # (B, T, 3 * head_num * head_size) -> 3 x (B, T, head_num * head_size)
+        q_dim = head_num * head_size                            # query dimension
+        kv_dim = n_kv_head * head_size                          # key and value dimensions
+
+        # Batched self-attention calculations:
+        qkv = self.c_attn(x)                                    # x @ W^T : (B, T, n_embed) @ (n_embed, q_dim + kv_dim) -> (B, T, q_dim + kv_dim)
+        q, k, v = qkv.split([q_dim, kv_dim, kv_dim], dim=2)     # (B, T, q_dim + kv_dim) -> (B, T, q_dim), (B, T, kv_dim), (B, T, kv_dim)
         q = q.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
-        k = k.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
-        v = v.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
+        k = k.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
+        v = v.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
 
         # Cache the keys and values if requested:
         start, is_causal = 0, True
@@ -395,8 +403,12 @@ class MultiHead(nn.Module):
                 q, k, v,
                 is_causal=is_causal,                            # replaces 'tril' mask for causality
                 dropout_p=dropout if self.training else 0.0,    # replaces 'dropout_attn'
+                enable_gqa=True,                                # enable grouped-query attention
             )                                                   # (B, head_num, T, head_size)
         else:
+            # Expand keys and values to match query dimensions for grouped-query attention:
+            k, v = expand_kv(k, v, head_num, n_kv_head)         # (B, n_kv_head, T, head_size) -> (B, head_num, T, head_size)
+
             # Causal weight calculations:
             wei = q @ k.transpose(-2, -1) * head_size ** (-0.5)                     # (B, head_num, T, head_size) @ (B, head_num, head_size, end) -> (B, head_num, T, end)
             wei = wei.masked_fill(self.mask[start:end, :end] == 0, float("-inf"))   # (B, head_num, T, end)
@@ -610,7 +622,7 @@ class GPT(nn.Module):
         # Construct the cache:
         if cache is None:
             dtype = get_active_dtype(self)
-            cache = KVCache(cfg.n_blocks, B, cfg.head_num, cfg.block_size, cfg.head_size, idx.device, dtype)
+            cache = KVCache(cfg.n_blocks, B, cfg.n_kv_head, cfg.block_size, cfg.head_size, idx.device, dtype)
         else:
             cache.reset()                                       # a new generation always starts from an empty cache
 

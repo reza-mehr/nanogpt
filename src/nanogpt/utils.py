@@ -67,6 +67,36 @@ def sample_logits(logits, temperature=1.0, top_k=None):
     return idx_next
 
 
+def expand_kv(k, v, head_num, n_kv_head):
+    '''
+    Function to repeat the keys and values for grouped-query attention (GQA) to make dimensions consistent with the queries.
+
+    Parameters
+    ----------
+    k (B, n_kv_head, T, head_size): tensor
+        Keys to expand.
+    v (B, n_kv_head, T, head_size): tensor
+        Values to expand.
+    head_num: int
+        Number of attention heads in a transformer block.
+    n_kv_head: int
+        Number of key-value heads in a transformer block.
+
+    Returns
+    -------
+    k (B, head_num, T, head_size): tensor
+        Expanded keys.
+    v (B, head_num, T, head_size): tensor
+        Expanded values.
+
+    '''
+    n_rep = head_num // n_kv_head
+    if n_rep == 1: return k, v
+    k = k.repeat_interleave(n_rep, dim=1)
+    v = v.repeat_interleave(n_rep, dim=1)
+    return k, v
+
+
 def autocast_ctx(device: str, dtype: str):
     '''Function to autocase forward passes for mixed-precision context; no-ops for fp32.'''
     if dtype == 'fp32':

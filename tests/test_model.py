@@ -20,20 +20,24 @@ This file contains model tests that ensure expected shapes, uniform initializati
 # Model architecture parameters:
 B, T, VOCAB = 4, 8, 18
 
-def tiny_model(name):
+def tiny_model(name, n_kv_head=None):
     '''Function to construct a tiny model to run tests on.'''
-    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=16, head_num=2, head_size=8, n_blocks=2,
+    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=16, head_num=4, n_kv_head=n_kv_head, head_size=8, n_blocks=2,
                       dropout=0.)       # set dropout to 0 to permit overfitting in one of the tests below
     torch.manual_seed(0)
     return build_model(cfg)
 
+@pytest.fixture(params=[4, 2, 1], ids=['mha', 'gqa', 'mqa'])
+def n_kv_head(request):
+    return request.param
+
 #%% Shape tests:
 
 @pytest.mark.parametrize('name', ['bigram', 'gpt'])
-def test_forward_shapes(name):
+def test_forward_shapes(name, n_kv_head):
     '''Function to test the forward function output shapes.'''
 
-    model = tiny_model(name)
+    model = tiny_model(name, n_kv_head)
     idx = torch.randint(0, VOCAB, (B, T))
 
     logits, loss = model(idx, targets=None)         # no targets, no loss
@@ -71,13 +75,13 @@ def test_uniform_loss(name):
 #%% Overfit test:
 
 @pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16'])
-def test_overfit(dtype):
+def test_overfit(dtype, n_kv_head):
     '''Function to test the optimization loop by ensuring that the model can overfit to a single batch of data.'''
 
     # Initialize the model, optimizer, and data:
     device = 'cpu'
     torch.manual_seed(0)
-    model = tiny_model('gpt').to(device)
+    model = tiny_model('gpt', n_kv_head).to(device)
     optim = torch.optim.AdamW(model.parameters(), lr=1e-3)
     idx = torch.randint(0, VOCAB, (B, T), device=device)
     targets = torch.randint(0, VOCAB, (B, T), device=device)
@@ -100,14 +104,14 @@ def test_overfit(dtype):
 @pytest.mark.parametrize('name', ['bigram', 'gpt'])
 @pytest.mark.parametrize('t', [0, 3, T - 1])
 @pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16', 'bf16'])
-def test_causality(name, t, dtype):
+def test_causality(name, n_kv_head, t, dtype):
     '''Tests that changing the token at position t must not affect outputs at positions < t.'''
 
     device = 'cpu'
-    model = tiny_model(name).to(device).eval()  # eval: no dropout, deterministic
+    model = tiny_model(name, n_kv_head).to(device).eval()   # eval: no dropout, deterministic
     idx = torch.randint(0, VOCAB, (B, T), device=device)
     idx2 = idx.clone()
-    idx2[:, t] = (idx[:, t] + 1) % VOCAB        # guaranteed different token at position 't' for all sequences in the batch
+    idx2[:, t] = (idx[:, t] + 1) % VOCAB                    # guaranteed different token at position 't' for all sequences in the batch
 
     with torch.no_grad(), autocast_ctx(device, dtype):
         logits, _ = model(idx)
@@ -120,10 +124,10 @@ def test_causality(name, t, dtype):
     assert not torch.equal(logits[:, t], logits2[:, t]), f'position {t} ignored its own token'
 
 
-def test_no_leakage_across_batch():
+def test_no_leakage_across_batch(n_kv_head):
     '''Tests that changing one sequence in a batch must not affect the others.'''
 
-    model = tiny_model('gpt').eval()            # eval: no dropout, deterministic
+    model = tiny_model('gpt', n_kv_head).eval() # eval: no dropout, deterministic
     idx = torch.randint(0, VOCAB, (B, T))
     idx2 = idx.clone()
     idx2[0] = (idx[0] + 1) % VOCAB              # change only sequence 0
