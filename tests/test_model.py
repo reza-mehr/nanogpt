@@ -53,7 +53,7 @@ def test_generate_shapes(name):
     idx = torch.zeros((1, 1), dtype=torch.long)
 
     new_tokens = 10
-    out = model.generate(idx, new_tokens)
+    out = model.generate(idx, new_tokens, use_cache=False)
     assert out.shape == (1, 1+new_tokens)
 
 #%% Initialization test:

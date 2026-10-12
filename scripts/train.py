@@ -24,11 +24,6 @@ cfg.model = replace(cfg.model, vocab_size=tokenizer_meta['vocab_size'])
 # Train the model:
 train(cfg, train_data, val_data, tokenizer_meta)
 
-#%% Inference:
-
-# context = torch.zeros((1, 1), dtype=torch.long, device=cfg.device)
-# print(decode(model.generate(context, 100)[0].tolist()), "\n\n")
-
 #%% Cosine similarity:
 
 # W = model.token_embedding_table.weight.detach()

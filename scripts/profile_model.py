@@ -69,7 +69,7 @@ def main(p: ProfileConfig) -> None:
     print(f'Timeline: open {trace} at https://ui.perfetto.dev')
 
 
-#%% Main function:
+#%% Main call:
 
 if __name__ == '__main__':
     main(tyro.cli(ProfileConfig))

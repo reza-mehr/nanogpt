@@ -499,8 +499,33 @@ class GPT(nn.Module):
         return logits, loss
 
 
-    @torch.no_grad()
-    def generate(self, idx, new_tokens):
+    @torch.inference_mode()
+    def generate(self, idx, new_tokens: int, use_cache: bool = True, cache: KVCache | None = None):
+        '''
+        Function to generate a batch of token indices given an input batch of token indices.
+
+        Parameters
+        ----------
+        idx (B, T): tensor
+            Token indices.
+        new_tokens: int
+            Number of token indices to generate.
+        use_cache: bool, optional
+            If True, use key-value caching. The default is True.
+        cache: KVCache, optional
+            Key-value cache. The default is None.
+
+        Returns
+        -------
+        idx (B, T + new_tokens): tensor
+            Token indices.
+
+        '''
+        if use_cache: return self._generate_cached(idx, new_tokens, cache)
+        else: return self._generate(idx, new_tokens)
+
+
+    def _generate(self, idx, new_tokens):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
         Training mode is disabled and restored and gradients are not computed in this method.
@@ -538,8 +563,7 @@ class GPT(nn.Module):
         return idx
 
 
-    @torch.inference_mode()
-    def generate_cached(self, idx, new_tokens: int, cache: KVCache | None = None):
+    def _generate_cached(self, idx, new_tokens: int, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
         Training mode is disabled and restored and gradients are not computed in this method.
@@ -592,6 +616,7 @@ class GPT(nn.Module):
         if train_mode: self.train()                         # revert to original training mode
 
         return idx
+
 
 #%% Bigram model:
 
@@ -649,8 +674,8 @@ class BigramLanguageModel(nn.Module):
         return logits, loss
 
 
-    @torch.no_grad()
-    def generate(self, idx, new_tokens):
+    @torch.inference_mode()
+    def generate(self, idx, new_tokens, use_cache: bool = True, cache=None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
         Training mode is disabled and restored and gradients are not computed in this method.

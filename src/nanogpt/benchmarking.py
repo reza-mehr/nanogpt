@@ -86,11 +86,11 @@ def make_gen_fns(model, batch_size, device, context):
 
     def naive(idx, new_tokens):
         with context:
-            return model.generate(idx, new_tokens)
+            return model.generate(idx, new_tokens, use_cache=False, cache=None)
 
     def cached(idx, new_tokens):
         with context:
-            return model.generate_cached(idx, new_tokens, cache=cache)
+            return model.generate(idx, new_tokens, use_cache=True, cache=cache)
 
     return {'naive': naive, 'cached': cached}
 
@@ -117,7 +117,7 @@ def bench_decode(device, fn, idx, new_tokens: int = 32) -> float:
 
     '''
     # Initialization:
-    fn(idx, new_tokens=4)                          # warm up
+    fn(idx, new_tokens=4)                               # warm up
 
     # Benchmark the generation:
     sync_device(device)

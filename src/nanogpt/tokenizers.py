@@ -33,6 +33,16 @@ class Tokenizer(ABC):
     @abstractmethod
     def decode(self, ids: list[int]) -> str: ...
 
+    @property
+    @abstractmethod
+    def start_id(self) -> int:
+        '''Token to begin generation from when the prompt is empty.'''
+
+    @property
+    @abstractmethod
+    def end_id(self) -> int | None:
+        '''Token to stop generation at; None means generate the full length.'''
+
     @abstractmethod
     def to_meta(self) -> dict:
         '''Everything needed to rebuild this tokenizer, saved in meta.json and checkpoints.'''
@@ -110,6 +120,18 @@ class CharTokenizer:
         return ''.join(self.itos[i] for i in ids)
 
 
+    @property
+    def start_id(self) -> int:
+        '''Token to begin generation from when the prompt is empty.'''
+        return self.stoi['\n']
+
+
+    @property
+    def end_id(self) -> int | None:
+        '''Token to stop generation at; None means generate the full length.'''
+        return None
+
+
     def to_meta(self):
         '''Function to store metadata needed to reconstruct the class instance without needing the dataset.'''
         meta = {'tokenizer': 'char', 'vocab_size': self.vocab_size,
@@ -151,6 +173,16 @@ class GPT2Tokenizer:
 
     def decode(self, ids: list[int]) -> str:
         return self.enc.decode(ids)
+
+    @property
+    def start_id(self) -> int:
+        '''Token to begin generation from when the prompt is empty.'''
+        return self.eot
+
+    @property
+    def end_id(self) -> int | None:
+        '''Token to stop generation at; None means generate the full length.'''
+        return self.eot
 
     def to_meta(self) -> dict:
         return {'tokenizer': 'gpt2', 'vocab_size': self.vocab_size, 'eot': self.eot}

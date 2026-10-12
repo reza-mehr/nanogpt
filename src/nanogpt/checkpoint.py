@@ -119,7 +119,7 @@ def load_checkpoint(path: Path, model, optimizer, device) -> tuple[int, float]:
     return ckpt["step"], ckpt["best_val"]
 
 
-def load_model(path: Path, device: str) -> tuple[nn.Module, Tokenizer, dict]:
+def load_model_tokenizer(path: Path, device: str) -> tuple[nn.Module, Tokenizer, dict]:
     '''
     Function to rebuild a model from a checkpoint for inference.
 
