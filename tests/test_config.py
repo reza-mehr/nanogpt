@@ -11,6 +11,38 @@ This file contains the code to test the config classes.
 
 '''
 
+#%% Test defaults with replace:
+
+def test_looped_attention_after_replace():
+    '''Function to test that the looped path validates after replace(), i.e., with 'n_kv_head' already resolved.'''
+
+    cfg = ModelConfig()                                 # 'n_kv_head' resolved to 'head_num'
+    looped = replace(cfg, batched_attention=False, scaled_dot_prod=False)
+    assert looped.n_kv_head == looped.head_num
+
+
+@pytest.mark.parametrize('overrides, feature', [
+    (dict(scaled_dot_prod=True), 'Scaled dot-product attention'),
+    (dict(n_kv_head=3), 'GQA'),
+    (dict(pos_embed='rope'), 'Rotary positional embedding'),
+], ids=['sdpa', 'gqa', 'rope'])
+def test_looped_attention_unsupported(overrides, feature):
+    '''Function to test that features unsupported on the looped path raise an error naming the feature.'''
+
+    looped = dict(batched_attention=False, scaled_dot_prod=False)
+    with pytest.raises(ValueError, match=feature):
+        ModelConfig(**(looped | overrides))
+
+
+def test_looped_attention_reports_all_conflicts():
+    '''Function to test that all unsupported features on the looped path are reported together.'''
+
+    with pytest.raises(ValueError) as err:
+        ModelConfig(batched_attention=False, scaled_dot_prod=True, pos_embed='rope')
+    message = str(err.value)
+    assert 'Scaled dot-product attention' in message and 'Rotary positional embedding' in message
+
+
 #%% Grouped-query attention (GQA) tests:
 
 def test_kv_heads_num_default():

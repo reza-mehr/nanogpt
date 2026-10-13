@@ -69,5 +69,5 @@ def main(g: GenerateConfig):
 
 if __name__ == '__main__':
     new_text = main(tyro.cli(GenerateConfig))
-    print('-'*50)
+    print('-' * 50)
     print(new_text)

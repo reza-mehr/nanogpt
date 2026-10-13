@@ -1,16 +1,21 @@
 
 #%% Imports:
 
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 import copy
 
 import torch
 from torch.nn import functional as F
 from torch import nn
+from torch.profiler import record_function
 
 #%% Global variables:
 
 _DTYPE_NAMES = {torch.float32: 'fp32', torch.bfloat16: 'bf16'}
+
+# Profiler labels are off unless a profiling script enables them:
+_REGIONS_ENABLED = False
+_REGIONS_DEVICE: str | None = None      # device synchronized at region boundaries; None disables the labels
 
 #%% Model utility functions:
 
@@ -269,3 +274,34 @@ def get_active_dtype(model: nn.Module) -> str:
 def get_param_count(model):
     '''Function to return the total number of trainable parameters in the 'model'.'''
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+#%% Profiler region utilities:
+
+def sync_device(device: str) -> None:
+    '''Function to ensure that the tasks are measured and not the queue time.'''
+    if device == 'cuda':
+        torch.cuda.synchronize()
+    elif device == 'mps':
+        torch.mps.synchronize()
+
+
+def enable_regions(device: str | None) -> None:
+    '''Function to enable the model's profiler labels for 'device', or disable them with None.'''
+    global _REGIONS_DEVICE
+    _REGIONS_DEVICE = device
+
+
+@contextmanager
+def _synced_region(name: str, device: str):
+    '''Function to label a code region for the profiler, synchronizing the device on entry and exit so the region's time includes its device work.'''
+    sync_device(device)                 # drain earlier queued work so it is not attributed to this region
+    with record_function(name):
+        yield
+        sync_device(device)             # wait for this region's own device work
+
+
+def region(name: str):
+    '''Function to return a profiler label for a code region, or a no-op context when labels are disabled.'''
+    return nullcontext() if _REGIONS_DEVICE is None else _synced_region(name, _REGIONS_DEVICE)
+

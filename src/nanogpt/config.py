@@ -45,7 +45,7 @@ class ModelConfig:
     # if True, use scaled dot product instead of manual implementation for efficiency
 
     pos_embed: Literal['learned', 'rope'] = 'learned'   # positional embedding method: learned or rotary
-    rope_base: float = 1000.
+    rope_base: float = 10000.
     # Rotary positional embedding (RoPE) base, ignored when 'pos_embed' is 'learned'
 
     ln_torch: bool = True                               # if True, use PyTorch implementation of the layer-norm
@@ -55,19 +55,21 @@ class ModelConfig:
     def __post_init__(self):
         '''Function to validate input arguments and assign default values.'''
 
-        # Advanced developments are infeasible or not done on looped multi-head attention path:
-        if not self.batched_attention:
-            if self.n_kv_head is not None or self.n_kv_head==self.head_num: feat_err_type = 'GQA'
-            if self.scaled_dot_prod: feat_err_type = 'Scaled dot-product attention'
-            if self.pos_embed=='rope': feat_err_type = 'Rotary positional embedding'
-            raise ValueError(f"'{feat_err_type}' unavailable when 'batched_attention' is set to False.")
-
         # Default value and checks for number of kv heads for GQA:
         if self.n_kv_head is None: self.n_kv_head = self.head_num
         if not 1 <= self.n_kv_head <= self.head_num:
             raise ValueError(f"'n_kv_head' {self.n_kv_head} out of bound, must be between 1 and 'head_num' {self.head_num}.")
         if self.head_num % self.n_kv_head != 0:
-            raise ValueError(f"'head_num' {self.head_num} must be divisible with 'n_kv_head' {self.n_kv_head}.")
+            raise ValueError(f"'head_num' {self.head_num} must be divisible by 'n_kv_head' {self.n_kv_head}.")
+
+        # Advanced developments are infeasible or not done on looped multi-head attention path:
+        if not self.batched_attention:
+            unsupported = []
+            if self.n_kv_head != self.head_num: unsupported.append('GQA')
+            if self.scaled_dot_prod: unsupported.append('Scaled dot-product attention')
+            if self.pos_embed == 'rope': unsupported.append('Rotary positional embedding')
+            if unsupported:
+                raise ValueError(f"{', '.join(unsupported)} unavailable when 'batched_attention' is set to False.")
 
         # Rotary positional embedding (RoPE) tests:
         if self.pos_embed == 'rope' and not (self.head_size % 2 == 0):

@@ -1,3 +1,28 @@
+
+'''
+Notation:
+- B denotes batch size
+- T denotes the sequence length and is less than or equal to 'block_size'
+- C denotes the channel dimension, could be total number of tokens, embedding dimension, etc.
+- end denotes the total number of cached positions
+
+Profiler regions (see 'region' in utils.py, no-ops unless enabled):
+- 'embed': token and positional embeddings
+- 'layernorm': every layer norm (pre-attention, pre-feed-forward, final)
+- 'attn.qkv': query, key, value projections and reshapes
+- 'attn.rope': rotary positional embedding
+- 'attn.cache': key-value cache update
+- 'attn.expand_kv': key-value expansion for grouped-query attention (manual path)
+- 'attn.core': attention scores, mask, softmax, and weighted sum of values (or SDPA)
+- 'attn.proj': head concatenation and output projection
+- 'mlp': feed forward module
+- 'lm_head': final linear layer to logits
+- 'loss': cross entropy
+- 'sample': next-token sampling during generation
+Residual additions are left unlabelled and show up as unattributed time.
+
+'''
+
 # Imports:
 import torch
 from torch import nn
@@ -7,16 +32,7 @@ from nanogpt.config import ModelConfig
 from nanogpt.registry import MODELS
 from nanogpt.utils import sample_logits
 from nanogpt.kv_cache import KVCache
-from nanogpt.utils import build_rope_cos_sin, apply_rope, expand_kv, get_active_dtype
-
-'''
-Notation:
-- B denotes batch size
-- T denotes the sequence length and is less than or equal to 'block_size'
-- C denotes the channel dimension, could be total number of tokens, embedding dimension, etc.
-- end denotes the total number of cached positions
-
-'''
+from nanogpt.utils import build_rope_cos_sin, apply_rope, expand_kv, get_active_dtype, region
 
 #%% Common interface to build models:
 
@@ -81,21 +97,22 @@ class Head(nn.Module):
 
         '''
         B, T, n_embed = x.shape
-        q = self.query(x)                   # x @ W_q^T : (B, T, n_embed) @ (n_embed, head_size) -> (B, T, head_size)
-        k = self.key(x)                     # x @ W_k^T : (B, T, n_embed) @ (n_embed, head_size) -> (B, T, head_size)
+        with region('attn.qkv'):
+            q = self.query(x)               # x @ W_q^T : (B, T, n_embed) @ (n_embed, head_size) -> (B, T, head_size)
+            k = self.key(x)                 # x @ W_k^T : (B, T, n_embed) @ (n_embed, head_size) -> (B, T, head_size)
+            v = self.value(x)               # x @ W_v^T : (B, T, n_embed) @ (n_embed, head_size) -> (B, T, head_size)
 
-        head_size = k.size(-1)
-        wei = q @ k.transpose(-2, -1)       # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
-        wei = wei * head_size ** (-0.5)     # scaling for unit variance
+        with region('attn.core'):
+            head_size = k.size(-1)
+            wei = q @ k.transpose(-2, -1)   # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
+            wei = wei * head_size ** (-0.5) # scaling for unit variance
 
-        # Remove non-causal communications between tokens and normalize the weights:
-        wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))    # (B, T, T)
-        wei = F.softmax(wei, dim=-1)        # (B, T, T)
+            # Remove non-causal communications between tokens and normalize the weights:
+            wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))    # (B, T, T)
+            wei = F.softmax(wei, dim=-1)    # (B, T, T)
 
-        wei = self.dropout(wei)
-
-        v = self.value(x)                   # x @ W_v^T : (B, T, n_embed) @ (n_embed, head_size) -> (B, T, head_size)
-        out = wei @ v                       # token communications: (B, T, T) @ (B, T, head_size) -> (B, T, head_size)
+            wei = self.dropout(wei)
+            out = wei @ v                   # token communications: (B, T, T) @ (B, T, head_size) -> (B, T, head_size)
 
         return out
 
@@ -142,11 +159,11 @@ class MultiHeadLooped(nn.Module):
             Multi-head self-attention values.
 
         '''
-        x = torch.concat([
-            head(x) for head in self.multi_head
-            ], dim=-1)              # (B, T, n_embed) -> (B, T, head_size * head_num)
-        x = self.proj(x)            # (B, T, head_size * head_num) -> (B, T, n_embed)
-        x = self.dropout(x)         # (B, T, n_embed)
+        heads = [head(x) for head in self.multi_head]   # head_num x (B, T, head_size)
+        with region('attn.proj'):
+            x = torch.concat(heads, dim=-1) # (B, T, n_embed) -> (B, T, head_size * head_num)
+            x = self.proj(x)                # (B, T, head_size * head_num) -> (B, T, n_embed)
+            x = self.dropout(x)             # (B, T, n_embed)
         return x
 
 
@@ -190,7 +207,8 @@ class FeedForward(nn.Module):
             Output.
 
         '''
-        return self.net(x)
+        with region('mlp'):
+            return self.net(x)
 
 
 class Block(nn.Module):
@@ -254,12 +272,16 @@ class Block(nn.Module):
         # Attributes:
         batched_attn = self.batched_attention
 
+        with region('layernorm'):
+            h = self.ln1(x)                             # (B, T, n_embed)
         if batched_attn:
-            x = x + self.multi_head(self.ln1(x), rope=rope, cache=cache)    # (B, T, n_embed) -> (B, T, n_embed)
+            x = x + self.multi_head(h, rope=rope, cache=cache)  # (B, T, n_embed) -> (B, T, n_embed)
         else:
-            x = x + self.multi_head(self.ln1(x))        # (B, T, n_embed) -> (B, T, n_embed)
+            x = x + self.multi_head(h)                  # (B, T, n_embed) -> (B, T, n_embed)
 
-        x = x + self.ffwd(self.ln2(x))                  # (B, T, n_embed)
+        with region('layernorm'):
+            h = self.ln2(x)                             # (B, T, n_embed)
+        x = x + self.ffwd(h)                            # (B, T, n_embed)
         return x
 
 
@@ -383,57 +405,64 @@ class MultiHead(nn.Module):
 
         # Dimensions:
         B, T, n_embed = x.shape
-        q_dim = head_num * head_size                            # query dimension
-        kv_dim = n_kv_head * head_size                          # key and value dimensions
+        q_dim = head_num * head_size                                # query dimension
+        kv_dim = n_kv_head * head_size                              # key and value dimensions
 
         # Batched self-attention calculations:
-        qkv = self.c_attn(x)                                    # x @ W^T : (B, T, n_embed) @ (n_embed, q_dim + kv_dim) -> (B, T, q_dim + kv_dim)
-        q, k, v = qkv.split([q_dim, kv_dim, kv_dim], dim=2)     # (B, T, q_dim + kv_dim) -> (B, T, q_dim), (B, T, kv_dim), (B, T, kv_dim)
-        q = q.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
-        k = k.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
-        v = v.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
+        with region('attn.qkv'):
+            qkv = self.c_attn(x)    # x @ W^T : (B, T, n_embed) @ (n_embed, q_dim + kv_dim) -> (B, T, q_dim + kv_dim)
+            q, k, v = qkv.split([q_dim, kv_dim, kv_dim], dim=2)     # (B, T, q_dim + kv_dim) -> (B, T, q_dim), (B, T, kv_dim), (B, T, kv_dim)
+            q = q.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
+            k = k.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
+            v = v.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
 
         # Rotary positional embedding (RoPE):
         if rope is not None:
-            cos, sin = rope
-            q = apply_rope(q, cos, sin)                         # (B, head_num, T, head_size)
-            k = apply_rope(k, cos, sin)                         # (B, n_kv_head, T, head_size)
+            with region('attn.rope'):
+                cos, sin = rope
+                q = apply_rope(q, cos, sin)                         # (B, head_num, T, head_size)
+                k = apply_rope(k, cos, sin)                         # (B, n_kv_head, T, head_size)
 
         # Cache the keys and values if requested:
         start, is_causal = 0, True
         if cache is not None:
-            start = cache.len
-            assert block_ind is not None, 'block index must be provided for key-value caching'
-            assert cache.len == 0 or T == 1, 'only full prefill or single-token decode supported'
-            is_causal = cache.len == 0                          # prefill is causal, decode sees everything
-            k, v = cache.update(block_ind, k, v)                # (B, head_num, end, head_size)
-        end = start + T                                         # 'end==T' when cache is None
+            with region('attn.cache'):
+                start = cache.len
+                assert block_ind is not None, 'block index must be provided for key-value caching'
+                assert cache.len == 0 or T == 1, 'only full prefill or single-token decode supported'
+                is_causal = cache.len == 0                          # prefill is causal, decode sees everything
+                k, v = cache.update(block_ind, k, v)                # (B, head_num, end, head_size)
+        end = start + T                                             # 'end==T' when cache is None
 
         # Use torch's scaled dot product implementation for efficiency:
         if scaled_dot_prod:
-            out = F.scaled_dot_product_attention(
-                q, k, v,
-                is_causal=is_causal,                            # replaces 'tril' mask for causality
-                dropout_p=dropout if self.training else 0.0,    # replaces 'dropout_attn'
-                enable_gqa=True,                                # enable grouped-query attention
-            )                                                   # (B, head_num, T, head_size)
+            with region('attn.core'):
+                out = F.scaled_dot_product_attention(
+                    q, k, v,
+                    is_causal=is_causal,                            # replaces 'tril' mask for causality
+                    dropout_p=dropout if self.training else 0.0,    # replaces 'dropout_attn'
+                    enable_gqa=True,                                # enable grouped-query attention
+                )                                                   # (B, head_num, T, head_size)
         else:
             # Expand keys and values to match query dimensions for grouped-query attention:
-            k, v = expand_kv(k, v, head_num, n_kv_head) # (B, n_kv_head, T, head_size) -> (B, head_num, T, head_size)
+            with region('attn.expand_kv'):
+                k, v = expand_kv(k, v, head_num, n_kv_head)         # (B, n_kv_head, T, head_size) -> (B, head_num, T, head_size)
 
-            # Causal weight calculations:
-            wei = q @ k.transpose(-2, -1) * head_size ** (-0.5)                     # (B, head_num, T, head_size) @ (B, head_num, head_size, end) -> (B, head_num, T, end)
-            wei = wei.masked_fill(self.mask[start:end, :end] == 0, float("-inf"))   # (B, head_num, T, end)
-            wei = F.softmax(wei, dim=-1)                                            # (B, head_num, T, end)
-            wei = self.dropout_attn(wei)
+            with region('attn.core'):
+                # Causal weight calculations:
+                wei = q @ k.transpose(-2, -1) * head_size ** (-0.5)                     # (B, head_num, T, head_size) @ (B, head_num, head_size, end) -> (B, head_num, T, end)
+                wei = wei.masked_fill(self.mask[start:end, :end] == 0, float("-inf"))   # (B, head_num, T, end)
+                wei = F.softmax(wei, dim=-1)                                            # (B, head_num, T, end)
+                wei = self.dropout_attn(wei)
 
-            # Token communications:
-            out = wei @ v   # (B, head_num, T, end) @ (B, head_num, end, head_size) -> (B, head_num, T, head_size)
+                # Token communications:
+                out = wei @ v   # (B, head_num, T, end) @ (B, head_num, end, head_size) -> (B, head_num, T, head_size)
 
         # Project back to embedding space:
-        out = out.transpose(1, 2).contiguous().view(B, T, head_num*head_size)       # (B, T, head_size * head_num)
-        out = self.c_proj(out)                                  # (B, T, head_size * head_num) -> (B, T, n_embed)
-        out = self.dropout_resid(out)                           # (B, T, n_embed)
+        with region('attn.proj'):
+            out = out.transpose(1, 2).contiguous().view(B, T, head_num*head_size)       # (B, T, head_size * head_num)
+            out = self.c_proj(out)                                  # (B, T, head_size * head_num) -> (B, T, n_embed)
+            out = self.dropout_resid(out)                           # (B, T, n_embed)
 
         return out
 
@@ -510,32 +539,36 @@ class GPT(nn.Module):
         # Initialization:
         B, T = idx.shape
 
-        # Token embedding:
-        x = self.token_embedding_table(idx)             # (B, T, n_embed)
+        with region('embed'):
+            # Token embedding:
+            x = self.token_embedding_table(idx)                             # (B, T, n_embed)
 
-        # Positional embedding:
-        start = cache.len if cache is not None else 0
-        rope = None
-        if self.cfg.pos_embed=='learned':
-            pos = torch.arange(start, start + T, device=idx.device)     # absolute positions
-            pos_emb = self.position_embedding_table(pos)                # (T, n_embed)
-            x = x + pos_emb                                             # (B, T, n_embed)
-        elif self.cfg.pos_embed=='rope':
-            rope = self.rope_cos[start: start + T], self.rope_sin[start: start + T]
+            # Positional embedding:
+            start = cache.len if cache is not None else 0
+            rope = None
+            if self.cfg.pos_embed=='learned':
+                pos = torch.arange(start, start + T, device=idx.device)     # absolute positions
+                pos_emb = self.position_embedding_table(pos)                # (T, n_embed)
+                x = x + pos_emb                                             # (B, T, n_embed)
+            elif self.cfg.pos_embed=='rope':
+                rope = self.rope_cos[start: start + T], self.rope_sin[start: start + T]
 
-        for block in self.blocks: x = block(x, rope=rope, cache=cache)  # (B, T, n_embed)
+        for block in self.blocks: x = block(x, rope=rope, cache=cache)      # (B, T, n_embed)
         if cache is not None: cache.advance(T)          # advance cache size once after all blocks are cached
 
-        x = self.ln(x)                                  # (B, T, n_embed)
-        logits = self.lm_head(x)                        # (B, T, n_embed) -> (B, T, vocab_size)
+        with region('layernorm'):
+            x = self.ln(x)                              # (B, T, n_embed)
+        with region('lm_head'):
+            logits = self.lm_head(x)                    # (B, T, n_embed) -> (B, T, vocab_size)
         if targets is None: return logits, None
 
         # Compute the loss:
-        B, T, C = logits.shape
-        logits = logits.view(B * T, C)
-        targets = targets.view(B * T)
-        loss = F.cross_entropy(logits, targets)
-        logits = logits.view(B, T, C)
+        with region('loss'):
+            B, T, C = logits.shape
+            logits = logits.view(B * T, C)
+            targets = targets.view(B * T)
+            loss = F.cross_entropy(logits, targets)
+            logits = logits.view(B, T, C)
 
         return logits, loss
 
@@ -608,9 +641,10 @@ class GPT(nn.Module):
         for _ in range(new_tokens):
             idx_cond = idx[:, -block_size:]                     # limit to context size (last 'block_size' tokens)
             logits, _ = self(idx_cond)                          # forward pass: (B, T, vocab_size)
-            idx_next = sample_logits(logits[:, -1, :],
-                                     temperature, top_k)        # sample new tokens: (B, vocab_size) -> (B, 1)
-            idx = torch.cat((idx, idx_next), dim=1)             # (B, T+1)
+            with region('sample'):
+                idx_next = sample_logits(logits[:, -1, :],
+                                         temperature, top_k)    # sample new tokens: (B, vocab_size) -> (B, 1)
+                idx = torch.cat((idx, idx_next), dim=1)         # (B, T+1)
 
         return idx
 
@@ -659,9 +693,10 @@ class GPT(nn.Module):
 
         # Loop over new tokens to be generated:
         for i in range(new_tokens):
-            idx_next = sample_logits(logits[:, -1, :],
-                                     temperature, top_k)        # sample new tokens: (B, vocab_size) -> (B, 1)
-            idx = torch.cat([idx, idx_next], dim=1)
+            with region('sample'):
+                idx_next = sample_logits(logits[:, -1, :],
+                                         temperature, top_k)    # sample new tokens: (B, vocab_size) -> (B, 1)
+                idx = torch.cat([idx, idx_next], dim=1)
             if i < new_tokens - 1:
                 logits, _ = self(idx_next, cache=cache)         # decode: one token
 

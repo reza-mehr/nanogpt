@@ -1,75 +1,55 @@
+'''
+This file contains the code to profile where the time goes in a training step, a prompt prefill, or one decode step.
+The profiling, summarizing, and reporting code lives in src/nanogpt/benchmarking.py.
+
+The report has three parts:
+- Summary: step time and aten op calls per step per variant and length; op counts are the clearest evidence of per-op overhead (fewer, larger ops after batched attention and torch LayerNorm).
+- Breakdown: time per step and share of the step for every labelled region in model.py ('attn.core', 'mlp', 'lm_head', ...) plus 'backward' and 'optimizer' in training; unlabelled time shows up as 'other'.
+- Top ops: the aten ops with the most self CPU time per case.
+
+Notes:
+- Regions synchronize the device on entry and exit, so each region's time includes its device work. This makes times attributable on MPS and CUDA but adds some overhead: use shares and counts here, speeds from the benchmarks.
+- Top-op self times are CPU-side; on MPS and CUDA they reflect dispatch cost, not kernel time (see the traces).
+
+Quick debug run of the whole pipeline:
+    uv run scripts/profile_model.py --preset small_cfg --block-sizes 32 --active 1
+
+Training step, baseline versus fully optimized (the default variants are the first and last of the journey):
+    caffeinate -is uv run scripts/profile_model.py --preset main_cfg --mode train
+
+Prefill and decode, with chosen variants from the inference journey:
+    caffeinate -is uv run scripts/profile_model.py --preset main_cfg --mode prefill
+    caffeinate -is uv run scripts/profile_model.py --preset main_cfg --mode decode --variants '+SDPA' '+KV cache' '+bf16 (cast)'
+
+Rebuild the tables from saved results without profiling:
+    uv run scripts/profile_model.py --preset main_cfg --mode train --from-csv
+
+Outputs go to results/profile_<mode>_<preset>_<device>/ as report.md, results.csv, ops.csv, env.json,
+and traces/<case>.json (open at https://ui.perfetto.dev).
+
+'''
 
 #%% Imports:
 
-from pathlib import Path
-from torch.profiler import ProfilerActivity, profile, schedule
 import tyro
-from typing import Literal
 
-from dataclasses import dataclass
+from nanogpt.benchmarking import ProfileConfig, collect_env, report_profile, run_or_load, run_profile
 
-from nanogpt.benchmarking import make_step, sync_device
-from nanogpt.config import ModelConfig
-
-'''
-This file contains the profiling code for the model.
-
-'''
-
-#%% Profiling configurations:
-
-@dataclass
-class ProfileConfig:
-    scaled_dot_prod: bool = True
-    ln_torch: bool = True
-    device: str = 'mps'
-    precision: Literal['fp32', 'mixed_bf16'] = 'fp32'
-    T: int = 512
-    batch_size: int = 16
-    rows: int = 15                  # number of operations to show in the table; -1 shows all
-    out_dir: str = 'profiles'       # folder for trace files
-
-
-#%% Functions:
+#%% Main function:
 
 def main(p: ProfileConfig) -> None:
-    '''Main function to profile the model for the given configurations.'''
+    '''Function to profile (or reload) the selected variants and report the results.'''
 
-    # Construct the model, optimizer, and corresponding step function:
-    cfg = ModelConfig(name='gpt', vocab_size=65, block_size=p.T, n_embed=384,
-                      head_num=6, head_size=64, n_blocks=6, dropout=0.0,
-                      scaled_dot_prod=p.scaled_dot_prod, ln_torch=p.ln_torch)
-    step = make_step(cfg, p.device, p.batch_size, p.T, p.precision)
+    # Profile (or reload) the cases:
+    tables, meta = run_or_load(p.run_dir,
+                               run_fn=lambda: run_profile(p),
+                               meta_fn=lambda: collect_env(p.device) | p.settings(),
+                               from_csv=p.from_csv)
 
-    # Profiler activities:
-    activities = [ProfilerActivity.CPU]
-    if p.device == 'cuda': activities.append(ProfilerActivity.CUDA)
-
-    # Skip 1 step, warm up for 2 steps (recorded but discarded), then record step 3:
-    sched = schedule(wait=1, warmup=2, active=3)
-    with profile(activities=activities, schedule=sched, profile_memory=True, record_shapes=True) as prof:
-        for _ in range(6):
-            step()
-            sync_device(p.device)
-            prof.step()               # inform the profiler that a step finished
-
-    # Print the results:
-    print(prof.key_averages().table(sort_by='self_cpu_time_total', row_limit=p.rows, max_name_column_width=40))
-
-    attn_ops = {e.key for e in prof.key_averages() if 'attention' in e.key.lower()}
-    print('\nAttention ops that ran:', sorted(attn_ops) or 'none (manual path)')
-
-    # Save results:
-    out = Path(p.out_dir)
-    out.mkdir(parents=True, exist_ok=True)
-
-    impl = 'sdpa' if p.scaled_dot_prod else 'manual'
-    trace = out / f'trace_{impl}_T{p.T}_{p.precision}_{p.device}.json'
-    prof.export_chrome_trace(str(trace))
-    print(f'Timeline: open {trace} at https://ui.perfetto.dev')
-
+    # Print the tables and save the report:
+    report_profile(tables, p, meta)
 
 #%% Main call:
 
 if __name__ == '__main__':
-    main(tyro.cli(ProfileConfig))
+    main(tyro.cli(ProfileConfig, description=__doc__))

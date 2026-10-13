@@ -1,104 +1,43 @@
+'''
+This file contains the code to benchmark training throughput and peak memory as each optimization is added cumulatively (batched attention, torch LayerNorm, fused AdamW, SDPA, mixed bf16).
+The journey, measurement, and reporting code lives in src/nanogpt/benchmarking.py.
+
+Quick debug run of the whole pipeline:
+    uv run scripts/benchmark_train.py --preset small_cfg --block-sizes 32 64 --iters 5 --trials 1
+
+Full run (plugged in, other apps closed):
+    caffeinate -is uv run scripts/benchmark_train.py --preset main_cfg
+
+Rebuild the tables from saved results without benchmarking:
+    uv run scripts/benchmark_train.py --preset main_cfg --from-csv
+
+Outputs go to results/benchmark_train_<preset>_<device>/ as report.md, results.csv, and env.json.
+
+'''
 
 #%% Imports:
 
-import statistics
-import time
-from dataclasses import dataclass
-from tqdm import tqdm
-
-import torch
 import tyro
 
-from nanogpt.config import ModelConfig
-from nanogpt.model import build_model
-from nanogpt.benchmarking import make_step, sync_device, Col, print_table
+from nanogpt.benchmarking import TrainBenchConfig
+from nanogpt.benchmarking import TRAIN_METRICS, collect_env, report_pivot, run_or_load, run_train_journey
 
-#%% Benchmarking configurations:
+#%% Main function:
 
-@dataclass
-class BenchConfig:
-    device: str = 'mps'
-    batch_size: int = 16
-    seq_lens: tuple[int, ...] = (128, 256, 512, 1024)
-    precisions: tuple[str, ...] = ('fp32', 'mixed_bf16')
-    scaled_dot_prod: bool = True
-    warmup: int = 5
-    iters: int = 20
-    trials: int = 3
+def main(b: TrainBenchConfig) -> None:
+    '''Function to run (or reload) the training benchmark journey and report the results.'''
 
+    # Benchmark (or reload) the journey:
+    tables, meta = run_or_load(b.run_dir,
+                               run_fn=lambda: {'results': run_train_journey(b)},
+                               meta_fn=lambda: collect_env(b.device) | b.settings(),
+                               from_csv=b.from_csv)
 
-#%% Functions:
-
-def measure_peak_mb(step_fn, device: str) -> float:
-    '''Function to measure peak memory for one training step. CUDA: true peak. MPS: memory after forward.'''
-    if device == 'cuda':
-        torch.cuda.reset_peak_memory_stats()
-        step_fn()
-        torch.cuda.synchronize()
-        return torch.cuda.max_memory_allocated() / 2**20
-    if device == 'mps':
-        return step_fn(measure_after_forward=True)
-    return float('nan')
-
-
-def bench_one(model_cfg: ModelConfig, b: BenchConfig, T: int, precision: str) -> tuple[float, float]:
-    '''Function to run a single benchmarking experiment.'''
-
-    # Construct the model, optimizer, and the corresponding step function:
-    step = make_step(model_cfg, b.device, b.batch_size, T, precision)
-
-    # Warm-up steps to ensure transient and one-time processes do not affect the benchmarking:
-    for _ in range(b.warmup):
-        step()
-    if b.device == 'cuda': torch.cuda.reset_peak_memory_stats()
-
-    # Measure the memory used:
-    memory_mb = measure_peak_mb(step, b.device)
-
-    # Main benchmarking loop:
-    times = []
-    for _ in range(b.trials):       # loop over trials
-        sync_device(b.device)
-        t0 = time.perf_counter()
-        for _ in range(b.iters):    # loop over iterations
-            step()
-        sync_device(b.device)
-        times.append(time.perf_counter() - t0)
-
-    # Compute the tokens processed per second:
-    tok_per_sec = b.iters * b.batch_size * T / statistics.median(times)
-
-    return tok_per_sec, memory_mb
-
-
-def main(b: BenchConfig) -> None:
-    '''Main function to run the training benchmark sweep and report the results.'''
-
-    # Initialization:
-    rows = []
-    combos = [(T, precision, sdpa_flag) for T in b.seq_lens for precision in b.precisions for sdpa_flag in (False, True)]
-
-    # Loop over combinations:
-    with tqdm(combos, desc='benchmark') as pbar:
-        for T, precision, sdpa_flag in pbar:
-            impl = 'sdpa' if sdpa_flag else 'manual'
-            pbar.set_postfix(T=T, precision=precision, impl=impl)
-            cfg = ModelConfig(name='gpt', vocab_size=65, block_size=T, n_embed=384, head_num=6,
-                              head_size=64, n_blocks=6, dropout=0.0, scaled_dot_prod=sdpa_flag)
-            try:
-                tps, mem = bench_one(cfg, b, T, precision)
-            except RuntimeError as e:                    # e.g. bf16 unsupported on this backend
-                tqdm.write(f'skip {impl}/{precision}/T={T}: {e}')
-                continue
-            rows.append(dict(impl=impl, precision=precision, T=T, tps=tps, mem=mem))
-
-    # Print the table to terminal:
-    cols = [Col('impl', 'impl'), Col('precision', 'precision'), Col('T', 'T', 'd'),
-            Col('tps', 'tokens/sec', ',.0f'), Col('mem', 'memory (MB)', ',.0f')]
-    print_table(rows, cols)
-
+    # Print the tables and save the report:
+    report_pivot(tables['results'], b.run_dir / 'report.md', row_key='variant', col_key='T',
+                 metrics=TRAIN_METRICS, meta=meta, ref_key='ref')
 
 #%% Main call:
 
 if __name__ == '__main__':
-    main(tyro.cli(BenchConfig))
+    main(tyro.cli(TrainBenchConfig, description=__doc__))
