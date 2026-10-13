@@ -12,7 +12,7 @@ from torch import nn
 
 _DTYPE_NAMES = {torch.float32: 'fp32', torch.bfloat16: 'bf16'}
 
-#%% Utility functions:
+#%% Model utility functions:
 
 def sample_logits(logits, temperature=1.0, top_k=None):
     '''
@@ -97,6 +97,97 @@ def expand_kv(k, v, head_num, n_kv_head):
     return k, v
 
 
+#%% RoPE utility functions:
+
+def build_rope_cos_sin(head_size, rope_base, max_len):
+    '''
+    Function to compute cos/sin tables for tokens in rotary positional embedding (RoPE) mode.
+    - Each head's 'head_size' dimensions are treated as head_size/2 pairs of 2-D vectors.
+    - 2-D vectors are rotated by angle pos x θ_i, where θ_i = base^(-2i/head_size).
+    - Operations must be done in 'fp32' since 'bf16' does not have sufficient precision.
+
+    Parameters
+    ----------
+    head_size: int
+        Attention head size.
+    rope_base: int
+        RoPE base. Determines the rotation angle resolution.
+    max_len: int
+        Maximum possible context size to compute rotation angles.
+
+    Returns
+    -------
+    cos (max_len, head_size): tensor
+        Cosine of rotation angles to be applied to queries and keys.
+    sin (max_len, head_size): tensor
+        Sine of rotation angles to be applied to queries and keys.
+
+    '''
+    # Compute frequencies θ_i = base^(−2i/head_size):
+    freq = torch.arange(0, head_size, 2, dtype=torch.float32) / head_size
+    inv_freq = 1 / rope_base ** freq                    # (head_size/2)
+
+    # Compute pos x θ_i outer products (entry [m, i] is the angle for pair i at position m):
+    pos = torch.arange(max_len, dtype=torch.float32)    # token positions
+    angles = torch.outer(pos, inv_freq)                 # (max_len, head_size/2)
+
+    # Compute sine and cosine tables for rotation:
+    cos = angles.cos()                                  # (max_len, head_size/2)
+    sin = angles.sin()                                  # (max_len, head_size/2)
+    cos = torch.cat([cos, cos], dim=-1)                 # (max_len, head_size)
+    sin = torch.cat([sin, sin], dim=-1)                 # (max_len, head_size)
+
+    return cos, sin
+
+
+def rotate_half(x):
+    '''
+    Function to split the attention queries and keys into 2D vectors x1 and x2 and rotate them by 90 degrees as [-x2 | x1].
+
+    Parameters
+    ----------
+    x (B, head_num, T, head_size): tensor
+        Attention values from query or key.
+
+    Returns
+    -------
+    x_rotated (B, head_num, T, head_size): tensor
+        Rotated tensor [-x2 | x1].
+
+    '''
+    dim = x.size(-1) // 2       # head_size / 2
+    x1 = x[..., :dim]
+    x2 = x[..., dim:]
+    return torch.cat([-x2, x1], dim=-1)
+
+
+def apply_rope(x, cos, sin):
+    '''
+    Function to rotate queries or keys by their position angles (RoPE).
+    The function takes the angle cosines and sines from 'build_rope_cos_sin' and rotated half of 'x' from 'rotate_half' and computes the elementwise rotation: [x1 * cos - x2 * sin | x1 * sin + x2 * cos] where x = [x1 | x2].
+
+    Parameters
+    ----------
+    x (B, n_heads, T, head_size): tensor
+        Attention queries or keys from query or key.
+    cos (T, head_size): tensor
+        Cosine of rotation angles to be applied to attention queries or keys.
+    sin (T, head_size): tensor
+        Sine of rotation angles to be applied to attention queries or keys.
+
+    Returns
+    -------
+    x_rope (B, n_heads, T, head_size): tensor
+        'x' rotated by its position angles.
+
+    '''
+    x32 = x.float()             # cast to 'fp32' to ensure sufficient precision for RoPE computations
+    x_rope = x32 * cos + rotate_half(x32) * sin
+    return x_rope.to(x.dtype)
+
+
+#%% Data type precision utility functions:
+
 def autocast_ctx(device: str, dtype: str):
     '''Function to autocase forward passes for mixed-precision context; no-ops for fp32.'''
     if dtype == 'fp32':
@@ -171,3 +262,10 @@ def get_active_dtype(model: nn.Module) -> str:
     if torch_dtype not in _DTYPE_NAMES: raise ValueError(f'Unsupported dtype: {torch_dtype}')
 
     return _DTYPE_NAMES[torch_dtype]
+
+
+#%% General utility functions:
+
+def get_param_count(model):
+    '''Function to return the total number of trainable parameters in the 'model'.'''
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

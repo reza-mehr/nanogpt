@@ -8,7 +8,7 @@ import copy
 
 from nanogpt.config import ModelConfig
 from nanogpt.model import build_model
-from nanogpt.utils import autocast_ctx, prepare_for_inference, get_active_dtype
+from nanogpt.utils import autocast_ctx, prepare_for_inference, get_active_dtype, get_param_count
 
 '''
 This file contains model tests that ensure expected shapes, uniform initialization, optimization behavior, and causality of the language model.
@@ -18,26 +18,30 @@ This file contains model tests that ensure expected shapes, uniform initializati
 #%% Configuration setup for tests:
 
 # Model architecture parameters:
-B, T, VOCAB = 4, 8, 18
+B, T, VOCAB, N_EMBED, HEAD_SIZE = 4, 8, 18, 16, 8
 
-def tiny_model(name, n_kv_head=None):
+def tiny_model(name, n_kv_head=None, pos_embed='learned'):
     '''Function to construct a tiny model to run tests on.'''
-    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=16, head_num=4, n_kv_head=n_kv_head, head_size=8, n_blocks=2,
+    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=N_EMBED, head_num=4, n_kv_head=n_kv_head, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed,
                       dropout=0.)       # set dropout to 0 to permit overfitting in one of the tests below
     torch.manual_seed(0)
     return build_model(cfg)
 
-@pytest.fixture(params=[4, 2, 1], ids=['mha', 'gqa', 'mqa'])
+@pytest.fixture(params=[4, 2, 1], ids=['mha', 'gqa', 'mqa'])    # head_num = 4
 def n_kv_head(request):
+    return request.param
+
+@pytest.fixture(params=['learned', 'rope'])
+def pos_embed(request):
     return request.param
 
 #%% Shape tests:
 
 @pytest.mark.parametrize('name', ['bigram', 'gpt'])
-def test_forward_shapes(name, n_kv_head):
+def test_forward_shapes(name, n_kv_head, pos_embed):
     '''Function to test the forward function output shapes.'''
 
-    model = tiny_model(name, n_kv_head)
+    model = tiny_model(name, n_kv_head, pos_embed)
     idx = torch.randint(0, VOCAB, (B, T))
 
     logits, loss = model(idx, targets=None)         # no targets, no loss
@@ -75,13 +79,13 @@ def test_uniform_loss(name):
 #%% Overfit test:
 
 @pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16'])
-def test_overfit(dtype, n_kv_head):
+def test_overfit(dtype, n_kv_head, pos_embed):
     '''Function to test the optimization loop by ensuring that the model can overfit to a single batch of data.'''
 
     # Initialize the model, optimizer, and data:
     device = 'cpu'
     torch.manual_seed(0)
-    model = tiny_model('gpt', n_kv_head).to(device)
+    model = tiny_model('gpt', n_kv_head, pos_embed).to(device)
     optim = torch.optim.AdamW(model.parameters(), lr=1e-3)
     idx = torch.randint(0, VOCAB, (B, T), device=device)
     targets = torch.randint(0, VOCAB, (B, T), device=device)
@@ -99,19 +103,17 @@ def test_overfit(dtype, n_kv_head):
     assert loss.item() < 0.1 * loss0.item(), \
         f'loss fell less than 90% when overfitting to a single batch: {loss0.item():.4f} -> {loss.item():.4f}'
 
+
 #%% Causality tests:
 
-@pytest.mark.parametrize('name', ['bigram', 'gpt'])
-@pytest.mark.parametrize('t', [0, 3, T - 1])
-@pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16', 'bf16'])
-def test_causality(name, n_kv_head, t, dtype):
-    '''Tests that changing the token at position t must not affect outputs at positions < t.'''
+def _test_causality(name, t, n_kv_head=None, dtype='fp32'):
+    '''Function to test that changing the token at position t must not affect outputs at positions < t.'''
 
     device = 'cpu'
     model = tiny_model(name, n_kv_head).to(device).eval()   # eval: no dropout, deterministic
     idx = torch.randint(0, VOCAB, (B, T), device=device)
     idx2 = idx.clone()
-    idx2[:, t] = (idx[:, t] + 1) % VOCAB                    # guaranteed different token at position 't' for all sequences in the batch
+    idx2[:, t] = (idx[:, t] + 1) % VOCAB    # guaranteed different token at position 't' for all sequences in the batch
 
     with torch.no_grad(), autocast_ctx(device, dtype):
         logits, _ = model(idx)
@@ -123,6 +125,19 @@ def test_causality(name, n_kv_head, t, dtype):
     # Assert that the change is visible where it should be, so the test isn't vacuous:
     assert not torch.equal(logits[:, t], logits2[:, t]), f'position {t} ignored its own token'
 
+
+@pytest.mark.parametrize('t', [0, 3, T - 1])
+@pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16', 'bf16'])
+def test_causality_gpt(t, n_kv_head, dtype):
+    _test_causality('gpt', t, n_kv_head, dtype)
+
+
+@pytest.mark.parametrize('t', [0, 3, T - 1])
+def test_causality_bigram(t):
+    _test_causality('bigram', t)
+
+
+#%% Batch leak tests:
 
 def test_no_leakage_across_batch(n_kv_head):
     '''Tests that changing one sequence in a batch must not affect the others.'''
@@ -141,7 +156,7 @@ def test_no_leakage_across_batch(n_kv_head):
 #%% Mixed-precision compute test:
 
 def test_bf16_forward_close_to_fp32():
-    '''Function to ensure that the 'bf16' precision on forward pass is close to 'fp16'.'''
+    '''Function to ensure that the 'bf16' precision on forward pass is close to 'fp32'.'''
 
     # Initialization:
     model = tiny_model('gpt').to('cpu').eval()
@@ -202,12 +217,21 @@ def test_get_active_dtype():
 
 #%% Generation test:
 
-def test_cached_matches_naive_generation():
+def test_cached_matches_naive_generation(n_kv_head, pos_embed):
     '''Function to test that the cached and non-cached implementation of the generate function return identical resutls.'''
-    model = tiny_model('gpt').eval()
+    model = tiny_model('gpt', n_kv_head, pos_embed).eval()
     idx = torch.randint(0, VOCAB, (1, 1))
     torch.manual_seed(0)
     naive = model.generate(idx, new_tokens=6, use_cache=False)
     torch.manual_seed(0)
     cached = model.generate(idx, new_tokens=6, use_cache=True)
     assert torch.equal(naive, cached)
+
+#%% Trainable parameter tests:
+
+def test_param_count_rope():
+    '''Function to test that the trainable parameters for positional embedding are removed for RoPE.'''
+    model1 = tiny_model('gpt', pos_embed='learned')
+    model2 = tiny_model('gpt', pos_embed='rope')
+    assert get_param_count(model1) - get_param_count(model2) == N_EMBED * HEAD_SIZE
+

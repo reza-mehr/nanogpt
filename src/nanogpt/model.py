@@ -7,7 +7,7 @@ from nanogpt.config import ModelConfig
 from nanogpt.registry import MODELS
 from nanogpt.utils import sample_logits
 from nanogpt.kv_cache import KVCache
-from nanogpt.utils import expand_kv, get_active_dtype
+from nanogpt.utils import build_rope_cos_sin, apply_rope, expand_kv, get_active_dtype
 
 '''
 Notation:
@@ -142,9 +142,11 @@ class MultiHeadLooped(nn.Module):
             Multi-head self-attention values.
 
         '''
-        x = torch.concat([head(x) for head in self.multi_head], dim=-1)     # (B, T, n_embed) -> (B, T, head_size * head_num)
-        x = self.proj(x)                                                    # (B, T, head_size * head_num) -> (B, T, n_embed)
-        x = self.dropout(x)                                                 # (B, T, n_embed)
+        x = torch.concat([
+            head(x) for head in self.multi_head
+            ], dim=-1)              # (B, T, n_embed) -> (B, T, head_size * head_num)
+        x = self.proj(x)            # (B, T, head_size * head_num) -> (B, T, n_embed)
+        x = self.dropout(x)         # (B, T, n_embed)
         return x
 
 
@@ -230,7 +232,7 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(cfg.n_embed) if cfg.ln_torch else LayerNorm(cfg.n_embed)
 
 
-    def forward(self, x, cache: KVCache | None = None):
+    def forward(self, x, rope: tuple[torch.Tensor, torch.Tensor] | None = None, cache: KVCache | None = None):
         '''
         Function to compute the forward pass.
 
@@ -238,6 +240,8 @@ class Block(nn.Module):
         ----------
         x (B, T, n_embed): tensor
             Token embeddings.
+        rope: tuple of tensors, optional
+            Containing the cos and sin tables for RoPE; see build_rope_cos_sin() for details. The default is None when RoPE is not requested.
         cache: KVCache, optional
             Key-value cache. The default is None.
 
@@ -251,7 +255,7 @@ class Block(nn.Module):
         batched_attn = self.batched_attention
 
         if batched_attn:
-            x = x + self.multi_head(self.ln1(x), cache) # (B, T, n_embed) -> (B, T, n_embed)
+            x = x + self.multi_head(self.ln1(x), rope=rope, cache=cache)    # (B, T, n_embed) -> (B, T, n_embed)
         else:
             x = x + self.multi_head(self.ln1(x))        # (B, T, n_embed) -> (B, T, n_embed)
 
@@ -350,7 +354,7 @@ class MultiHead(nn.Module):
         self.dropout_resid = nn.Dropout(cfg.dropout)
 
 
-    def forward(self, x, cache: KVCache | None = None):
+    def forward(self, x, rope: tuple[torch.Tensor, torch.Tensor] | None = None, cache: KVCache | None = None):
         '''
         Function to compute the forward pass.
 
@@ -358,6 +362,8 @@ class MultiHead(nn.Module):
         ----------
         x (B, T, n_embed): tensor
             Token embeddings.
+        rope: tuple of tensors
+            Containing the cos and sin tables for RoPE; see build_rope_cos_sin() for details. The default is None when RoPE is not requested.
         cache: KVCache, optional
             Key-value cache. The default is None.
 
@@ -387,6 +393,12 @@ class MultiHead(nn.Module):
         k = k.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
         v = v.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
 
+        # Rotary positional embedding (RoPE):
+        if rope is not None:
+            cos, sin = rope
+            q = apply_rope(q, cos, sin)                         # (B, head_num, T, head_size)
+            k = apply_rope(k, cos, sin)                         # (B, n_kv_head, T, head_size)
+
         # Cache the keys and values if requested:
         start, is_causal = 0, True
         if cache is not None:
@@ -407,7 +419,7 @@ class MultiHead(nn.Module):
             )                                                   # (B, head_num, T, head_size)
         else:
             # Expand keys and values to match query dimensions for grouped-query attention:
-            k, v = expand_kv(k, v, head_num, n_kv_head)         # (B, n_kv_head, T, head_size) -> (B, head_num, T, head_size)
+            k, v = expand_kv(k, v, head_num, n_kv_head) # (B, n_kv_head, T, head_size) -> (B, head_num, T, head_size)
 
             # Causal weight calculations:
             wei = q @ k.transpose(-2, -1) * head_size ** (-0.5)                     # (B, head_num, T, head_size) @ (B, head_num, head_size, end) -> (B, head_num, T, end)
@@ -458,8 +470,17 @@ class GPT(nn.Module):
         super().__init__()
         self.cfg = cfg
 
+        # Positional embedding:
+        if cfg.pos_embed=='learned':            # construct positional embedding table
+            self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
+            rope_cos = rope_sin = None
+        elif cfg.pos_embed=='rope':             # construct RoPE cosine and sine tables
+            self.position_embedding_table = None
+            rope_cos, rope_sin = build_rope_cos_sin(cfg.head_size, cfg.rope_base, cfg.block_size)
+        self.register_buffer('rope_cos', rope_cos, persistent=False)
+        self.register_buffer('rope_sin', rope_sin, persistent=False)
+
         self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
-        self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
         self.blocks = nn.ModuleList( [ Block(cfg, bind) for bind in range(cfg.n_blocks) ] )
         self.ln = nn.LayerNorm(cfg.n_embed) if cfg.ln_torch else LayerNorm(cfg.n_embed)
         self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size)
@@ -486,16 +507,23 @@ class GPT(nn.Module):
             Loss value. None if 'targets' is None.
 
         '''
+        # Initialization:
         B, T = idx.shape
-        tok_emb = self.token_embedding_table(idx)       # (B, T, n_embed)
 
+        # Token embedding:
+        x = self.token_embedding_table(idx)             # (B, T, n_embed)
+
+        # Positional embedding:
         start = cache.len if cache is not None else 0
-        pos = torch.arange(start, start + T, device=idx.device)    # absolute positions
+        rope = None
+        if self.cfg.pos_embed=='learned':
+            pos = torch.arange(start, start + T, device=idx.device)     # absolute positions
+            pos_emb = self.position_embedding_table(pos)                # (T, n_embed)
+            x = x + pos_emb                                             # (B, T, n_embed)
+        elif self.cfg.pos_embed=='rope':
+            rope = self.rope_cos[start: start + T], self.rope_sin[start: start + T]
 
-        pos_emb = self.position_embedding_table(pos)    # (T, n_embed)
-        x = tok_emb + pos_emb                           # (B, T, n_embed)
-
-        for block in self.blocks: x = block(x, cache)   # (B, T, n_embed)
+        for block in self.blocks: x = block(x, rope=rope, cache=cache)  # (B, T, n_embed)
         if cache is not None: cache.advance(T)          # advance cache size once after all blocks are cached
 
         x = self.ln(x)                                  # (B, T, n_embed)
