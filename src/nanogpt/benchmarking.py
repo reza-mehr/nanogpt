@@ -608,7 +608,7 @@ def profile_case(step_fn: Callable[[], None], p: ProfileConfig, trace_path: Path
     '''
     # Initialization:
     activities = [ProfilerActivity.CPU] + ([ProfilerActivity.CUDA] if p.device == 'cuda' else [])
-    sched = schedule(wait=p.wait, warmup=p.warmup, active=p.active)
+    sched = schedule(wait=p.wait, warmup=p.warmup, active=p.active, repeat=1)
 
     # Profile with the model's regions enabled (they synchronize the device, so times include device work):
     enable_regions(p.device)

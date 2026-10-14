@@ -62,8 +62,8 @@ def generate_text(model: nn.Module, tok: Tokenizer, prompt: str, new_tokens: int
 
     # Error handling (the KV cache holds at most 'block_size' tokens):
     block_size = model.cfg.block_size
-    if use_cache and len(idx) + new_tokens > block_size:
-        raise ValueError(f'Prompt ({len(idx)} tokens) + new_tokens ({new_tokens}) '
+    if use_cache and (len(idx) + new_tokens - 1 > block_size):
+        raise ValueError(f'Prompt ({len(idx)} tokens) + new_tokens ({new_tokens} tokens), '
                         f'exceeds the model block size ({block_size}); use --no-use-cache '
                         f'for longer generation.')
 

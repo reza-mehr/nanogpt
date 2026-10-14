@@ -34,3 +34,4 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ['smoke: end-to-end runs of the scripts on tiny CPU settings (deselect with -m "not smoke")']

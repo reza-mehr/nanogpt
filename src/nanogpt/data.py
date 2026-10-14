@@ -18,7 +18,7 @@ This file contains the code to split a text dataset and generate batches from it
 class TokenSplit:
     '''Class to implement split interface to a tokenized split on disk (flat array of token ids), read via memmap.'''
 
-    def __init__(self, path, dtype: str = '<u2', in_memory: bool | None = None):
+    def __init__(self, path: str, dtype: str = '<u2', in_memory: bool | None = None):
         '''
         Parameters
         ----------

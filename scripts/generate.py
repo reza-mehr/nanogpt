@@ -28,7 +28,7 @@ device = (
 @dataclass
 class GenerateConfig:
     run_name: str                       # run folder name, empty means a timestamp
-    runs_root: Path = Path('runs')      # parent folder for all runs
+    out_dir: Path = Path('runs')        # parent folder for all runs
     ckpt: str = 'best.pt'               # checkpoint to use
 
     prompt: str = ''
@@ -58,7 +58,7 @@ def main(g: GenerateConfig):
 
     '''
     # Load the model and tokenizer from the checkpoint:
-    ckpt_path = g.runs_root / g.run_name / g.ckpt
+    ckpt_path = g.out_dir / g.run_name / g.ckpt
     model, tok, cfg = load_model_tokenizer(ckpt_path, g.device)
 
     return generate_text(model, tok, g.prompt, g.new_tokens, g.temperature, g.top_k, g.use_cache, g.seed)

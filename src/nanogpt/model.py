@@ -684,7 +684,7 @@ class GPT(nn.Module):
         # Construct the cache:
         if cache is None:
             dtype = get_active_dtype(self)
-            cache = KVCache(cfg.n_blocks, B, cfg.n_kv_head, cfg.block_size, cfg.head_size, idx.device, dtype)
+            cache = KVCache(cfg.n_blocks, B, cfg.n_kv_head, cfg.block_size, cfg.head_size, idx.device.type, dtype)
         else:
             cache.reset()                                       # a new generation always starts from an empty cache
 
