@@ -39,7 +39,8 @@ from nanogpt.reporting import SERIES_COLORS, new_axes, plot_markers, save_figure
 
 @dataclass
 class BenchBase:
-    preset: Literal['main_cfg', 'small_cfg'] = 'main_cfg'   # model preset; 'small_cfg' for quick debug runs
+    preset: Literal['main_cfg', 'small_cfg', 'stories_cfg'] = 'main_cfg'
+    # model preset; 'small_cfg' for quick debug runs
     device: str = 'mps'
     vocab_size: int = 65                    # synthetic tokens, no dataset needed
     batch_size: int | None = None           # None -> the benchmark's default batch size
@@ -275,15 +276,15 @@ FIT_COLS = [Col('variant', 'variant'), Col('c', 'c (MB)', ',.0f'), Col('a', 'a (
 #%% Model and config builders:
 
 def base_train_cfg(preset: str, device: str, vocab_size: int, batch_size: int) -> TrainConfig:
-    '''Function to build a benchmark training config from a preset: synthetic vocabulary, no dropout.'''
+    '''Function to build a benchmark training config from a preset: synthetic vocabulary, no dropout, learned positions.'''
     preset_cfg = PRESETS[preset]
-    model = replace(preset_cfg.model, vocab_size=vocab_size, dropout=0.0)      # dropout off: no mask overhead
+    model = replace(preset_cfg.model, vocab_size=vocab_size, dropout=0.0, pos_embed='learned')
     return replace(preset_cfg, model=model, device=device, batch_size=batch_size)
 
 
 def base_model_cfg(preset: str, vocab_size: int, block_size: int) -> ModelConfig:
-    '''Function to build a benchmark model config from a preset: synthetic vocabulary, no dropout, given context.'''
-    return replace(PRESETS[preset].model, vocab_size=vocab_size, dropout=0.0, block_size=block_size)
+    '''Function to build a benchmark model config from a preset: synthetic vocabulary, no dropout, learned positions.'''
+    return replace(PRESETS[preset].model, vocab_size=vocab_size, dropout=0.0, pos_embed='learned', block_size=block_size)
 
 
 def build_inference_model(base: ModelConfig, model_over: dict, precision: str, device: str):

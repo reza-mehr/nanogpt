@@ -142,11 +142,20 @@ small_cfg = TrainConfig(model=ModelConfig(block_size=8, n_embed=32, head_num=4, 
 # Basic Bigram model:
 bigram_cfg = TrainConfig(model=ModelConfig(name='bigram'), batch_size=32, learning_rate=1e-3)
 
+# Larger GPT-2-small-shaped model for TinyStories, also used for GPU benchmarks and profiles:
+stories_cfg = TrainConfig(data=DataConfig(dir='data/tinystories'),
+                          model=ModelConfig(block_size=512, n_embed=768, n_blocks=12, head_num=12, head_size=64,
+                                            pos_embed='rope', dropout=0.0),
+                          batch_size=32, max_iters=10000, lr_schedule='cosine', learning_rate=6e-4,
+                          lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95,
+                          eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16')
+
 # Register the preset configs:
 PRESETS: dict[str, TrainConfig] = {
     'main_cfg': main_cfg,
     'small_cfg': small_cfg,
     'bigram_cfg': bigram_cfg,
+    'stories_cfg': stories_cfg,
 }
 
 #%% Function to parse arguments:
