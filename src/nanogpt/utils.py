@@ -11,8 +11,6 @@ from torch.profiler import record_function
 
 #%% Global variables:
 
-_DTYPE_NAMES = {torch.float32: 'fp32', torch.bfloat16: 'bf16'}
-
 # Device synchronized at region boundaries (None disables the labels):
 _REGIONS_DEVICE: str | None = None
 
@@ -235,40 +233,6 @@ def prepare_for_inference(model: nn.Module, mode: str):
         return copy.deepcopy(model).to(torch.bfloat16), nullcontext()
 
     raise ValueError(f'Unknown precision mode: {mode}')
-
-
-def get_active_dtype(model: nn.Module) -> str:
-    '''
-    Function to extract the compute dtype in effect for a model.
-
-    Parameters
-    ----------
-    model: nn.Module
-        Model whose forward pass will run in the current context.
-
-    Returns
-    -------
-    dtype: string
-        'bf16' inside a bf16 autocast block or for bf16 weights, else 'fp32'.
-
-    Raises
-    ------
-    ValueError
-        If the autocast or weight data-type is unsupported.
-
-    '''
-    param = next(model.parameters())
-
-    # Autocast takes precedence over the weight dtype:
-    if torch.is_autocast_enabled(param.device.type):
-        torch_dtype = torch.get_autocast_dtype(param.device.type)
-    else:
-        torch_dtype = param.dtype
-
-    # Error handling:
-    if torch_dtype not in _DTYPE_NAMES: raise ValueError(f'Unsupported dtype: {torch_dtype}')
-
-    return _DTYPE_NAMES[torch_dtype]
 
 
 #%% General utility functions:

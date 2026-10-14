@@ -23,8 +23,7 @@ from nanogpt.trainer import train
 
 #%% Data and config setup for this test:
 
-# Number of words in the synthetic dataset:
-VOCAB = 16
+VOCAB = 16                      # number of tokens in the synthetic dataset
 TEXT = 'abcdefghijklmnop'       # VOCAB distinct characters, so the tokenizer matches the synthetic data
 
 @pytest.fixture
@@ -38,7 +37,7 @@ def data(tmp_path):
 
 def tiny_cfg(tmp_path, run_name: str) -> TrainConfig:
     return TrainConfig(
-        model=ModelConfig(name='bigram', vocab_size=VOCAB, block_size=8, n_embed=16,
+        model=ModelConfig(name='gpt', vocab_size=VOCAB, block_size=8, n_embed=16,
                           head_num=2, head_size=8, n_blocks=2, dropout=0.1),     # dropout exercises RNG restore
         batch_size=4, max_iters=20, eval_interval=5, eval_iters=2,
         ckpt_interval=5, learning_rate=1e-3, lr_warmup_iters=5, seed=0, device='cpu',

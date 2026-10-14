@@ -446,7 +446,7 @@ class MultiHead(nn.Module):
             with region('attn.core'):
                 out = F.scaled_dot_product_attention(
                     q, k, v,
-                    is_causal=is_causal,                            # replaces 'mask' mask for causality
+                    is_causal=is_causal,                            # replaces 'mask' for causality
                     dropout_p=dropout if self.training else 0.0,    # replaces 'dropout_attn'
                     enable_gqa=True,                                # enable grouped-query attention
                 )                                                   # (B, head_num, T, head_size)
@@ -682,9 +682,12 @@ class GPT(nn.Module):
         # Attributes:
         cfg = self.cfg
 
-        # Error handling:
+        # Error handling (the KV cache holds at most 'block_size' tokens):
         B, T0 = idx.shape
-        assert T0 + new_tokens - 1 <= cfg.block_size, 'requested number of new tokens exceeds the context size'
+        if T0 + new_tokens - 1 > cfg.block_size:
+            raise ValueError(f'Prompt ({T0} tokens) + new_tokens ({new_tokens} tokens), '
+                            f'exceeds the model block size ({cfg.block_size}); use --no-use-cache '
+                            f'for longer generation.')
 
         # Construct the cache:
         if cache is None:

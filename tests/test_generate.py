@@ -1,11 +1,12 @@
 
+'''
+This file contains code to test the generation utilities and functions.
+
+'''
+
 #%% Imports:
 
 from nanogpt.generation import truncate_at_end
-
-'''
-This file coitains code to test the generation utilities and functions.
-'''
 
 #%% Tests:
 

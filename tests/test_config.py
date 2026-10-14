@@ -88,4 +88,5 @@ def test_rope_base():
     ModelConfig(pos_embed='rope', rope_base=11.)        # no errors
     with pytest.raises(ValueError):
         ModelConfig(pos_embed='rope', rope_base=0.)
+    with pytest.raises(ValueError):
         ModelConfig(pos_embed='rope', rope_base=-11.)

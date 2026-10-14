@@ -19,7 +19,8 @@ def test_batched_attention_matches_naive():
 
     # Initialization:
     torch.manual_seed(0)
-    cfg = ModelConfig(vocab_size=16, block_size=8, n_embed=16, head_num=4, head_size=5, n_blocks=1, dropout=0.0)
+    cfg = ModelConfig(vocab_size=16, block_size=8, n_embed=16, head_num=4, head_size=5, n_blocks=1,
+                      batched_attention=False, scaled_dot_prod=False, dropout=0.0)
     naive = MultiHeadLooped(cfg).eval()
     cfg = replace(cfg, batched_attention=True)
     batched = MultiHead(cfg).eval()

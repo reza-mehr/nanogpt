@@ -1,12 +1,12 @@
 [project]
 name = "nanogpt"
 version = "0.1.0"
-description = "Add your description here"
+description = "GPT from scratch in PyTorch: KV cache, GQA, RoPE, mixed precision, with benchmarks, profiles, and ablations"
 readme = "README.md"
 authors = [
     { name = "Reza Mehr", email = "334387066+reza-mehr@users.noreply.github.com" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "datasets>=4.5.0",
     "matplotlib>=3.9.4",
@@ -17,9 +17,6 @@ dependencies = [
     "tqdm>=4.70.1",
     "tyro>=1.0.16",
 ]
-
-[project.scripts]
-nanogpt = "nanogpt:main"
 
 [dependency-groups]
 dev = [

@@ -60,13 +60,6 @@ def generate_text(model: nn.Module, tok: Tokenizer, prompt: str, new_tokens: int
     # Process the prompt (the start token marks the beginning of a document):
     idx = [tok.start_id] + tok.encode(prompt)
 
-    # Error handling (the KV cache holds at most 'block_size' tokens):
-    block_size = model.cfg.block_size
-    if use_cache and (len(idx) + new_tokens - 1 > block_size):
-        raise ValueError(f'Prompt ({len(idx)} tokens) + new_tokens ({new_tokens} tokens), '
-                        f'exceeds the model block size ({block_size}); use --no-use-cache '
-                        f'for longer generation.')
-
     # Generate and drop the start token:
     context = torch.tensor([idx], dtype=torch.long, device=device)      # (1, T)
     new_ids = model.generate(context, new_tokens, temperature, top_k, use_cache=use_cache)[0].tolist()[1:]

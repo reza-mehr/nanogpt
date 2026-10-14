@@ -8,7 +8,7 @@ import copy
 
 from nanogpt.config import ModelConfig
 from nanogpt.model import build_model
-from nanogpt.utils import autocast_ctx, prepare_for_inference, get_active_dtype, get_param_count
+from nanogpt.utils import autocast_ctx, prepare_for_inference, get_param_count
 
 '''
 This file contains model tests that ensure expected shapes, uniform initialization, optimization behavior, and causality of the language model.
@@ -18,7 +18,7 @@ This file contains model tests that ensure expected shapes, uniform initializati
 #%% Configuration setup for tests:
 
 # Model architecture parameters:
-B, T, VOCAB, N_EMBED, HEAD_SIZE = 4, 8, 18, 16, 8
+B, T, VOCAB, N_EMBED, HEAD_SIZE = 4, 11, 18, 16, 8
 
 def tiny_model(name, kv_head_num=None, pos_embed='learned'):
     '''Function to construct a tiny model to run tests on.'''
@@ -67,7 +67,7 @@ def test_generate_shapes(name):
 
 @pytest.mark.parametrize('name', ['bigram', 'gpt'])
 def test_uniform_loss(name):
-    '''Function to test that the model parameters are initialized in a uniformly random way.'''
+    '''Function to test that the initial model predictions are near uniform.'''
 
     model = tiny_model(name)
     idx = torch.randint(0, VOCAB, (B, T))
@@ -105,16 +105,19 @@ def test_overfit(dtype, kv_head_num, pos_embed):
 
 #%% Causality tests:
 
-def _test_causality(name, t, kv_head_num=None, dtype='fp32'):
+def _test_causality(name, t, kv_head_num=None, pos_embed='learned', dtype='fp32'):
     '''Function to test that changing the token at position t must not affect outputs at positions < t.'''
 
+    # Initialization:
     device = 'cpu'
-    model = tiny_model(name, kv_head_num).to(device).eval()   # eval: no dropout, deterministic
+    model = tiny_model(name, kv_head_num, pos_embed).to(device).eval()  # eval: no dropout, deterministic
+    model, ctxt = prepare_for_inference(model, dtype)                   # cast the model or forward pass based on 'dtype'
     idx = torch.randint(0, VOCAB, (B, T), device=device)
     idx2 = idx.clone()
     idx2[:, t] = (idx[:, t] + 1) % VOCAB    # guaranteed different token at position 't' for all sequences in the batch
 
-    with torch.no_grad(), autocast_ctx(device, dtype):
+    # Forward pass:
+    with torch.no_grad(), ctxt:
         logits, _ = model(idx)
         logits2, _ = model(idx2)
 
@@ -127,8 +130,8 @@ def _test_causality(name, t, kv_head_num=None, dtype='fp32'):
 
 @pytest.mark.parametrize('t', [0, 3, T - 1])
 @pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16', 'bf16'])
-def test_causality_gpt(t, kv_head_num, dtype):
-    _test_causality('gpt', t, kv_head_num, dtype)
+def test_causality_gpt(t, kv_head_num, pos_embed, dtype):
+    _test_causality('gpt', t, kv_head_num, pos_embed, dtype)
 
 
 @pytest.mark.parametrize('t', [0, 3, T - 1])
@@ -154,24 +157,26 @@ def test_no_leakage_across_batch(kv_head_num):
 
 #%% Mixed-precision compute test:
 
-def test_bf16_forward_close_to_fp32():
-    '''Function to ensure that the 'bf16' precision on forward pass is close to 'fp32'.'''
+@pytest.mark.parametrize('dtype', ['mixed_bf16', 'bf16'])
+def test_bf16_forward_close_to_fp32(dtype):
+    '''Function to ensure that the 'bf16' precision on full cast or forward pass are close to 'fp32'.'''
 
     # Initialization:
     model = tiny_model('gpt').to('cpu').eval()
+    cast, ctxt = prepare_for_inference(model, dtype)        # cast the model or forward pass based on 'dtype'
     idx = torch.randint(0, VOCAB, (B, T))
 
     with torch.no_grad():
         _, loss32 = model(idx, idx)
-        with autocast_ctx('cpu', 'bf16'):
-            _, loss16 = model(idx, idx)
+        with ctxt:
+            _, loss16 = cast(idx, idx)
     assert abs(loss32.item() - loss16.item()) < 0.05
 
 
 def test_mixed_bf16_keeps_fp32_state():
-    '''Function to test that mixed-precision mode does not modify model weights.'''
+    '''Function to test that mixed-precision mode does not modify data-type for model weights.'''
 
-    # Initializaiton:
+    # Initialization:
     model = tiny_model('gpt')
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3)
     x = torch.randint(0, VOCAB, (B, T))
@@ -200,30 +205,16 @@ def test_bf16_cast_leaves_original_untouched():
         assert v.dtype == before[k].dtype and torch.equal(v, before[k])
 
 
-def test_get_active_dtype():
-    '''Function to test that the get_active_dtype() returns the correct data type.'''
-
-    model = tiny_model('gpt')
-    assert get_active_dtype(model) == 'fp32'
-
-    with torch.autocast('cpu', dtype=torch.bfloat16):
-        assert get_active_dtype(model) == 'bf16'
-    assert get_active_dtype(copy.deepcopy(model).to(torch.bfloat16)) == 'bf16'
-
-    with pytest.raises(ValueError):
-        get_active_dtype(copy.deepcopy(model).to(torch.float16))        # fp16 is not an acceptable type
-
-
 #%% Generation test:
 
 def test_cached_matches_naive_generation(kv_head_num, pos_embed):
-    '''Function to test that the cached and non-cached implementation of the generate function return identical resutls.'''
+    '''Function to test that the cached and non-cached implementation of the generate function return identical results.'''
     model = tiny_model('gpt', kv_head_num, pos_embed).eval()
     idx = torch.randint(0, VOCAB, (1, 1))
     torch.manual_seed(0)
-    naive = model.generate(idx, new_tokens=6, use_cache=False)
+    naive = model.generate(idx, new_tokens=6, temperature=0., use_cache=False)
     torch.manual_seed(0)
-    cached = model.generate(idx, new_tokens=6, use_cache=True)
+    cached = model.generate(idx, new_tokens=6, temperature=0., use_cache=True)
     assert torch.equal(naive, cached)
 
 #%% Trainable parameter tests:
@@ -232,5 +223,5 @@ def test_param_count_rope():
     '''Function to test that the trainable parameters for positional embedding are removed for RoPE.'''
     model1 = tiny_model('gpt', pos_embed='learned')
     model2 = tiny_model('gpt', pos_embed='rope')
-    assert get_param_count(model1) - get_param_count(model2) == N_EMBED * HEAD_SIZE
+    assert get_param_count(model1) - get_param_count(model2) == T * N_EMBED
 

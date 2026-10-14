@@ -24,11 +24,11 @@ device = (
     else 'cpu'
 )
 
-#%% Profiling configurations:
+#%% Generation configurations:
 
 @dataclass
 class GenerateConfig:
-    run_name: str                       # run folder name, empty means a timestamp
+    run_name: str                       # run folder name
     out_dir: Path = Path('runs')        # parent folder for all runs
     ckpt: str = 'model.pt'              # checkpoint to use
 
@@ -39,7 +39,7 @@ class GenerateConfig:
     use_cache: bool = True              # use key-value cache if True, ignored for Bigram model
 
     seed: int = 1337                    # random seed
-    device: str = device                # device to run the training on
+    device: str = device                # device to run the generation on
 
 #%% Main function:
 

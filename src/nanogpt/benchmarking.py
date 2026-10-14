@@ -35,13 +35,23 @@ from nanogpt.reporting import Col, pivot_sections, report_pivot, table_section, 
 from nanogpt.reporting import load_json, save_json, load_rows_csv, save_rows_csv
 from nanogpt.reporting import SERIES_COLORS, new_axes, plot_markers, save_figure
 
+#%% Global variables:
+
+device = (
+    'cuda'
+    if torch.cuda.is_available()
+    else 'mps'
+    if torch.backends.mps.is_available()
+    else 'cpu'
+)
+
 #%% Benchmark configurations:
 
 @dataclass
 class BenchBase:
     preset: Literal['main_cfg', 'small_cfg', 'stories_cfg'] = 'main_cfg'
     # model preset; 'small_cfg' for quick debug runs
-    device: str = 'mps'
+    device: str = device
     vocab_size: int = 65                    # synthetic tokens, no dataset needed
     batch_size: int | None = None           # None -> the benchmark's default batch size
     warmup: int = 3                         # untimed repeats before measuring (compiles kernels)

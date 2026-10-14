@@ -7,7 +7,7 @@ import torch
 from nanogpt.utils import build_rope_cos_sin, apply_rope
 
 '''
-This file contains the code to test the shapes and mathematical formultion of the rotary positional embedding (RoPE).
+This file contains the code to test the shapes and mathematical formulation of the rotary positional embedding (RoPE).
 
 '''
 
@@ -45,7 +45,7 @@ def _reference_rope(vec, pos, rope_base):
 
 
 def _rotated_qk(head_size, max_len, rope_base):
-    '''Fixture to construct query and keys with identical entries at all position rows and compute their rotations.'''
+    '''Function to construct query and keys with identical entries at all position rows and compute their rotations.'''
 
     torch.manual_seed(0)
     q = torch.randn(head_size, dtype=torch.float32)
@@ -69,7 +69,7 @@ def test_cos_sin_tables():
     assert cos.shape == (max_len, head_size)
     assert sin.shape == (max_len, head_size)
 
-    # Cosine and since values:
+    # Cosine and sine values:
     assert torch.all(cos[0] == 1) and torch.all(sin[0] == 0)
     assert torch.allclose(cos[:, 0], torch.cos(torch.arange(max_len).float()))
     assert torch.allclose(sin[:, 0], torch.sin(torch.arange(max_len).float()))
@@ -135,5 +135,3 @@ def test_rope_implementation():
         expected = _reference_rope(v[0, 0, p], p, rope_base)
         assert torch.allclose(out[0, 0, p], expected, atol=1e-5)
 
-
-#%% Math tests:
