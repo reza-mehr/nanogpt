@@ -10,17 +10,17 @@ from nanogpt.utils import autocast_ctx
 
 #%% Main code:
 
-@pytest.mark.parametrize('n_kv_head', [1, 2, 4])        # head_num = 4
+@pytest.mark.parametrize('kv_head_num', [1, 2, 4])        # head_num = 4
 @pytest.mark.parametrize('sdpa', [True, False])
 @pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16', 'bf16'])
-def test_cached_logits_match_full_forward(n_kv_head, sdpa, dtype):
+def test_cached_logits_match_full_forward(kv_head_num, sdpa, dtype):
     '''Function to test consistency of cached key-values with the ones generated live.'''
 
     # Initialization:
     torch.manual_seed(0)
     n_blocks, batch_size, head_num, max_len, head_size, device = 2, 2, 4, 32, 8, 'cpu'
     cfg = ModelConfig(name='gpt', vocab_size=16, block_size=max_len, n_embed=16, head_num=head_num,
-                      n_kv_head=n_kv_head, head_size=head_size, n_blocks=n_blocks, dropout=0.0, scaled_dot_prod=sdpa)
+                      kv_head_num=kv_head_num, head_size=head_size, n_blocks=n_blocks, dropout=0.0, scaled_dot_prod=sdpa)
     model = build_model(cfg).to(device).eval()
     seq = torch.randint(0, 16, (batch_size, 20))
 
@@ -28,7 +28,7 @@ def test_cached_logits_match_full_forward(n_kv_head, sdpa, dtype):
         with autocast_ctx(device, dtype):
             full, _ = model(seq)                        # (B, 20, V): one pass
 
-        cache = KVCache(n_blocks, batch_size, n_kv_head, max_len, head_size, device, dtype)
+        cache = KVCache(n_blocks, batch_size, cfg.n_kv_head, max_len, head_size)
         with autocast_ctx(device, dtype):
             prefill, _ = model(seq[:, :8], cache=cache) # first 8 tokens
         steps = [prefill]

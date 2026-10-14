@@ -13,9 +13,8 @@ from torch.profiler import record_function
 
 _DTYPE_NAMES = {torch.float32: 'fp32', torch.bfloat16: 'bf16'}
 
-# Profiler labels are off unless a profiling script enables them:
-_REGIONS_ENABLED = False
-_REGIONS_DEVICE: str | None = None      # device synchronized at region boundaries; None disables the labels
+# Device synchronized at region boundaries (None disables the labels):
+_REGIONS_DEVICE: str | None = None
 
 #%% Model utility functions:
 
@@ -104,9 +103,9 @@ def expand_kv(k: torch.Tensor, v: torch.Tensor, head_num: int, n_kv_head: int):
 
 #%% RoPE utility functions:
 
-def build_rope_cos_sin(head_size: int, rope_base: float, max_len: int):
+def build_rope_cos_sin(head_size: int, rope_base: float, length: int, start: int = 0, device: torch.device | str | None = None) -> tuple[torch.Tensor, torch.Tensor]:
     '''
-    Function to compute cos/sin tables for tokens in rotary positional embedding (RoPE) mode.
+    Function to build cos/sin tables for tokens in rotary positional embedding (RoPE) mode.
     - Each head's 'head_size' dimensions are treated as head_size/2 pairs of 2-D vectors.
     - 2-D vectors are rotated by angle pos x θ_i, where θ_i = base^(-2i/head_size).
     - Operations must be done in 'fp32' since 'bf16' does not have sufficient precision.
@@ -117,30 +116,33 @@ def build_rope_cos_sin(head_size: int, rope_base: float, max_len: int):
         Attention head size.
     rope_base: float
         RoPE base. Determines the rotation angle resolution.
-    max_len: int
-        Maximum possible context size to compute rotation angles.
+    length: int
+        Number of positions.
+    start: int, optional
+        First position, e.g. the key-value cache length when decoding. The default is 0.
+    device: torch.device or str, optional
+        Device to build the tables on. The default is None (the current default device).
 
     Returns
     -------
-    cos (max_len, head_size): tensor
+    cos (length, head_size): tensor
         Cosine of rotation angles to be applied to queries and keys.
-    sin (max_len, head_size): tensor
+    sin (length, head_size): tensor
         Sine of rotation angles to be applied to queries and keys.
 
     '''
     # Compute frequencies θ_i = base^(−2i/head_size):
-    freq = torch.arange(0, head_size, 2, dtype=torch.float32) / head_size
+    freq = torch.arange(0, head_size, 2, device=device, dtype=torch.float32) / head_size
     inv_freq = 1 / rope_base ** freq                    # (head_size/2)
 
     # Compute pos x θ_i outer products (entry [m, i] is the angle for pair i at position m):
-    pos = torch.arange(max_len, dtype=torch.float32)    # token positions
-    angles = torch.outer(pos, inv_freq)                 # (max_len, head_size/2)
+    pos = torch.arange(start, start + length, device=device, dtype=torch.float32)   # token positions
+    angles = pos[:, None] * inv_freq[None, :]           # (length, head_size/2)
+    angles = torch.cat([angles, angles], dim=-1)        # (length, head_size)
 
     # Compute sine and cosine tables for rotation:
-    cos = angles.cos()                                  # (max_len, head_size/2)
-    sin = angles.sin()                                  # (max_len, head_size/2)
-    cos = torch.cat([cos, cos], dim=-1)                 # (max_len, head_size)
-    sin = torch.cat([sin, sin], dim=-1)                 # (max_len, head_size)
+    cos = angles.cos()                                  # (length, head_size)
+    sin = angles.sin()                                  # (length, head_size)
 
     return cos, sin
 
@@ -194,7 +196,7 @@ def apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor):
 #%% Data type precision utility functions:
 
 def autocast_ctx(device: str, dtype: str):
-    '''Function to autocase forward passes for mixed-precision context; no-ops for fp32.'''
+    '''Function to auto-cast forward passes for mixed-precision context; no-ops for fp32.'''
     if dtype == 'fp32':
         return nullcontext()
     return torch.autocast(device_type=device, dtype=torch.bfloat16)

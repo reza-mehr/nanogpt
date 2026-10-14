@@ -2,14 +2,15 @@
 #%% Imports:
 
 import sys
+from pathlib import Path
 import tyro
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 import torch
+import inspect
+from datetime import datetime
 from typing import Literal
 import logging
 
-from datetime import datetime
-from pathlib import Path
 
 #%% Global variables:
 
@@ -21,7 +22,7 @@ device = (
     else 'cpu'
 )
 
-#%% Main code:
+#%% Main config:
 
 @dataclass
 class DataConfig:
@@ -37,7 +38,8 @@ class ModelConfig:
     n_blocks: int = 6                                   # number of transformer blocks
 
     head_num: int = 6                                   # number of attention heads per block
-    n_kv_head: int | None = None                        # None -> head_num (MHA), 1 < n_kv_head < head_num (GQA), 1 (MQA)
+    kv_head_num: int | None = None
+    # kv_head_num = None or head_num -> multi-head attention (MHA), 1 < kv_head_num < head_num -> grouped-query attention (GQA), kv_head_num = 1 -> multi-query attention (MQA)
     head_size: int = 64                                 # attention head size
     batched_attention: bool = True
     # if True, compute multi-head self-attention in a batch for efficiency
@@ -51,21 +53,19 @@ class ModelConfig:
     ln_torch: bool = True                               # if True, use PyTorch implementation of the layer-norm
     dropout: float = 0.2                                # dropout probability
 
-
     def __post_init__(self):
         '''Function to validate input arguments and assign default values.'''
 
-        # Default value and checks for number of kv heads for GQA:
-        if self.n_kv_head is None: self.n_kv_head = self.head_num
-        if not 1 <= self.n_kv_head <= self.head_num:
-            raise ValueError(f"'n_kv_head' {self.n_kv_head} out of bound, must be between 1 and 'head_num' {self.head_num}.")
-        if self.head_num % self.n_kv_head != 0:
-            raise ValueError(f"'head_num' {self.head_num} must be divisible by 'n_kv_head' {self.n_kv_head}.")
+        # Checks for number of kv heads for GQA:
+        if not (self.kv_head_num is None or 1 <= self.kv_head_num <= self.head_num):
+            raise ValueError(f"'kv_head_num' {self.kv_head_num} out of bound, must be between 1 and 'head_num' {self.head_num}.")
+        if not (self.kv_head_num is None or self.head_num % self.kv_head_num == 0):
+            raise ValueError(f"'head_num' {self.head_num} must be divisible by 'kv_head_num' {self.kv_head_num}.")
 
         # Advanced developments are infeasible or not done on looped multi-head attention path:
         if not self.batched_attention:
             unsupported = []
-            if self.n_kv_head != self.head_num: unsupported.append('GQA')
+            if not (self.kv_head_num is None or self.kv_head_num == self.head_num): unsupported.append('GQA')
             if self.scaled_dot_prod: unsupported.append('Scaled dot-product attention')
             if self.pos_embed == 'rope': unsupported.append('Rotary positional embedding')
             if unsupported:
@@ -76,6 +76,10 @@ class ModelConfig:
             raise ValueError(f"'head_size' {self.head_size} must be even for RoPE!")
         if self.pos_embed == 'rope' and self.rope_base <= 1:
             raise ValueError(f"'rope_base' {self.rope_base} must be larger than one!")
+
+    @property
+    def n_kv_head(self):
+        return self.head_num if self.kv_head_num is None else self.kv_head_num
 
 
 @dataclass
@@ -108,7 +112,7 @@ class TrainConfig:
     seed: int = 1337                                        # random seed
     run_name: str = ''                                      # run folder name, empty means a timestamp
     out_dir: str = 'runs'                                   # parent folder for runs
-    resume: bool = False                                    # resume training from out_dir/latest.pt
+    resume: bool = False                                    # resume training from run_dir/latest.pt
     log_level: int = logging.INFO                           # logging level, 20 for INFO, 10 for DEBUG
 
     sample_prompts: tuple[str, ...] = ('',)                 # prompts for final samples; '' starts from the start token
@@ -117,7 +121,8 @@ class TrainConfig:
 
     def __post_init__(self):
         '''Function to validate input arguments and assign default values.'''
-        assert 0 < self.lr_warmup_iters < self.max_iters, 'warmup must fit inside the run'
+        if self.lr_schedule == 'cosine' and not (0 < self.lr_warmup_iters < self.max_iters):
+            raise ValueError(f"Warmup '{self.lr_warmup_iters}' must be between 0 and max iterations '{self.max_iters}'.")
         if not self.run_name:
             self.run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -168,3 +173,19 @@ def parse_config() -> TrainConfig:
         sys.exit(f"Unknown preset '{name}'. Available: {sorted(PRESETS)}")
     return tyro.cli(TrainConfig, default=PRESETS[name])
 
+
+#%% Utility function:
+
+def config_record(obj) -> dict:
+    '''
+    Function to convert a config to a dict of its fields and its properties (derived values such as n_kv_head).
+
+    For records only (config.json). Unlike asdict(), the result cannot rebuild the config, since properties are
+    not constructor arguments; checkpoints keep asdict() for that.
+
+    '''
+    record = {f.name: config_record(v) if is_dataclass(v) else v
+              for f in fields(obj) for v in [getattr(obj, f.name)]}
+    for name, _ in inspect.getmembers(type(obj), lambda a: isinstance(a, property)):
+        record[name] = getattr(obj, name)
+    return record

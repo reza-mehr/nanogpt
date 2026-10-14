@@ -29,7 +29,7 @@ from tqdm import tqdm
 from nanogpt.config import PRESETS, ModelConfig, TrainConfig
 from nanogpt.kv_cache import KVCache
 from nanogpt.model import build_model
-from nanogpt.utils import autocast_ctx, enable_regions, get_active_dtype, prepare_for_inference, region, sync_device
+from nanogpt.utils import autocast_ctx, enable_regions, prepare_for_inference, region, sync_device
 
 from nanogpt.reporting import Col, pivot_sections, report_pivot, table_section, write_report
 from nanogpt.reporting import load_json, save_json, load_rows_csv, save_rows_csv
@@ -315,12 +315,9 @@ def build_inference_model(base: ModelConfig, model_over: dict, precision: str, d
     return prepare_for_inference(model, precision)
 
 
-def make_kv_cache(model, ctx, batch_size: int, device: str) -> KVCache:
-    '''Function to allocate a key-value cache matching the model and the dtype active under its precision context.'''
-    with ctx:
-        dtype = get_active_dtype(model)                     # must run inside 'ctx' to see autocast
-    cfg = model.cfg
-    return KVCache(cfg.n_blocks, batch_size, cfg.n_kv_head, cfg.block_size, cfg.head_size, device, dtype)
+def make_kv_cache(cfg: ModelConfig, batch_size: int) -> KVCache:
+    '''Function to allocate a key-value cache.'''
+    return KVCache(cfg.n_blocks, batch_size, cfg.n_kv_head, cfg.block_size, cfg.head_size)
 
 #%% Measurement utilities:
 
@@ -459,7 +456,7 @@ def bench_generate_cell(model: nn.Module, ctx, use_cache: bool, b: GenerateBench
     # Initialization:
     device, B, N = b.device, b.batch, b.new_tokens
     idx = torch.randint(0, b.vocab_size, (B, T), device=device)
-    cache = make_kv_cache(model, ctx, B, device) if use_cache else None     # allocated once, untimed
+    cache = make_kv_cache(model.cfg, B) if use_cache else None     # allocated once, untimed
 
     def gen(n: int):
         with ctx:
@@ -510,9 +507,9 @@ def run_generate_gqa(b: GenerateBenchConfig) -> list[dict]:
     rows = []
     for n_kv in tqdm(n_kvs, desc='gqa sweep'):
         free_device_memory(b.device)
-        model, ctx = build_inference_model(base, best | dict(n_kv_head=n_kv), b.precision, b.device)
+        model, ctx = build_inference_model(base, best | dict(kv_head_num=n_kv), b.precision, b.device)
         for T in b.prompt_lens:
-            used = T + b.new_tokens                         # cache positions filled by the end of generation
+            used = T + b.new_tokens - 1                     # cache positions filled by the end of generation
             cache_mb = 2 * base.n_blocks * b.batch * n_kv * used * base.head_size * bytes_per / 2**20
             rows.append(dict(variant=label(n_kv), ref=label(n_kvs[0]), T=T, cache_mb=cache_mb,
                              **bench_generate_cell(model, ctx, True, b, T)))
@@ -565,7 +562,7 @@ def make_profile_step(p: ProfileConfig, variant: str, T: int) -> Callable[[], No
     # Inference model and inputs:
     base = base_model_cfg(p.preset, p.vocab_size, block_size=T + 1)
     model, ctx = build_inference_model(base, model_over, run_over['precision'], p.device)
-    cache = make_kv_cache(model, ctx, p.batch, p.device) if run_over['use_cache'] else None
+    cache = make_kv_cache(model.cfg, p.batch) if run_over['use_cache'] else None
     idx = torch.randint(0, p.vocab_size, (p.batch, T + 1), device=p.device)
     prompt, token = idx[:, :T], idx[:, T:]                  # (B, T), (B, 1)
 

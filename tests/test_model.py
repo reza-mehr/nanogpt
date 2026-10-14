@@ -20,15 +20,14 @@ This file contains model tests that ensure expected shapes, uniform initializati
 # Model architecture parameters:
 B, T, VOCAB, N_EMBED, HEAD_SIZE = 4, 8, 18, 16, 8
 
-def tiny_model(name, n_kv_head=None, pos_embed='learned'):
+def tiny_model(name, kv_head_num=None, pos_embed='learned'):
     '''Function to construct a tiny model to run tests on.'''
-    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=N_EMBED, head_num=4, n_kv_head=n_kv_head, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed,
-                      dropout=0.)       # set dropout to 0 to permit overfitting in one of the tests below
+    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=N_EMBED, head_num=4, kv_head_num=kv_head_num, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed, dropout=0.)       # set dropout to 0 to permit overfitting in one of the tests below
     torch.manual_seed(0)
     return build_model(cfg)
 
 @pytest.fixture(params=[4, 2, 1], ids=['mha', 'gqa', 'mqa'])    # head_num = 4
-def n_kv_head(request):
+def kv_head_num(request):
     return request.param
 
 @pytest.fixture(params=['learned', 'rope'])
@@ -38,10 +37,10 @@ def pos_embed(request):
 #%% Shape tests:
 
 @pytest.mark.parametrize('name', ['bigram', 'gpt'])
-def test_forward_shapes(name, n_kv_head, pos_embed):
+def test_forward_shapes(name, kv_head_num, pos_embed):
     '''Function to test the forward function output shapes.'''
 
-    model = tiny_model(name, n_kv_head, pos_embed)
+    model = tiny_model(name, kv_head_num, pos_embed)
     idx = torch.randint(0, VOCAB, (B, T))
 
     logits, loss = model(idx, targets=None)         # no targets, no loss
@@ -79,13 +78,13 @@ def test_uniform_loss(name):
 #%% Overfit test:
 
 @pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16'])
-def test_overfit(dtype, n_kv_head, pos_embed):
+def test_overfit(dtype, kv_head_num, pos_embed):
     '''Function to test the optimization loop by ensuring that the model can overfit to a single batch of data.'''
 
     # Initialize the model, optimizer, and data:
     device = 'cpu'
     torch.manual_seed(0)
-    model = tiny_model('gpt', n_kv_head, pos_embed).to(device)
+    model = tiny_model('gpt', kv_head_num, pos_embed).to(device)
     optim = torch.optim.AdamW(model.parameters(), lr=1e-3)
     idx = torch.randint(0, VOCAB, (B, T), device=device)
     targets = torch.randint(0, VOCAB, (B, T), device=device)
@@ -106,11 +105,11 @@ def test_overfit(dtype, n_kv_head, pos_embed):
 
 #%% Causality tests:
 
-def _test_causality(name, t, n_kv_head=None, dtype='fp32'):
+def _test_causality(name, t, kv_head_num=None, dtype='fp32'):
     '''Function to test that changing the token at position t must not affect outputs at positions < t.'''
 
     device = 'cpu'
-    model = tiny_model(name, n_kv_head).to(device).eval()   # eval: no dropout, deterministic
+    model = tiny_model(name, kv_head_num).to(device).eval()   # eval: no dropout, deterministic
     idx = torch.randint(0, VOCAB, (B, T), device=device)
     idx2 = idx.clone()
     idx2[:, t] = (idx[:, t] + 1) % VOCAB    # guaranteed different token at position 't' for all sequences in the batch
@@ -128,8 +127,8 @@ def _test_causality(name, t, n_kv_head=None, dtype='fp32'):
 
 @pytest.mark.parametrize('t', [0, 3, T - 1])
 @pytest.mark.parametrize('dtype', ['fp32', 'mixed_bf16', 'bf16'])
-def test_causality_gpt(t, n_kv_head, dtype):
-    _test_causality('gpt', t, n_kv_head, dtype)
+def test_causality_gpt(t, kv_head_num, dtype):
+    _test_causality('gpt', t, kv_head_num, dtype)
 
 
 @pytest.mark.parametrize('t', [0, 3, T - 1])
@@ -139,10 +138,10 @@ def test_causality_bigram(t):
 
 #%% Batch leak tests:
 
-def test_no_leakage_across_batch(n_kv_head):
+def test_no_leakage_across_batch(kv_head_num):
     '''Tests that changing one sequence in a batch must not affect the others.'''
 
-    model = tiny_model('gpt', n_kv_head).eval() # eval: no dropout, deterministic
+    model = tiny_model('gpt', kv_head_num).eval() # eval: no dropout, deterministic
     idx = torch.randint(0, VOCAB, (B, T))
     idx2 = idx.clone()
     idx2[0] = (idx[0] + 1) % VOCAB              # change only sequence 0
@@ -217,9 +216,9 @@ def test_get_active_dtype():
 
 #%% Generation test:
 
-def test_cached_matches_naive_generation(n_kv_head, pos_embed):
+def test_cached_matches_naive_generation(kv_head_num, pos_embed):
     '''Function to test that the cached and non-cached implementation of the generate function return identical resutls.'''
-    model = tiny_model('gpt', n_kv_head, pos_embed).eval()
+    model = tiny_model('gpt', kv_head_num, pos_embed).eval()
     idx = torch.randint(0, VOCAB, (1, 1))
     torch.manual_seed(0)
     naive = model.generate(idx, new_tokens=6, use_cache=False)

@@ -23,13 +23,17 @@ from nanogpt.tokenizers import Tokenizer, build_tokenizer
 #%% Checkpoint utilities:
 
 def git_info() -> dict:
-    '''Function to git the status of the code at checkpointing time.'''
+    '''Function to get the status of the code at checkpointing time: commit, dirty flag, diff, and untracked files.'''
+    def _git(*args: str) -> str:
+        return subprocess.check_output(['git', *args], text=True, stderr=subprocess.DEVNULL)
+
     try:
-        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-        dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], text=True).strip())
-        return {"commit": commit, "dirty": dirty}
-    except Exception:
-        return {"commit": None, "dirty": None}
+        commit = _git('rev-parse', 'HEAD').strip()
+        diff = _git('diff', 'HEAD')                     # staged and unstaged changes to tracked files
+        untracked = _git('ls-files', '--others', '--exclude-standard').split()
+        return {'commit': commit, 'dirty': bool(diff or untracked), 'diff': diff, 'untracked': untracked}
+    except Exception:                                   # not a git repository, or git not installed
+        return {'commit': None, 'dirty': None, 'diff': None, 'untracked': None}
 
 
 def save_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, step: int,
@@ -54,7 +58,7 @@ def save_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, step: in
     cfg: TrainConfig
         Full training configuration, including the model configuration.
     git: dict
-        Commit, dirty flag, and diff, captured once at the start of the run.
+        Commit, dirty flag, diff, and untracked, captured once at the start of the run.
 
     '''
     ckpt = {

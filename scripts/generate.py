@@ -1,4 +1,9 @@
 
+'''
+This file contains the code to generate text using a trained model.
+
+'''
+
 #%% Imports:
 
 from pathlib import Path
@@ -9,10 +14,6 @@ import tyro
 from nanogpt.checkpoint import load_model_tokenizer
 from nanogpt.generation import generate_text
 
-'''
-This file contains the code to generate text using a trained model.
-
-'''
 #%% Global variables:
 
 device = (

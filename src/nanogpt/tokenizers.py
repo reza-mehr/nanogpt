@@ -14,7 +14,7 @@ This file contains the code to construct tokenizers. All tokenizers have consist
 #%% Common interface to build tokenizers:
 
 def build_tokenizer(meta: dict):
-    '''Function to build a tokenizer given a relavent 'meta' dictionary.'''
+    '''Function to build a tokenizer given a relevant 'meta' dictionary.'''
     return TOKENIZERS.get(meta['tokenizer']).from_meta(meta)
 
 
@@ -56,7 +56,7 @@ class Tokenizer(ABC):
 #%% Character tokenizer class:
 
 @TOKENIZERS.register('char')
-class CharTokenizer:
+class CharTokenizer(Tokenizer):
     '''Class to implement character-level tokenizer where the vocabulary is the set of characters in the text dataset.'''
     def __init__(self, text: str | list):
         '''
@@ -141,14 +141,14 @@ class CharTokenizer:
 
     @classmethod
     def from_meta(cls, meta: dict) -> 'CharTokenizer':
-        '''Function to construct an instance of the class given the output of self._meta() method.'''
+        '''Function to construct an instance of the class given the output of self.to_meta() method.'''
         return cls(meta['chars'])                   # sorted(set(chars)) reproduces the same mapping
 
 
 #%% OpenAI Tiktoken tokenizer:
 
 @TOKENIZERS.register('gpt2')
-class GPT2Tokenizer:
+class GPT2Tokenizer(Tokenizer):
     '''Class to implement GPT-2 byte-pair encoding (BPE) tokenizer (tiktoken).'''
 
     def __init__(self):

@@ -1,23 +1,24 @@
 
 '''
-This file conntains the trainer code for the model.
+This file contains the trainer code for the model.
 
-Each run folder ('cfg.out_dir') holds:
+Each run folder ('cfg.run_dir') holds:
 - config.json, env.json: the run configuration and the environment at the start (code version, software, hardware)
 - metrics.csv: one row per evaluation, appended and flushed as training goes, trimmed on resume
 - tb/: TensorBoard event files for live monitoring
 - latest.pt, best.pt: training checkpoints (weights, optimizer and RNG states)
 - summary.json, samples.md: written when the run completes (final/best losses and throughput; fixed-seed samples)
 - model.pt: written when the run completes; inference-only export of best.pt (bf16 weights, configs, tokenizer)
-- the logger's output file, if 'setup_logger' writes one
+- the logger's output file from 'setup_logger'
 
 '''
 
 #%% Imports:
 
+import os
 import shutil
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from logging import Logger
 
 import torch
@@ -25,7 +26,7 @@ from torch import nn
 from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 
-from nanogpt.config import TrainConfig
+from nanogpt.config import TrainConfig, config_record
 from nanogpt.checkpoint import git_info, load_checkpoint, save_checkpoint
 from nanogpt.checkpoint import check_inference_checkpoint, save_inference_checkpoint
 from nanogpt.data import TokenSplit, get_batch
@@ -43,7 +44,7 @@ class RunState:
     '''Class to hold the logging tools and bookkeeping shared by the training loop functions.'''
     logger: Logger
     writer: SummaryWriter
-    git: dict                       # commit, dirty flag, and diff to save to checkpoint
+    git: dict                       # commit, dirty flag, diff, and untracked to save to checkpoint
     tokenizer_meta: dict            # tokenizer metadata to save to checkpoint and to rebuild the tokenizer
     best_val: float                 # best smoothed validation loss so far
     mark_time: float                # wall time when the current training interval started (after the last eval)
@@ -59,9 +60,9 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     ----------
     cfg: TrainConfig
         Configurations to use.
-    train_data: torch.Tensor
+    train_data: TokenSplit
         Train data.
-    val_data: torch.Tensor
+    val_data: TokenSplit
         Validation data.
     tokenizer_meta: dict
         Containing tokenizer metadata to include in the checkpoint.
@@ -105,7 +106,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
         logger.info(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
     else:
         # Record the configuration and the environment at the start of a fresh run:
-        save_json(asdict(cfg), cfg.run_dir / 'config.json')
+        save_json(config_record(cfg), cfg.run_dir / 'config.json')
         save_json(collect_env(cfg.device), cfg.run_dir / 'env.json')
 
     # TensorBoard writer, created after resuming so it hides only the events logged after the checkpoint:
@@ -235,12 +236,15 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr,
                         grad_norm=grad_norm, tok_per_sec=tok_per_sec, train_s=train_s), cfg.run_dir / 'metrics.csv')
 
-    # Save checkpoint:
+    # Save the latest and potentially best checkpoints:
     if step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
-        save_checkpoint(latest, model, optim, step, state.tokenizer_meta, val_loss, cfg, state.git)      # latest checkpoint
-        if val_loss < state.best_val:
-            state.best_val = val_loss
-            shutil.copyfile(latest, best)                               # latest checkpoint is the best checkpoint
+        best_checkpoint = (val_loss < state.best_val)
+        if best_checkpoint: state.best_val = val_loss
+        save_checkpoint(latest, model, optim, step, state.tokenizer_meta, state.best_val, cfg, state.git)
+        if best_checkpoint:                         # latest checkpoint is the best checkpoint
+            tmp = best.with_suffix('.tmp')
+            shutil.copyfile(latest, tmp)
+            os.replace(tmp, best)                   # atomic: never leaves a half-written checkpoint
 
     # Start the next training interval after evaluation and checkpointing:
     state.mark_time, state.mark_step = time.perf_counter(), step

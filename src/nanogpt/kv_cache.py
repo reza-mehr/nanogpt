@@ -12,7 +12,7 @@ This file contains the code to implement key-value cache for transformer blocks.
 
 class KVCache:
     '''Class to implement the key-value cache for transformer blocks.'''
-    def __init__(self, n_blocks: int, batch_size: int, n_kv_head: int, max_len: int, head_size: int, device: str, dtype: str = 'fp32'):
+    def __init__(self, n_blocks: int, batch_size: int, n_kv_head: int, max_len: int, head_size: int):
         '''
         Parameters
         ----------
@@ -21,49 +21,39 @@ class KVCache:
         batch_size: int
             Inference batch size.
         n_kv_head: int
-            Number of key and value heads in each block: n_kv_head <= heads_num
+            Number of key and value heads in each block: n_kv_head <= head_num.
         max_len: int
-            Maximum context legnth to cache.
+            Maximum context length to cache.
         head_size: int
             Attention head dimension.
-        device: string
-            Device to use.
-        dtype: string, optional
-            The data-type to store keys and values from 'fp32, bf16'. The default is 'fp32'.
 
         Attributes
         ----------
-        n_kv_head
-        head_size
-
-        max_len
+        batch_size, n_kv_head, max_len, head_size
+            Expected cache dimensions, checked on every update.
         len: int
-            Current cache context lengths.
-
-        k (n_blocks, batch_size, head_num, max_len, head_size): tensor
-            To cache keys for all blocks.
-        v (n_blocks, batch_size, head_num, max_len, head_size): tensor
-            To cache values for all blocks.
+            Number of positions cached so far, the same for every block.
+        k, v: list of tensors
+            Per-block key and value buffers of shape (batch_size, n_kv_head, max_len, head_size). Each is None until
+            the block's first update, which allocates it on the device and with the dtype of the incoming keys.
 
         '''
+        self.batch_size = batch_size
         self.n_kv_head = n_kv_head
-        self.head_size = head_size
         self.max_len = max_len
-        self.len = 0                      # tokens stored so far (same for every layer)
-
-        shape = (n_blocks, batch_size, n_kv_head, max_len, head_size)
-        dtype = torch.bfloat16 if dtype == 'bf16' else torch.float32
-        self.k = torch.zeros(shape, device=device, dtype=dtype)
-        self.v = torch.zeros(shape, device=device, dtype=dtype)
+        self.head_size = head_size
+        self.len = 0                                        # positions stored so far (same for every block)
+        self.k: list[torch.Tensor | None] = [None] * n_blocks
+        self.v: list[torch.Tensor | None] = [None] * n_blocks
 
 
-    def update(self, block: int, k: torch.Tensor, v: torch.Tensor):
+    def update(self, block_ind: int, k: torch.Tensor, v: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         '''
-        Function to write new keys/values at the current position.
+        Function to write new keys and values at the current position and return everything cached for the block.
 
         Parameters
         ----------
-        block: int
+        block_ind: int
             Transformer block index.
         k (B, n_kv_head, T, head_size): torch.Tensor
             Keys to cache for the block.
@@ -78,23 +68,24 @@ class KVCache:
             Values cached so far for the block.
 
         '''
-        # Attributes:
-        n_kv_head = self.n_kv_head
-        head_size = self.head_size
-        len = self.len
-        max_len = self.max_len
+        # Dimension checks, before anything is allocated or written:
+        expected = (self.batch_size, self.n_kv_head, self.head_size)
+        assert (k.size(0), k.size(1), k.size(3)) == expected, f'Unexpected key shape: {tuple(k.shape)}'
+        assert v.shape == k.shape, f'Value shape {tuple(v.shape)} differs from key shape {tuple(k.shape)}'
 
-        # Dimension assertions:
-        assert k.size(1)==n_kv_head and k.size(3)==head_size, f"Unexpected key shape: {k.shape}"
-        assert v.size(1)==n_kv_head and v.size(3)==head_size, f"Unexpected value shape: {v.shape}"
+        start, end = self.len, self.len + k.size(2)
+        assert end <= self.max_len, f'KV cache is full: {end} > {self.max_len} positions'
 
-        T = k.shape[2]
-        end = len + T
-        assert end <= max_len, 'KV cache is full'
+        # Allocate the block's cache on its first update on the device and with the dtype of the keys:
+        if self.k[block_ind] is None:
+            shape = (self.batch_size, self.n_kv_head, self.max_len, self.head_size)
+            self.k[block_ind] = k.new_zeros(shape)
+            self.v[block_ind] = v.new_zeros(shape)
 
-        self.k[block, :, :, len:end] = k
-        self.v[block, :, :, len:end] = v
-        return self.k[block, :, :, :end], self.v[block, :, :, :end]
+        # Write the new positions and return the filled part:
+        self.k[block_ind][:, :, start:end] = k
+        self.v[block_ind][:, :, start:end] = v
+        return self.k[block_ind][:, :, :end], self.v[block_ind][:, :, :end]
 
 
     def advance(self, T: int) -> None:
@@ -102,6 +93,6 @@ class KVCache:
         self.len += T
 
 
-    def reset(self):
-        '''Function to reset the cache length. Forget all cached positions, buffers are reused, not reallocated.'''
+    def reset(self) -> None:
+        '''Function to forget all cached positions; the buffers are kept and reused, not reallocated.'''
         self.len = 0

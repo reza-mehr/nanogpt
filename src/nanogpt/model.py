@@ -32,12 +32,12 @@ from nanogpt.config import ModelConfig
 from nanogpt.registry import MODELS
 from nanogpt.utils import sample_logits
 from nanogpt.kv_cache import KVCache
-from nanogpt.utils import build_rope_cos_sin, apply_rope, expand_kv, get_active_dtype, region
+from nanogpt.utils import build_rope_cos_sin, apply_rope, expand_kv, region
 
 #%% Common interface to build models:
 
 def build_model(cfg: ModelConfig):
-    '''Function to build a model given a 'TrainConfig'.'''
+    '''Function to build a model given a 'ModelConfig'.'''
     return MODELS.get(cfg.name)(cfg)
 
 #%% Model primitives:
@@ -66,7 +66,7 @@ class Head(nn.Module):
             Key weight matrix.
         value (head_size, n_embed): nn.Linear
             Value weight matrix.
-        tril (block_size, block_size): buffer
+        mask (block_size, block_size): buffer
             Constant lower triangular matrix of ones for causal masking.
         dropout: nn.Dropout
             Dropout layer for training time regularization.
@@ -77,7 +77,9 @@ class Head(nn.Module):
         self.query = nn.Linear(in_features=n_embed, out_features=head_size, bias=False)
         self.key = nn.Linear(n_embed, head_size, bias=False)
         self.value = nn.Linear(n_embed, head_size, bias=False)
-        self.register_buffer("tril", torch.tril(torch.ones((block_size, block_size))))
+        self.register_buffer("mask",
+                            torch.tril(torch.ones((block_size, block_size), dtype=torch.bool)),
+                            persistent=False)
         self.dropout = nn.Dropout(dropout)
 
 
@@ -108,7 +110,7 @@ class Head(nn.Module):
             wei = wei * head_size ** (-0.5) # scaling for unit variance
 
             # Remove non-causal communications between tokens and normalize the weights:
-            wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))    # (B, T, T)
+            wei = wei.masked_fill(~self.mask[:T, :T], float("-inf"))    # (B, T, T)
             wei = F.softmax(wei, dim=-1)    # (B, T, T)
 
             wei = self.dropout(wei)
@@ -231,9 +233,9 @@ class Block(nn.Module):
             Multi-head self-attention module.
         ffwd: FeedForward instance
             Feed forward module.
-        ln1: nn.Linear or LayerNorm instance
+        ln1: nn.LayerNorm or LayerNorm instance
             Layer norm applied to the input of the self-attention multi-head.
-        ln2: nn.Linear or LayerNorm instance
+        ln2: nn.LayerNorm or LayerNorm instance
             Layer norm applied to the input of the feed forward module.
 
         '''
@@ -350,12 +352,12 @@ class MultiHead(nn.Module):
         cfg
         block_ind
 
-        c_attn (3*head_num*head_size, n_embed): nn.Linear
+        c_attn (head_num*head_size + 2*n_kv_head*head_size, n_embed): nn.Linear
             Stacked weights for query, key, value matrices of all self-attention heads.
         c_proj (n_embed, head_num*head_size): nn.Linear
             Linear projection layer.
-        mask (block_size, block_size): buffer
-            Constant lower triangular matrix of ones for causal masking.
+        mask (block_size, block_size): buffer or None
+            Constant lower triangular matrix of ones for causal masking. None when manual implementation is not used.
         dropout_attn: nn.Dropout
             Dropout layer for masked weights.
         dropout_resid: nn.Dropout
@@ -371,7 +373,12 @@ class MultiHead(nn.Module):
         self.c_attn = nn.Linear(in_features=cfg.n_embed, out_features=out_features, bias=False)
 
         self.c_proj = nn.Linear(in_features=cfg.head_num * cfg.head_size, out_features=cfg.n_embed)
-        self.register_buffer('mask', torch.tril(torch.ones((cfg.block_size, cfg.block_size))))
+        if not cfg.scaled_dot_prod:
+            self.register_buffer('mask',
+                                torch.tril(torch.ones((cfg.block_size, cfg.block_size), dtype=torch.bool)),
+                                persistent=False)
+        else:
+            self.mask = None
         self.dropout_attn = nn.Dropout(cfg.dropout)
         self.dropout_resid = nn.Dropout(cfg.dropout)
 
@@ -410,8 +417,8 @@ class MultiHead(nn.Module):
 
         # Batched self-attention calculations:
         with region('attn.qkv'):
-            qkv = self.c_attn(x)    # x @ W^T : (B, T, n_embed) @ (n_embed, q_dim + kv_dim) -> (B, T, q_dim + kv_dim)
-            q, k, v = qkv.split([q_dim, kv_dim, kv_dim], dim=2)     # (B, T, q_dim + kv_dim) -> (B, T, q_dim), (B, T, kv_dim), (B, T, kv_dim)
+            qkv = self.c_attn(x)    # x @ W^T : (B, T, n_embed) @ (n_embed, q_dim + 2*kv_dim) -> (B, T, q_dim + 2*kv_dim)
+            q, k, v = qkv.split([q_dim, kv_dim, kv_dim], dim=2)     # (B, T, q_dim + 2*kv_dim) -> (B, T, q_dim), (B, T, kv_dim), (B, T, kv_dim)
             q = q.view(B, T, head_num, head_size).transpose(1, 2)   # (B, head_num, T, head_size)
             k = k.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
             v = v.view(B, T, n_kv_head, head_size).transpose(1, 2)  # (B, n_kv_head, T, head_size)
@@ -431,7 +438,7 @@ class MultiHead(nn.Module):
                 assert block_ind is not None, 'block index must be provided for key-value caching'
                 assert cache.len == 0 or T == 1, 'only full prefill or single-token decode supported'
                 is_causal = cache.len == 0                          # prefill is causal, decode sees everything
-                k, v = cache.update(block_ind, k, v)                # (B, head_num, end, head_size)
+                k, v = cache.update(block_ind, k, v)                # (B, n_kv_head, end, head_size)
         end = start + T                                             # 'end==T' when cache is None
 
         # Use torch's scaled dot product implementation for efficiency:
@@ -439,7 +446,7 @@ class MultiHead(nn.Module):
             with region('attn.core'):
                 out = F.scaled_dot_product_attention(
                     q, k, v,
-                    is_causal=is_causal,                            # replaces 'tril' mask for causality
+                    is_causal=is_causal,                            # replaces 'mask' mask for causality
                     dropout_p=dropout if self.training else 0.0,    # replaces 'dropout_attn'
                     enable_gqa=True,                                # enable grouped-query attention
                 )                                                   # (B, head_num, T, head_size)
@@ -451,7 +458,7 @@ class MultiHead(nn.Module):
             with region('attn.core'):
                 # Causal weight calculations:
                 wei = q @ k.transpose(-2, -1) * head_size ** (-0.5)                     # (B, head_num, T, head_size) @ (B, head_num, head_size, end) -> (B, head_num, T, end)
-                wei = wei.masked_fill(self.mask[start:end, :end] == 0, float("-inf"))   # (B, head_num, T, end)
+                wei = wei.masked_fill(~self.mask[start:end, :end], float("-inf"))       # (B, head_num, T, end)
                 wei = F.softmax(wei, dim=-1)                                            # (B, head_num, T, end)
                 wei = self.dropout_attn(wei)
 
@@ -485,12 +492,12 @@ class GPT(nn.Module):
 
         token_embedding_table (vocab_size, n_embed): nn.Embedding
             Embedding table mapping from each token index to embedding.
-        position_embedding_table (block_size, n_embed): nn.Embedding
-            Embedding table mapping from token positions in the block to embedding space.
+        position_embedding_table (block_size, n_embed): nn.Embedding or None
+            Embedding table mapping from token positions in the block to embedding space. None when RoPE is used.
 
         blocks: nn.ModuleList
             List of transformer blocks.
-        ln: nn.Linear or LayerNorm instance
+        ln: nn.LayerNorm or LayerNorm instance
             Layer norm applied before the final linear layer.
         lm_head (vocab_size, n_embed): nn.Linear
             Linear layer to generate logits over tokens.
@@ -499,17 +506,11 @@ class GPT(nn.Module):
         super().__init__()
         self.cfg = cfg
 
-        # Positional embedding:
+        self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
         if cfg.pos_embed=='learned':            # construct positional embedding table
             self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
-            rope_cos = rope_sin = None
-        elif cfg.pos_embed=='rope':             # construct RoPE cosine and sine tables
+        else:
             self.position_embedding_table = None
-            rope_cos, rope_sin = build_rope_cos_sin(cfg.head_size, cfg.rope_base, cfg.block_size)
-        self.register_buffer('rope_cos', rope_cos, persistent=False)
-        self.register_buffer('rope_sin', rope_sin, persistent=False)
-
-        self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
         self.blocks = nn.ModuleList( [ Block(cfg, bind) for bind in range(cfg.n_blocks) ] )
         self.ln = nn.LayerNorm(cfg.n_embed) if cfg.ln_torch else LayerNorm(cfg.n_embed)
         self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size)
@@ -536,8 +537,13 @@ class GPT(nn.Module):
             Loss value. None if 'targets' is None.
 
         '''
+        # Error handling:
+        if not (cache is None or self.cfg.batched_attention):
+            raise ValueError("Key-value caching is unavailable when looped implementation of attention is used!")
+
         # Initialization:
         B, T = idx.shape
+        cfg = self.cfg
 
         with region('embed'):
             # Token embedding:
@@ -551,7 +557,7 @@ class GPT(nn.Module):
                 pos_emb = self.position_embedding_table(pos)                # (T, n_embed)
                 x = x + pos_emb                                             # (B, T, n_embed)
             elif self.cfg.pos_embed=='rope':
-                rope = self.rope_cos[start: start + T], self.rope_sin[start: start + T]
+                rope = build_rope_cos_sin(cfg.head_size, cfg.rope_base, T, start, idx.device)
 
         for block in self.blocks: x = block(x, rope=rope, cache=cache)      # (B, T, n_embed)
         if cache is not None: cache.advance(T)          # advance cache size once after all blocks are cached
@@ -577,6 +583,7 @@ class GPT(nn.Module):
     def generate(self, idx: torch.Tensor, new_tokens: int, temperature: float = 1.0, top_k: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
+        Training mode is disabled and restored and gradients are not computed in this method.
 
         Parameters
         ----------
@@ -615,7 +622,6 @@ class GPT(nn.Module):
     def _generate(self, idx: torch.Tensor, new_tokens: int, temperature: float, top_k: int | None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
-        Training mode is disabled and restored and gradients are not computed in this method.
 
         Parameters
         ----------
@@ -623,10 +629,10 @@ class GPT(nn.Module):
             Token indices.
         new_tokens: int
             Number of token indices to generate.
-        temperature: float, optional
-            Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding. The default is 1.0, in which case the distribution is unaltered.
-        top_k: int, optional
-            Keep only the top_k most likely tokens; top_k=1 gives greedy decoding. The default is None, in which case all tokens are kept.
+        temperature: float
+            Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding.
+        top_k: int
+            Keep only the top_k most likely tokens; top_k=1 gives greedy decoding.
 
         Returns
         -------
@@ -652,7 +658,6 @@ class GPT(nn.Module):
     def _generate_cached(self, idx: torch.Tensor, new_tokens: int, temperature: float, top_k: int | None, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
-        Training mode is disabled and restored and gradients are not computed in this method.
 
         Parameters
         ----------
@@ -660,10 +665,10 @@ class GPT(nn.Module):
             Token indices.
         new_tokens: int
             Number of token indices to generate.
-        temperature: float, optional
-                Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding. The default is 1.0, in which case the distribution is unaltered.
-            top_k: int, optional
-                Keep only the top_k most likely tokens; top_k=1 gives greedy decoding. The default is None, in which case all tokens are kept.
+        temperature: float
+            Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding.
+        top_k: int
+            Keep only the top_k most likely tokens; top_k=1 gives greedy decoding.
         cache: KVCache, optional
             Key-value cache. The default is None in which case, a new cache will be constructed.
             Ensure that the cache parameters match the model and input batch size.
@@ -679,12 +684,11 @@ class GPT(nn.Module):
 
         # Error handling:
         B, T0 = idx.shape
-        assert T0 + new_tokens <= cfg.block_size, 'requested number of new tokens exceeds the context size'
+        assert T0 + new_tokens - 1 <= cfg.block_size, 'requested number of new tokens exceeds the context size'
 
         # Construct the cache:
         if cache is None:
-            dtype = get_active_dtype(self)
-            cache = KVCache(cfg.n_blocks, B, cfg.n_kv_head, cfg.block_size, cfg.head_size, idx.device.type, dtype)
+            cache = KVCache(cfg.n_blocks, B, cfg.n_kv_head, cfg.block_size, cfg.head_size)
         else:
             cache.reset()                                       # a new generation always starts from an empty cache
 
@@ -717,11 +721,15 @@ class BigramLanguageModel(nn.Module):
 
         Attributes
         ----------
+        cfg
+
         token_embedding_table (vocab_size, n_embed): nn.Embedding
             Embedding table mapping from each token index to embedding.
 
         '''
         super().__init__()
+        self.cfg = cfg
+
         n_embed = cfg.vocab_size            # to produce distribution over tokens in Bigram model
         self.token_embedding_table = nn.Embedding(cfg.vocab_size, n_embed)
 
@@ -774,6 +782,7 @@ class BigramLanguageModel(nn.Module):
             Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding. The default is 1.0, in which case the distribution is unaltered.
         top_k: int, optional
             Keep only the top_k most likely tokens; top_k=1 gives greedy decoding. The default is None, in which case all tokens are kept.
+        use_cache, cache: are required for API consistency and are not used in this method.
 
         Returns
         -------

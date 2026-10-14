@@ -1,15 +1,15 @@
 
+'''
+This file contains the code to generate text using checkpoint from a trained model.
+
+'''
+
 #%% Imports:
 
 import torch
 from torch import nn
 
 from nanogpt.tokenizers import Tokenizer
-
-'''
-This file contains the code to generate text using checkpoint from a trained model.
-
-'''
 
 #%% Functions:
 
@@ -31,12 +31,12 @@ def generate_text(model: nn.Module, tok: Tokenizer, prompt: str, new_tokens: int
     tok: Tokenizer
         Tokenizer to decode generated token ids.
     prompt: string
-        Promopt to use for generation.
+        Prompt to use for generation.
     new_tokens: int
         Number of new tokens to generate.
-    temperature: float, optional
+    temperature: float
         Divides the logits before softmax.
-    top_k: int, optional
+    top_k: int
         Keep only the top_k most likely tokens.
     use_cache: bool
         Use key-value cache if True. The default is True.
@@ -51,7 +51,7 @@ def generate_text(model: nn.Module, tok: Tokenizer, prompt: str, new_tokens: int
     Raises
     ------
     ValueError
-     If key-value caching is requested and the prompt + new_tokens exceed the block size.
+        If key-value caching is requested and the prompt + new_tokens exceed the block size.
 
     '''
     device = next(model.parameters()).device

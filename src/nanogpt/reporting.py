@@ -36,7 +36,7 @@ LOGGER_NAME = 'nanogpt'
 
 def setup_logger(cfg: TrainConfig) -> logging.Logger:
     '''
-    Function to set up logging to stdout and out_dir/train.log.
+    Function to set up logging to stdout and run_dir/train.log.
     Safe to call more than once per process.
 
     Parameters
@@ -475,10 +475,30 @@ def find_runs(root: Path) -> list[Path]:
 
 
 def get_dotted(d: dict, key: str):
-    '''Function to read a nested value with a dotted key, e.g. 'model.n_kv_head'; None if missing.'''
+    '''
+    Function to read a nested value with a dotted key, e.g. 'model.n_kv_head'.
+
+    Parameters
+    ----------
+    d: dict
+        To read the value from.
+    key: str
+        Dotted key to read. Dotted means that the key string can have dots in it.
+
+    Returns
+    -------
+    value: object
+        Value corresponding to the 'key'.
+
+    Raises
+    ------
+    KeyError
+        If 'key' does not exist in 'd'.
+
+    '''
     for k in key.split('.'):
         if not isinstance(d, dict) or k not in d:
-            return None
+            raise KeyError(f"'{key}' not found (missing '{k}')")
         d = d[k]
     return d
 
@@ -531,7 +551,13 @@ def compare_runs(root: Path, group_by: str | None = None, split: Literal['train'
     # Group the runs (groups ordered by config value when numeric, otherwise by name):
     grouped: dict[object, list[Path]] = {}
     for run_dir in find_runs(root):
-        value = get_dotted(load_json(run_dir / 'config.json'), group_by) if group_by else run_dir.name
+        config_path = run_dir / 'config.json'
+        if group_by and not config_path.exists():
+            raise FileNotFoundError(f"Cannot group by '{group_by}' since 'config.json' is missing: {config_path}")
+        try:
+            value = get_dotted(load_json(config_path), group_by) if group_by else run_dir.name
+        except KeyError as err:
+            raise KeyError(f"'{group_by}' not in {config_path} ({err})") from err
         grouped.setdefault(value, []).append(run_dir)
     if not grouped:
         print(f'No runs with metrics.csv found under {root}.')

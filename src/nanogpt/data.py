@@ -1,4 +1,9 @@
 
+'''
+This file contains the code to generate batches from a tokenized text dataset.
+
+'''
+
 #%% Imports:
 
 from pathlib import Path
@@ -7,11 +12,6 @@ import numpy as np
 import json
 
 from nanogpt.config import TrainConfig
-
-'''
-This file contains the code to split a text dataset and generate batches from it.
-
-'''
 
 #%% Data loader:
 
@@ -27,7 +27,7 @@ class TokenSplit:
         dtype: str, optional
             Data type for the binary split. The default is '<u2' indicating 2 bytes per token id in little endian convention.
         in_memory: bool, optional
-            Keep small datasets in RAM if True. The defaul is None in which case, files under 512 MB are kept in RAM.
+            Keep small datasets in RAM if True. The default is None in which case, files under 512 MB are kept in RAM.
 
         Attributes
         ----------
@@ -48,7 +48,7 @@ class TokenSplit:
 
 
     def tokens(self):
-        '''Function to open a fresh read-only memmap of the split.'''
+        '''Function to open a fresh read-only memmap of the split or return the in-memory array for small datasets.'''
         return self._array if self._array is not None else np.memmap(self.path, dtype=self.dtype, mode='r')
 
 

@@ -14,16 +14,26 @@ This file contains the code to test the config classes.
 #%% Test defaults with replace:
 
 def test_looped_attention_after_replace():
-    '''Function to test that the looped path validates after replace(), i.e., with 'n_kv_head' already resolved.'''
+    '''Function to test that replace() into the looped path accepts a default (MHA) config, keeping 'kv_head_num' unresolved.'''
+    batched = ModelConfig()
+    looped = replace(batched, batched_attention=False, scaled_dot_prod=False)     # must not raise
 
-    cfg = ModelConfig()                                 # 'n_kv_head' resolved to 'head_num'
-    looped = replace(cfg, batched_attention=False, scaled_dot_prod=False)
-    assert looped.n_kv_head == looped.head_num
+
+def test_head_num_override_keeps_mha():
+    '''Function to test that overriding 'head_num' on a default config stays MHA by setting the 'n_kv_head' property, instead of silently becoming GQA.'''
+
+    cfg = ModelConfig()
+    assert cfg.kv_head_num is None              # argument unchanged
+    assert cfg.n_kv_head == cfg.head_num        # property set to MHA
+
+    cfg = replace(cfg, head_num=12)
+    assert cfg.kv_head_num is None              # argument unchanged
+    assert cfg.n_kv_head == 12                  # property still set to MHA
 
 
 @pytest.mark.parametrize('overrides, feature', [
     (dict(scaled_dot_prod=True), 'Scaled dot-product attention'),
-    (dict(n_kv_head=3), 'GQA'),
+    (dict(kv_head_num=3), 'GQA'),
     (dict(pos_embed='rope'), 'Rotary positional embedding'),
 ], ids=['sdpa', 'gqa', 'rope'])
 def test_looped_attention_unsupported(overrides, feature):
@@ -49,15 +59,15 @@ def test_kv_heads_num_default():
     cfg = ModelConfig(head_num=8)
     assert cfg.n_kv_head == cfg.head_num
 
-@pytest.mark.parametrize('n_kv_head', [1, 4, 8])
-def test_kv_heads_num_valid(n_kv_head):
-    cfg = ModelConfig(head_num=8, n_kv_head=n_kv_head)
-    assert cfg.n_kv_head == n_kv_head
+@pytest.mark.parametrize('kv_head_num', [1, 4, 8])    # MQA, GQA, MHA
+def test_kv_heads_num_valid(kv_head_num):
+    cfg = ModelConfig(head_num=8, kv_head_num=kv_head_num)
+    assert cfg.n_kv_head == kv_head_num
 
-@pytest.mark.parametrize('n_kv_head', [0, -1, 3, 16])
-def test_kv_heads_num_invalid(n_kv_head):
+@pytest.mark.parametrize('kv_head_num', [0, -1, 3, 16])
+def test_kv_heads_num_invalid(kv_head_num):
     with pytest.raises(ValueError):
-        ModelConfig(head_num=8, n_kv_head=n_kv_head)
+        ModelConfig(head_num=8, kv_head_num=kv_head_num)
 
 #%% Rotary positional embedding (RoPE) tests:
 

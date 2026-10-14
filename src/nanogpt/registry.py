@@ -2,11 +2,11 @@
 #%% Imports:
 
 '''
-This file contains the code to register PyTorch toeknizers and models for clean build from a configuration file.
+This file contains the code to register PyTorch tokenizers and models for clean build from a configuration file.
 
 '''
 
-#%% Regirsty class:
+#%% Registry class:
 
 class Registry:
     '''Class to define a registry for certain 'kind' of classes, e.g. models or tokenizers. Maps names to classes; filled by the @register decorator at import time.'''
@@ -35,11 +35,12 @@ class Registry:
         Parameters
         ----------
         name: str
-            Class name.
+            Registry key for the class.
 
         Raises
         ------
-        If the requested class name is already registered.
+        ValueError
+            If the requested class name is already registered.
 
         '''
         def decorator(cls):
@@ -57,7 +58,7 @@ class Registry:
         Parameters
         ----------
         name: str
-            Class name.
+            Registry key for the class.
 
         Returns
         -------

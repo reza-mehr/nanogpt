@@ -80,7 +80,7 @@ def _warmup_cosine(step: int, cfg: TrainConfig) -> float:
 
 def get_lr(step: int, cfg: TrainConfig) -> float:
     '''
-    Function to perform linear warmup and then cosine decay to the requested floor.
+    Function to return the learning rate based on the selected schedule.
 
     Parameters
     ----------
@@ -96,7 +96,8 @@ def get_lr(step: int, cfg: TrainConfig) -> float:
 
     Raises
     ------
-    If an unknown scheduling rate is requested.
+    ValueError
+        If an unknown scheduling rate is requested.
 
     '''
     if cfg.lr_schedule == 'constant': return cfg.learning_rate
