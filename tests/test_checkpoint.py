@@ -36,7 +36,7 @@ def tiny_cfg(tmp_path, run_name: str) -> TrainConfig:
                           head_num=2, head_size=8, n_blocks=2, dropout=0.1),     # dropout exercises RNG restore
         batch_size=4, max_iters=20, eval_interval=5, eval_iters=2,
         ckpt_interval=5, learning_rate=1e-3, lr_warmup_iters=5, seed=0, device='cpu',
-        runs_root=str(tmp_path), run_name=run_name,
+        out_dir=str(tmp_path), run_name=run_name,
     )
 
 #%% Main code:
@@ -54,7 +54,7 @@ def test_resume_matches_continuous_run(tmp_path, data, stop_after):
     # Run B: same config, "crashes" after stop_after, then resumes to the end:
     cfg_b = tiny_cfg(tmp_path, 'b')
     train(cfg_b, train_data, val_data, tok_meta, stop_after=stop_after)
-    assert (cfg_b.out_dir / 'latest.pt').exists()
+    assert (cfg_b.run_dir / 'latest.pt').exists()
     model_b, best_loss_b = train(replace(cfg_b, resume=True), train_data, val_data, tok_meta)
 
     # Assertions:

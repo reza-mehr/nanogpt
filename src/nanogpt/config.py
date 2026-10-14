@@ -25,7 +25,7 @@ device = (
 
 @dataclass
 class DataConfig:
-    dir: str = 'data/tinyshakespeare'                   # parent folder for the binary dataset split (check scripts/prepare_*.py)
+    dir: str = 'data/tinyshakespeare'           # parent folder for the binary dataset split (check scripts/prepare_*.py)
 
 
 @dataclass
@@ -107,9 +107,13 @@ class TrainConfig:
 
     seed: int = 1337                                        # random seed
     run_name: str = ''                                      # run folder name, empty means a timestamp
-    runs_root: str = 'runs'                                 # parent folder for all runs
+    out_dir: str = 'runs'                                   # parent folder for runs
     resume: bool = False                                    # resume training from out_dir/latest.pt
     log_level: int = logging.INFO                           # logging level, 20 for INFO, 10 for DEBUG
+
+    sample_prompts: tuple[str, ...] = ('',)                 # prompts for final samples; '' starts from the start token
+    sample_tokens: int = 200                                # new tokens per sample
+    sample_seed: int = 0                                    # fixed seed so samples are comparable across runs
 
     def __post_init__(self):
         '''Function to validate input arguments and assign default values.'''
@@ -118,8 +122,8 @@ class TrainConfig:
             self.run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     @property
-    def out_dir(self) -> Path:
-        return Path(self.runs_root) / self.run_name
+    def run_dir(self) -> Path:
+        return Path(self.out_dir) / self.run_name
 
     @property
     def min_learning_rate(self) -> float:

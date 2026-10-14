@@ -250,7 +250,7 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(cfg.n_embed) if cfg.ln_torch else LayerNorm(cfg.n_embed)
 
 
-    def forward(self, x, rope: tuple[torch.Tensor, torch.Tensor] | None = None, cache: KVCache | None = None):
+    def forward(self, x: torch.Tensor, rope: tuple[torch.Tensor, torch.Tensor] | None = None, cache: KVCache | None = None):
         '''
         Function to compute the forward pass.
 
@@ -287,7 +287,7 @@ class Block(nn.Module):
 
 class LayerNorm(nn.Module):
     '''Class to implement layer norm.'''
-    def __init__(self, dim, eps=1e-5):
+    def __init__(self, dim: int, eps: float = 1e-5):
         '''
         Parameters
         ----------
@@ -311,7 +311,7 @@ class LayerNorm(nn.Module):
         self.bias = nn.Parameter(torch.zeros(dim))
 
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         '''
         Function to apply layer normalization along feature dimension 'C'.
 
@@ -515,7 +515,7 @@ class GPT(nn.Module):
         self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size)
 
 
-    def forward(self, idx, targets=None, cache: KVCache | None = None):
+    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None, cache: KVCache | None = None):
         '''
         Function to compute model output and cross entropy loss.
 
@@ -574,7 +574,7 @@ class GPT(nn.Module):
 
 
     @torch.inference_mode()
-    def generate(self, idx, new_tokens: int, temperature: float = 1.0, top_k: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
+    def generate(self, idx: torch.Tensor, new_tokens: int, temperature: float = 1.0, top_k: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
 
@@ -612,7 +612,7 @@ class GPT(nn.Module):
         return idx_new
 
 
-    def _generate(self, idx, new_tokens, temperature, top_k):
+    def _generate(self, idx: torch.Tensor, new_tokens: int, temperature: float, top_k: int | None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
         Training mode is disabled and restored and gradients are not computed in this method.
@@ -649,7 +649,7 @@ class GPT(nn.Module):
         return idx
 
 
-    def _generate_cached(self, idx, new_tokens, temperature, top_k, cache: KVCache | None = None):
+    def _generate_cached(self, idx: torch.Tensor, new_tokens: int, temperature: float, top_k: int | None, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
         Training mode is disabled and restored and gradients are not computed in this method.
@@ -726,7 +726,7 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(cfg.vocab_size, n_embed)
 
 
-    def forward(self, idx, targets=None):
+    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None):
         '''
         Function to compute model output and cross entropy loss.
 
@@ -760,7 +760,7 @@ class BigramLanguageModel(nn.Module):
 
 
     @torch.inference_mode()
-    def generate(self, idx, new_tokens, temperature: float = 1.0, top_k: int | None = None, use_cache: bool = True, cache=None):
+    def generate(self, idx: torch.Tensor, new_tokens: int, temperature: float = 1.0, top_k: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
 

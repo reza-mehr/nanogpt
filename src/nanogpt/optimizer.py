@@ -3,6 +3,7 @@
 import math
 import torch
 from torch import nn
+from torch.optim import Optimizer
 
 from nanogpt.config import TrainConfig
 
@@ -103,7 +104,7 @@ def get_lr(step: int, cfg: TrainConfig) -> float:
     raise ValueError(f'Unknown lr_schedule: {cfg.lr_schedule}')
 
 
-def set_learning_rate(optimizer, step, cfg):
+def set_learning_rate(optimizer: Optimizer, step: int, cfg: TrainConfig):
     '''
     Function to update the learning rate according to the requested schedule.
 

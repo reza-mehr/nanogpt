@@ -33,7 +33,8 @@ and traces/<case>.json (open at https://ui.perfetto.dev).
 
 import tyro
 
-from nanogpt.benchmarking import ProfileConfig, collect_env, report_profile, run_or_load, run_profile
+from nanogpt.benchmarking import ProfileConfig, report_profile, run_or_load, run_profile
+from nanogpt.reporting import collect_env
 
 #%% Main function:
 

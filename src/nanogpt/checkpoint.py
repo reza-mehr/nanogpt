@@ -10,6 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 import torch
+from torch.optim import Optimizer
 
 from nanogpt.config import TrainConfig, ModelConfig
 from nanogpt.model import build_model
@@ -32,7 +33,7 @@ def git_info() -> dict:
         return {"commit": None, "dirty": None}
 
 
-def save_checkpoint(path: Path, model: nn.Module, optimizer: torch.optim.Optimizer, step: int,
+def save_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, step: int,
                     tokenizer_meta: dict, best_val: float, cfg: TrainConfig, git: dict) -> None:
     '''
     Function to save a checkpoint containing the model weights, optimizer and RNG states, tokenizer metadata, code version, configs, and best loss value.
@@ -43,7 +44,7 @@ def save_checkpoint(path: Path, model: nn.Module, optimizer: torch.optim.Optimiz
         Where to save the checkpoint.
     model: nn.Module
         Model to save.
-    optimizer: torch.optim.Optimizer
+    optimizer: Optimizer
         Optimizer whose state to save.
     step: int
         Number of completed optimization steps.
@@ -77,7 +78,7 @@ def save_checkpoint(path: Path, model: nn.Module, optimizer: torch.optim.Optimiz
     os.replace(tmp, path)          # atomic: never leaves a half-written checkpoint
 
 
-def load_checkpoint(path: Path, model, optimizer, device) -> tuple[int, float]:
+def load_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, device: str) -> tuple[int, float]:
     '''
     Function to load a checkpoint to fully restore training state.
 

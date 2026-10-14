@@ -19,7 +19,7 @@ _REGIONS_DEVICE: str | None = None      # device synchronized at region boundari
 
 #%% Model utility functions:
 
-def sample_logits(logits, temperature=1.0, top_k=None):
+def sample_logits(logits: torch.Tensor, temperature=1.0, top_k=None):
     '''
     Function to sample one new token per sequence from the logits.
 
@@ -72,7 +72,7 @@ def sample_logits(logits, temperature=1.0, top_k=None):
     return idx_next
 
 
-def expand_kv(k, v, head_num, n_kv_head):
+def expand_kv(k: torch.Tensor, v: torch.Tensor, head_num: int, n_kv_head: int):
     '''
     Function to repeat the keys and values for grouped-query attention (GQA) to make dimensions consistent with the queries.
 
@@ -104,7 +104,7 @@ def expand_kv(k, v, head_num, n_kv_head):
 
 #%% RoPE utility functions:
 
-def build_rope_cos_sin(head_size, rope_base, max_len):
+def build_rope_cos_sin(head_size: int, rope_base: float, max_len: int):
     '''
     Function to compute cos/sin tables for tokens in rotary positional embedding (RoPE) mode.
     - Each head's 'head_size' dimensions are treated as head_size/2 pairs of 2-D vectors.
@@ -115,7 +115,7 @@ def build_rope_cos_sin(head_size, rope_base, max_len):
     ----------
     head_size: int
         Attention head size.
-    rope_base: int
+    rope_base: float
         RoPE base. Determines the rotation angle resolution.
     max_len: int
         Maximum possible context size to compute rotation angles.
@@ -145,7 +145,7 @@ def build_rope_cos_sin(head_size, rope_base, max_len):
     return cos, sin
 
 
-def rotate_half(x):
+def rotate_half(x: torch.Tensor):
     '''
     Function to split the attention queries and keys into 2D vectors x1 and x2 and rotate them by 90 degrees as [-x2 | x1].
 
@@ -166,7 +166,7 @@ def rotate_half(x):
     return torch.cat([-x2, x1], dim=-1)
 
 
-def apply_rope(x, cos, sin):
+def apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor):
     '''
     Function to rotate queries or keys by their position angles (RoPE).
     The function takes the angle cosines and sines from 'build_rope_cos_sin' and rotated half of 'x' from 'rotate_half' and computes the elementwise rotation: [x1 * cos - x2 * sin | x1 * sin + x2 * cos] where x = [x1 | x2].
@@ -200,7 +200,7 @@ def autocast_ctx(device: str, dtype: str):
     return torch.autocast(device_type=device, dtype=torch.bfloat16)
 
 
-def prepare_for_inference(model, mode: str):
+def prepare_for_inference(model: nn.Module, mode: str):
     '''
     Function to return (model, context) for an inference precision mode.
 
@@ -271,7 +271,7 @@ def get_active_dtype(model: nn.Module) -> str:
 
 #%% General utility functions:
 
-def get_param_count(model):
+def get_param_count(model: nn.Module):
     '''Function to return the total number of trainable parameters in the 'model'.'''
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 

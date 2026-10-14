@@ -1,10 +1,8 @@
 
 #%% Imports:
 
-from pathlib import Path
 import torch
-from dataclasses import dataclass
-import tyro
+from torch import nn
 
 from nanogpt.tokenizers import Tokenizer
 
@@ -22,7 +20,7 @@ def truncate_at_end(ids: list[int], end_id: int | None, start: int) -> list[int]
     return ids
 
 
-def generate_text(model, tok: Tokenizer, prompt: str, new_tokens: int, temperature: float, top_k: int | None, use_cache: bool = True, seed: int = 0) -> str:
+def generate_text(model: nn.Module, tok: Tokenizer, prompt: str, new_tokens: int, temperature: float, top_k: int | None, use_cache: bool = True, seed: int = 0) -> str:
     '''
     Function to generate new text using a trained model.
 

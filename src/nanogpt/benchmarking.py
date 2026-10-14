@@ -1,6 +1,6 @@
 '''
-This file contains the shared code for benchmarking and profiling: configurations, optimization journeys,
-measurement routines, and reporting (terminal tables, Markdown reports, CSV and environment files).
+This file contains the benchmarking and profiling code: configurations, optimization journeys, measurement routines,
+benchmark-specific reports, and the memory model fit. Shared tables, records, and plot styling live in reporting.py.
 
 Every benchmark writes to 'results/<kind>_<preset>_<device>/':
 - report.md: the tables, followed by the environment
@@ -11,24 +11,19 @@ Every benchmark writes to 'results/<kind>_<preset>_<device>/':
 
 #%% Imports:
 
-import csv
 import gc
-import json
 import math
-import os
-import platform
 import re
 import statistics
-import subprocess
-import sys
 import time
 from dataclasses import dataclass, replace
-from datetime import datetime
 from pathlib import Path
 from typing import Callable, Literal
 
 import torch
+from torch import nn
 from torch.profiler import ProfilerActivity, profile, record_function, schedule
+import numpy as np
 from tqdm import tqdm
 
 from nanogpt.config import PRESETS, ModelConfig, TrainConfig
@@ -36,29 +31,9 @@ from nanogpt.kv_cache import KVCache
 from nanogpt.model import build_model
 from nanogpt.utils import autocast_ctx, enable_regions, get_active_dtype, prepare_for_inference, region, sync_device
 
-#%% Table formatting:
-
-@dataclass
-class Col:
-    key: str                                        # dict key in each row
-    title: str                                      # header text
-    fmt: str = ''                                   # number format, e.g. ',.0f'; empty for text
-    align: Literal['<', '>'] | None = None          # None -> right-aligned if 'fmt' is set, else left
-    title_align: Literal['<', '>'] | None = None    # None -> same as the column alignment
-
-    @property
-    def justify(self) -> str:
-        '''Function to return the cell alignment character: explicit 'align', otherwise by column type.'''
-        return self.align or ('>' if self.fmt else '<')
-
-    @property
-    def title_justify(self) -> str:
-        '''Function to return the title alignment character: explicit 'title_align', otherwise the cell alignment.'''
-        return self.title_align or self.justify
-
-
-# Column width for printing a table (fits '(+999%)' and '(-100%)'):
-_PCT_WIDTH = 7
+from nanogpt.reporting import Col, pivot_sections, report_pivot, table_section, write_report
+from nanogpt.reporting import load_json, save_json, load_rows_csv, save_rows_csv
+from nanogpt.reporting import SERIES_COLORS, new_axes, plot_markers, save_figure
 
 #%% Benchmark configurations:
 
@@ -267,7 +242,7 @@ def find_variant(variants: list[tuple[str, str, dict, dict]], name: str) -> tupl
 
 #%% Metrics and report columns:
 
-# Entries (row key, table title, number format):
+# Entries: (row key, table title, number format)
 TRAIN_METRICS = [('tps', 'Training throughput (tokens/sec)', ',.0f'),
                  ('mem', 'Peak memory (MB)', ',.0f')]
 
@@ -292,6 +267,10 @@ PROFILE_REGIONS = ('embed', 'layernorm', 'attn.qkv', 'attn.rope', 'attn.cache', 
                    'attn.proj', 'mlp', 'lm_head', 'loss', 'backward', 'optimizer')
 
 OPS_COLS = [Col('op', 'op'), Col('self_ms', 'self CPU ms/step', ',.3f'), Col('calls', 'calls/step', ',.1f')]
+
+FIT_COLS = [Col('variant', 'variant'), Col('c', 'c (MB)', ',.0f'), Col('a', 'a (MB/token)', ',.3f'),
+            Col('b', 'b (MB/token²)', '.2e'), Col('quad_pct', 'T² share at max T (%)', '.0f'),
+            Col('r2', 'R²', '.4f'), Col('n', 'points', 'd')]
 
 #%% Model and config builders:
 
@@ -451,9 +430,10 @@ def run_train_journey(b: TrainBenchConfig) -> list[dict]:
 
 #%% Generation benchmark:
 
-def bench_generate_cell(model, ctx, use_cache: bool, b: GenerateBenchConfig, T: int) -> dict:
+def bench_generate_cell(model: nn.Module, ctx, use_cache: bool, b: GenerateBenchConfig, T: int) -> dict:
     '''
     Function to measure decode throughput, time to first token, and memory for one prompt length.
+
     Decode throughput is 'batch / TPOT', with TPOT = (t_N - t_1) / (N - 1): the time per output token without the prefill, from two timed generate calls with 1 and N new tokens.
 
     Parameters
@@ -719,6 +699,136 @@ def _slug(text: str) -> str:
     '''Function to turn a case label into a safe file name, e.g. '+SDPA T=128' -> 'SDPA_T_128'.'''
     return re.sub(r'[^A-Za-z0-9]+', '_', text).strip('_')
 
+#%% Memory model fitting:
+
+def fit_quadratic(x: list[float], y: list[float]) -> tuple[float, float, float, float]:
+    '''
+    Function to fit y = c + a x + b x^2 by least squares.
+
+    Parameters
+    ----------
+    x, y: list[float]
+        Data points; at least three distinct x values.
+
+    Returns
+    -------
+    c, a, b: float
+        Constant, linear, and quadratic coefficients.
+    r2: float
+        Coefficient of determination of the fit.
+
+    '''
+    x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    b, a, c = np.polyfit(x, y, deg=2)                       # highest power first
+    residual = y - (c + a * x + b * x**2)
+    total = y - y.mean()
+    r2 = 1 - (residual @ residual) / (total @ total) if total @ total > 0 else math.nan
+    return float(c), float(a), float(b), float(r2)
+
+
+def fit_memory(rows: list[dict], group_key: str = 'variant', x_key: str = 'T', y_key: str = 'mem') -> list[dict]:
+    '''
+    Function to fit the memory model mem(T) = c + a T + b T^2 per group, e.g. per journey variant.
+
+    The constant 'c' is the length-independent memory (weights, gradients, optimizer state), the linear term 'a T'
+    covers activations that grow with length, and the quadratic term 'b T^2' covers the T x T attention scores.
+
+    Parameters
+    ----------
+    rows: list[dict]
+        Flat benchmark rows, e.g. loaded with 'load_rows_csv'.
+    group_key, x_key, y_key: str, optional
+        Row keys for the group, the length, and the memory. The defaults are 'variant', 'T', and 'mem'.
+
+    Returns
+    -------
+    fits: list[dict]
+        One row per group with enough finite points: coefficients, R², the quadratic share of the fitted memory
+        at the largest length, and the number of points. Groups with fewer than three points are skipped.
+
+    '''
+    fits = []
+    for group in dict.fromkeys(r[group_key] for r in rows):    # unique, in first-seen order
+        points = [(r[x_key], r[y_key]) for r in rows
+                  if r[group_key] == group and not math.isnan(float(r[y_key]))]
+        if len({x for x, _ in points}) < 3:
+            print(f"Skipping '{group}': fewer than three lengths with measured memory.")
+            continue
+        x, y = zip(*sorted(points))
+        c, a, b, r2 = fit_quadratic(x, y)
+        x_max = x[-1]
+        quad_pct = 100 * b * x_max**2 / (c + a * x_max + b * x_max**2)
+        fits.append(dict(variant=group, c=c, a=a, b=b, quad_pct=quad_pct, r2=r2, n=len(x)))
+    return fits
+
+
+def plot_memory_fit(rows: list[dict], fits: list[dict], path: Path, group_key: str = 'variant',
+                    x_key: str = 'T', y_key: str = 'mem', title: str = '') -> None:
+    '''
+    Function to plot measured memory (markers) and the fitted quadratic model (lines) per group and save the figure.
+
+    Parameters
+    ----------
+    rows: list[dict]
+        Flat benchmark rows with the measured points.
+    fits: list[dict]
+        Fitted coefficients from 'fit_memory'; groups without a fit are not plotted.
+    path: Path
+        Output image file, e.g. 'memory_fit.png'.
+    group_key, x_key, y_key: str, optional
+        Row keys for the group, the length, and the memory. The defaults are 'variant', 'T', and 'mem'.
+    title: str, optional
+        Figure title. The default is empty.
+
+    '''
+    # Initialization:
+    fig, ax = new_axes(title or 'Memory vs length: markers measured, lines fitted c + aT + bT²',
+                       f'{x_key} (tokens)', 'memory (MB)', n_series=len(fits))
+
+    # One color per group, in fixed order: measured points and the fitted curve:
+    for color, fit in zip(SERIES_COLORS, fits):
+        points = sorted((r[x_key], r[y_key]) for r in rows if r[group_key] == fit['variant'])
+        x, y = np.array(points, dtype=float).T
+        x_dense = np.linspace(0, x.max(), 200)
+        ax.plot(x_dense, fit['c'] + fit['a'] * x_dense + fit['b'] * x_dense**2, color=color, linewidth=2,
+                label=f"{fit['variant']}  (R² {fit['r2']:.3f})")
+        plot_markers(ax, x, y, color)
+
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
+    save_figure(fig, ax, path)
+
+
+def report_memory_fit(run_dir: Path, group_key: str = 'variant', x_key: str = 'T', y_key: str = 'mem') -> None:
+    '''
+    Function to fit the memory model to a benchmark's results and save the fit table and plot in the same folder.
+
+    Reads 'results.csv' (and 'env.json' if present) from 'run_dir' and writes 'memory_fit.csv', 'memory_fit.md',
+    and 'memory_fit.png' next to them.
+
+    Parameters
+    ----------
+    run_dir: Path
+        Benchmark output folder, e.g. 'results/benchmark_train_main_cfg_mps'.
+    group_key, x_key, y_key: str, optional
+        Row keys for the group, the length, and the memory. The defaults are 'variant', 'T', and 'mem'.
+
+    '''
+    # Load the results and fit every group:
+    rows = load_rows_csv(run_dir / 'results.csv')
+    fits = fit_memory(rows, group_key, x_key, y_key)
+    if not fits:
+        print(f'No group in {run_dir} has measured memory at three or more lengths; nothing to fit.')
+        return
+
+    # Save the coefficients, the report, and the plot:
+    meta = load_json(run_dir / 'env.json') or None
+    save_rows_csv(fits, run_dir / 'memory_fit.csv')
+    title = 'Memory model fit: mem(T) = c + a T + b T²'
+    write_report(run_dir / 'memory_fit.md', [table_section(fits, FIT_COLS, title), '![memory fit](memory_fit.png)'], meta)
+    plot_memory_fit(rows, fits, run_dir / 'memory_fit.png', group_key, x_key, y_key)
+    print(f'Saved memory_fit.csv, memory_fit.md, and memory_fit.png in {run_dir}')
+
 #%% Running and reloading:
 
 def run_or_load(run_dir: Path, run_fn: Callable[[], dict[str, list[dict]]], meta_fn: Callable[[], dict],
@@ -748,282 +858,12 @@ def run_or_load(run_dir: Path, run_fn: Callable[[], dict[str, list[dict]]], meta
     meta_path = run_dir / 'env.json'
     if from_csv:
         tables = {path.stem: load_rows_csv(path) for path in sorted(run_dir.glob('*.csv'))}
-        return tables, json.loads(meta_path.read_text())
+        return tables, load_json(meta_path)
 
     run_dir.mkdir(parents=True, exist_ok=True)
     meta = meta_fn()
     tables = run_fn()
     for name, rows in tables.items():
         save_rows_csv(rows, run_dir / f'{name}.csv')
-    meta_path.write_text(json.dumps(meta, indent=2))
+    save_json(meta, meta_path)
     return tables, meta
-
-#%% Environment resource reporting:
-
-def collect_env(device: str) -> dict:
-    '''
-    Function to collect the code version, software, and hardware details needed to interpret a benchmark.
-
-    Parameters
-    ----------
-    device: str
-        Device the benchmark runs on.
-
-    Returns
-    -------
-    env: dict
-        Human-readable fields, e.g. git version, torch version, chip, RAM, and power source.
-
-    '''
-    ram_gb = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / 2**30
-    is_mac = sys.platform == 'darwin'
-    env = {
-        'date': datetime.now().isoformat(timespec='seconds'),
-        'git': _run_cmd(['git', 'describe', '--tags', '--always', '--dirty']),   # e.g. v0.1-3-gabc1234-dirty
-        'python': platform.python_version(),
-        'torch': torch.__version__,
-        'os': platform.platform(),
-        'cpu': _run_cmd(['sysctl', '-n', 'machdep.cpu.brand_string']) if is_mac else platform.processor(),
-        'ram (GB)': f'{ram_gb:.0f}',
-        'torch cpu threads': torch.get_num_threads(),
-        'device': device,
-    }
-    if device == 'cuda':
-        props = torch.cuda.get_device_properties(0)
-        env['gpu'] = f'{props.name}, {props.total_memory / 2**30:.0f} GB'
-    if is_mac:
-        env['power'] = (_run_cmd(['pmset', '-g', 'batt']).splitlines() or ['n/a'])[0]     # AC vs battery
-
-    return env
-
-
-def _run_cmd(cmd: list[str]) -> str:
-    '''Function to run a command and return its stripped output, or 'n/a' if it fails.'''
-    try:
-        return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        return 'n/a'
-
-
-def _meta_lines(meta: dict, bullet: str = '') -> list[str]:
-    '''Function to format metadata as 'key: value' lines, optionally as Markdown bullets.'''
-    return [f'{bullet}**{k}:** {v}' if bullet else f'{k}: {v}' for k, v in meta.items()]
-
-#%% Reporting utility functions:
-
-def report_pivot(rows: list[dict], path: Path, row_key: str, col_key: str, metrics: list[tuple[str, str, str]],
-                 total_label: str = 'total vs base', meta: dict | None = None, ref_key: str | None = None,
-                 total_row: str | None = None) -> None:
-    '''
-    Function to print one pivot table per metric and save them all, with the environment, to a single Markdown file.
-
-    Parameters
-    ----------
-    rows: list[dict]
-        Flat rows, live from a benchmark or loaded with 'load_rows_csv'.
-    path: Path
-        Output Markdown file; parent folders are created if missing.
-    row_key, col_key: str
-        Keys for the table rows and columns, see 'pivot_rows'.
-    metrics: list[tuple[str, str, str]]
-        '(value_key, title, fmt)' per table, e.g. ('tps', 'Throughput (tokens/sec)', ',.0f').
-    total_label: str, optional
-        Label of the total row; empty to omit it. The default is 'total vs base'.
-    meta: dict, optional
-        Environment and run settings, e.g. from 'collect_env'. The default is None (omitted).
-    ref_key, total_row: str, optional
-        Reference rows for percent changes and the total row, see 'pivot_rows'. The defaults are None.
-
-    '''
-    write_report(path, pivot_sections(rows, row_key, col_key, metrics, total_label, ref_key, total_row), meta)
-
-
-def pivot_sections(rows: list[dict], row_key: str, col_key: str, metrics: list[tuple[str, str, str]],
-                   total_label: str = 'total vs base', ref_key: str | None = None,
-                   total_row: str | None = None) -> list[str]:
-    '''Function to print one pivot table per metric and return their Markdown sections.'''
-    sections = []
-    for value_key, title, fmt in metrics:
-        table, cols = pivot_rows(rows, row_key, col_key, value_key, fmt, total_label, ref_key, total_row)
-        sections.append(table_section(table, cols, title))
-    return sections
-
-
-def table_section(rows: list[dict], cols: list[Col], title: str) -> str:
-    '''Function to print a titled table and return it as a Markdown section.'''
-    print_table(rows, cols, title)
-    return f'### {title}\n\n{markdown_table(rows, cols)}'
-
-
-def write_report(path: Path, sections: list[str], meta: dict | None = None) -> None:
-    '''Function to save Markdown sections to a report, appending and printing the environment if given.'''
-    if meta:
-        print('\nEnvironment\n' + '-'*35 + '\n' + '\n'.join(_meta_lines(meta)) + '\n')
-        sections = sections + ['### Environment\n\n' + '\n'.join(_meta_lines(meta, bullet='- '))]
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text('\n\n'.join(sections) + '\n')
-
-
-def print_table(rows: list[dict], cols: list[Col], title: str = '', gap: int = 6) -> None:
-    '''Function to print an aligned console table, optionally preceded by a title.'''
-    if not rows: return
-
-    # Initialization:
-    widths = [max(len(c.title), *(len(_cell_text(c, r[c.key])) for r in rows)) for c in cols]
-    def line(cells):
-        return (' ' * gap).join(cells)
-
-    # Print the table:
-    header = line(f'{c.title:{c.title_justify}{w}}' for c, w in zip(cols, widths))
-    if title: print(f'\n{title}')
-    print('\n' + header if not title else header)
-    print('-' * len(header))
-    for r in rows:
-        print(line(_pad(c, w, _cell_text(c, r[c.key])) for c, w in zip(cols, widths)))
-    print()
-
-
-def markdown_table(rows: list[dict], cols: list[Col]) -> str:
-    '''Function to render rows as a Markdown table string with aligned, padded cells.'''
-    widths = [max(3, len(c.title), *(len(_cell_text(c, r[c.key])) for r in rows)) for c in cols]
-
-    def line(cells):
-        return '| ' + ' | '.join(cells) + ' |'
-
-    lines = [line(f'{c.title:{c.title_justify}{w}}' for c, w in zip(cols, widths)),
-             line(('-' * (w - 1) + ':') if c.justify == '>' else '-' * w for c, w in zip(cols, widths))]
-    lines += [line(_pad(c, w, _cell_text(c, r[c.key])) for c, w in zip(cols, widths)) for r in rows]
-    return '\n'.join(lines)
-
-
-def pivot_rows(rows: list[dict], row_key: str, col_key: str, value_key: str, fmt: str = ',.0f',
-               total_label: str = 'total vs base', ref_key: str | None = None,
-               total_row: str | None = None) -> tuple[list[dict], list[Col]]:
-    '''
-    Function to pivot flat rows into one row per 'row_key' value and one column per 'col_key' value.
-    Each cell holds a '(value, reference value)' tuple, rendered as the value followed by its percent change. An optional final row gives the change of 'total_row' versus the first row.
-
-    Parameters
-    ----------
-    rows: list[dict]
-        Flat rows, e.g. one per (variant, T) benchmark cell.
-    row_key: str
-        Key whose values become table rows, in first-seen order, e.g. 'variant'.
-    col_key: str
-        Key whose values become table columns: sorted if numeric, otherwise in first-seen order.
-    value_key: str
-        Metric to tabulate, e.g. 'tps' or 'mem'.
-    fmt: str, optional
-        Number format for the values. The default is ',.0f'.
-    total_label: str, optional
-        Label of the total row; empty to omit it. The default is 'total vs base'.
-    ref_key: str, optional
-        Row field naming each row's reference row for the percent change (empty for none).
-        The default is None, which compares each row with the previous one.
-    total_row: str, optional
-        Row compared with the first row in the total row. The default is None, meaning the last row.
-
-    Returns
-    -------
-    table: list[dict]
-        Pivoted rows.
-    cols: list[Col]
-        Column specs for 'print_table' and 'markdown_table'.
-
-    '''
-    # Initialization:
-    row_ids = list(dict.fromkeys(r[row_key] for r in rows))        # unique, in first-seen order
-    col_ids = list(dict.fromkeys(r[col_key] for r in rows))
-    numeric = all(isinstance(j, (int, float)) for j in col_ids)
-    if numeric: col_ids = sorted(col_ids)
-    value = {(r[row_key], r[col_key]): r[value_key] for r in rows}
-    keys = {j: f'{col_key}={j}' for j in col_ids}                    # unique column keys
-    titles = {j: keys[j] if numeric else str(j) for j in col_ids}
-    refs = ({r[row_key]: r[ref_key] for r in rows} if ref_key
-            else {i: row_ids[n - 1] if n else None for n, i in enumerate(row_ids)})
-    def get(i, j):
-        return value.get((i, j), math.nan)
-
-    # One row per 'row_key' value, each cell paired with its reference row's value:
-    table = []
-    for i in row_ids:
-        ref = refs.get(i) or None                                   # '' from a CSV means no reference
-        table.append({row_key: i, **{keys[j]: (get(i, j), get(ref, j) if ref else math.nan) for j in col_ids}})
-
-    # Change of the total row relative to the first:
-    if total_label and len(row_ids) > 1:
-        last = total_row or row_ids[-1]
-        table.append({row_key: total_label, **{keys[j]: f'{_fmt_pct(get(last, j), get(row_ids[0], j)):<{_PCT_WIDTH}}'
-                                               for j in col_ids}})
-
-    cols = [Col(row_key, row_key)] + [Col(keys[j], titles[j], fmt, title_align='<') for j in col_ids]
-
-    return table, cols
-
-
-def _pad(c: Col, w: int, s: str) -> str:
-    '''Function to pad a cell string to width 'w' using the column alignment.'''
-    return f'{s:{c.justify}{w}}'
-
-
-def _fmt_pct(x, ref) -> str:
-    '''Function to format the percent change of 'x' relative to 'ref' as '(+6%)'; empty if either is missing.'''
-    if x is None or ref is None or math.isnan(x) or math.isnan(ref) or ref == 0:
-        return ''
-    p = round(100 * (x / ref - 1))
-    return '(0%)' if p == 0 else f'({p:+d}%)'
-
-
-def _cell_text(c: Col, v) -> str:
-    '''
-    Function to format a table cell.
-
-    Parameters
-    ----------
-    c: Col
-        Column spec; 'c.fmt' formats numbers.
-    v: number, str, None, or tuple
-        Cell value. A '(value, ref)' tuple renders the value followed by its percent change versus 'ref'
-        in a fixed-width field, so values and percentages both align, e.g. '18,470 (+6%)  '.
-        None or NaN renders as '—'. Strings render as-is.
-
-    Returns
-    -------
-    text: str
-        Formatted cell text.
-
-    '''
-    is_pair = isinstance(v, tuple)
-    ref = math.nan
-    if is_pair:
-        v, ref = v
-    missing = v is None or (isinstance(v, float) and math.isnan(v))
-    text = '—' if missing else str(v) if (isinstance(v, str) or not c.fmt) else format(v, c.fmt)
-    return f'{text} {_fmt_pct(v, ref) if not missing else "":<{_PCT_WIDTH}}' if is_pair else text
-
-#%% csv utility functions:
-
-def save_rows_csv(rows: list[dict], path: Path) -> None:
-    '''Function to save flat rows with identical keys to a CSV file, creating parent folders if missing.'''
-    if not rows: return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-
-
-def load_rows_csv(path: Path) -> list[dict]:
-    '''Function to load rows saved by 'save_rows_csv', parsing ints and floats ('nan' included), else text.'''
-
-    def parse(s):
-        for cast in (int, float):
-            try:
-                return cast(s)
-            except ValueError:
-                pass
-        return s
-
-    with open(path, newline='') as f:
-        return [{k: parse(v) for k, v in r.items()} for r in csv.DictReader(f)]

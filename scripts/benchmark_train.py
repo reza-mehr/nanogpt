@@ -19,8 +19,8 @@ Outputs go to results/benchmark_train_<preset>_<device>/ as report.md, results.c
 
 import tyro
 
-from nanogpt.benchmarking import TrainBenchConfig
-from nanogpt.benchmarking import TRAIN_METRICS, collect_env, report_pivot, run_or_load, run_train_journey
+from nanogpt.benchmarking import TRAIN_METRICS, TrainBenchConfig, run_or_load, run_train_journey
+from nanogpt.reporting import collect_env, report_pivot
 
 #%% Main function:
 

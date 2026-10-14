@@ -13,7 +13,7 @@ This file contains the code to construct tokenizers. All tokenizers have consist
 
 #%% Common interface to build tokenizers:
 
-def build_tokenizer(meta):
+def build_tokenizer(meta: dict):
     '''Function to build a tokenizer given a relavent 'meta' dictionary.'''
     return TOKENIZERS.get(meta['tokenizer']).from_meta(meta)
 

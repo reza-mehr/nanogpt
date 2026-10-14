@@ -12,7 +12,7 @@ This file contains the code to implement key-value cache for transformer blocks.
 
 class KVCache:
     '''Class to implement the key-value cache for transformer blocks.'''
-    def __init__(self, n_blocks, batch_size, n_kv_head, max_len, head_size, device, dtype='fp32'):
+    def __init__(self, n_blocks: int, batch_size: int, n_kv_head: int, max_len: int, head_size: int, device: str, dtype: str = 'fp32'):
         '''
         Parameters
         ----------

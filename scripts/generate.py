@@ -56,7 +56,6 @@ def main(g: GenerateConfig):
     new_text: string
         The user prompt followed by the generated text.
 
-
     '''
     # Load the model and tokenizer from the checkpoint:
     ckpt_path = g.runs_root / g.run_name / g.ckpt

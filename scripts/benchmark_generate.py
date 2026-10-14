@@ -3,7 +3,8 @@ This file contains the code to benchmark token generation: decode throughput, ti
 The journey, measurement, and reporting code lives in src/nanogpt/benchmarking.py.
 
 Suites:
-- journey: cumulative inference optimizations (batched attention, torch LayerNorm, SDPA, KV cache, bf16 cast), plus an autocast bf16 branch compared with the KV cache row.
+- journey: cumulative inference optimizations (batched attention, torch LayerNorm, SDPA, KV cache, bf16 cast),
+           plus an autocast bf16 branch compared with the KV cache row.
 - gqa: key-value head sweep (MHA -> GQA -> MQA) on the fully optimized model, compared with MHA.
 
 Decode throughput is 'batch / TPOT', with the time per output token TPOT = (t_N - t_1) / (N - 1) measured from two
@@ -29,7 +30,8 @@ Outputs go to results/benchmark_generate[_gqa]_<preset>_<device>/ as report.md, 
 
 import tyro
 
-from nanogpt.benchmarking import GenerateBenchConfig, collect_env, report_generate, run_generate, run_or_load
+from nanogpt.benchmarking import GenerateBenchConfig, report_generate, run_generate, run_or_load
+from nanogpt.reporting import collect_env
 
 #%% Main function:
 
