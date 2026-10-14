@@ -99,7 +99,7 @@ def test_train_resume_and_records(trained_run):
     # Records of the fresh run:
     cfg, tok, train_data, val_data = trained_run
     run_dir = cfg.run_dir
-    _assert_files(run_dir, {'config.json', 'env.json', 'metrics.csv', 'summary.json', 'samples.md', 'latest.pt', 'best.pt'})
+    _assert_files(run_dir, {'config.json', 'env.json', 'metrics.csv', 'summary.json', 'samples.md', 'latest.pt', 'best.pt', 'model.pt'})
     assert [r['step'] for r in load_rows_csv(run_dir / 'metrics.csv')] == [2, 4]
     assert (run_dir / 'samples.md').read_text().count('### Prompt') == 2
 
@@ -117,10 +117,9 @@ def test_train_resume_and_records(trained_run):
 
 @pytest.mark.parametrize('cache_flag', ['--use-cache', '--no-use-cache'])
 def test_generate(trained_run, cache_flag):
-    '''Function to test that generation loads a saved checkpoint and prints text, with and without the cache.'''
+    '''Function to test that generation loads the inference checkpoint and prints text, with and without the cache.'''
     cfg = trained_run[0]
-    result = _run_script('generate.py', '--out-dir', str(cfg.run_dir.parent), '--run-name', cfg.run_dir.name,
-                         '--ckpt', 'latest.pt', '--prompt', 'ab', '--new-tokens', '4', '--device', 'cpu', cache_flag)
+    result = _run_script('generate.py', '--out-dir', str(cfg.run_dir.parent), '--run-name', cfg.run_dir.name, '--ckpt', 'model.pt', '--prompt', 'ab', '--new-tokens', '4', '--device', 'cpu', cache_flag)
     assert result.stdout.strip(), 'generate.py printed nothing'
 
 #%% Benchmarks:

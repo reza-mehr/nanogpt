@@ -6,8 +6,9 @@ Each run folder ('cfg.out_dir') holds:
 - config.json, env.json: the run configuration and the environment at the start (code version, software, hardware)
 - metrics.csv: one row per evaluation, appended and flushed as training goes, trimmed on resume
 - tb/: TensorBoard event files for live monitoring
-- latest.pt, best.pt: checkpoints
+- latest.pt, best.pt: training checkpoints (weights, optimizer and RNG states)
 - summary.json, samples.md: written when the run completes (final/best losses and throughput; fixed-seed samples)
+- model.pt: written when the run completes; inference-only export of best.pt (bf16 weights, configs, tokenizer)
 - the logger's output file, if 'setup_logger' writes one
 
 '''
@@ -26,6 +27,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from nanogpt.config import TrainConfig
 from nanogpt.checkpoint import git_info, load_checkpoint, save_checkpoint
+from nanogpt.checkpoint import check_inference_checkpoint, save_inference_checkpoint
 from nanogpt.data import TokenSplit, get_batch
 from nanogpt.generation import generate_text
 from nanogpt.model import build_model
@@ -77,7 +79,10 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     # Fix the random seed for reproducibility:
     torch.manual_seed(cfg.seed)
 
-    # Create the run folder:
+    # Create the run folder; a fresh run must not mix its records with an earlier run of the same name:
+    resuming = cfg.resume and (cfg.run_dir / 'latest.pt').exists()
+    if not resuming and (cfg.run_dir / 'metrics.csv').exists():
+        raise FileExistsError(f'{cfg.run_dir} already holds a run: resume it, choose another run name, or delete it.')
     cfg.run_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialization:
@@ -89,13 +94,11 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     start_step = 1
     best_val = float('inf')
 
-    # Logging tools:
+    # Logger:
     logger = setup_logger(cfg)
-    writer = SummaryWriter(log_dir=cfg.run_dir / 'tb', purge_step=start_step)
-    logger.info(f'TensorBoard: uv run tensorboard --logdir {cfg.run_dir / "tb"}\n')
 
     # Load the latest checkpoint if requested, and drop metrics logged after it:
-    if cfg.resume and latest.exists():
+    if resuming:
         start_step, best_val = load_checkpoint(latest, model, optim, cfg.device)
         start_step += 1
         truncate_rows_csv(metrics_path, key='step', max_value=start_step - 1)
@@ -104,6 +107,10 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
         # Record the configuration and the environment at the start of a fresh run:
         save_json(asdict(cfg), cfg.run_dir / 'config.json')
         save_json(collect_env(cfg.device), cfg.run_dir / 'env.json')
+
+    # TensorBoard writer, created after resuming so it hides only the events logged after the checkpoint:
+    writer = SummaryWriter(log_dir=cfg.run_dir / 'tb', purge_step=start_step)
+    logger.info(f'TensorBoard: uv run tensorboard --logdir {cfg.run_dir / "tb"}\n')
 
     state = RunState(logger=logger, writer=writer, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val,
                      mark_time=time.perf_counter(), mark_step=start_step - 1)
@@ -127,6 +134,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     # Records of the completed run:
     write_summary(cfg, model, state)
     write_samples(cfg, model, state)
+    write_inference_model(cfg, state)
 
     return model, state.best_val
 
@@ -339,3 +347,24 @@ def write_samples(cfg: TrainConfig, model: nn.Module, state: RunState):
         (cfg.run_dir / 'samples.md').write_text('\n\n'.join(sections) + '\n')
     except Exception as err:                                            # sampling must not fail a finished run
         state.logger.warning(f'Sampling failed: {err!r}')
+
+
+def write_inference_model(cfg: TrainConfig, state: RunState):
+    '''
+    Function to export best.pt as model.pt, an inference-only checkpoint, and check that it reproduces best.pt.
+
+    A failed check raises, so a bad export stops the run on the training machine rather than surfacing later.
+
+    Parameters
+    ----------
+    cfg: TrainConfig
+        Configurations used.
+    state: RunState
+        Logging tools.
+
+    '''
+    src, dst = cfg.run_dir / 'best.pt', cfg.run_dir / 'model.pt'
+    save_inference_checkpoint(src, dst)
+    rel_err = check_inference_checkpoint(src, dst)
+    state.logger.info(f'Saved {dst} ({dst.stat().st_size / 2**20:,.0f} MB, '
+                      f'logits relative error vs best.pt {rel_err:.1e})')

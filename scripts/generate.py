@@ -29,7 +29,7 @@ device = (
 class GenerateConfig:
     run_name: str                       # run folder name, empty means a timestamp
     out_dir: Path = Path('runs')        # parent folder for all runs
-    ckpt: str = 'best.pt'               # checkpoint to use
+    ckpt: str = 'model.pt'              # checkpoint to use
 
     prompt: str = ''
     new_tokens: int = 200               # number of new tokens to generate
