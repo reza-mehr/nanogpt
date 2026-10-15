@@ -22,7 +22,8 @@ Full runs (plugged in, other apps closed):
 Rebuild the tables from saved results without benchmarking:
     uv run scripts/benchmark_generate.py --preset main_cfg --from-csv
 
-Outputs go to results/benchmark_generate[_gqa]_<preset>_<device>/ as report.md, results.csv, and env.json.
+Outputs go to results/benchmark_generate[_gqa]_<preset>_<device>/ as config.json, env.json, results.csv, report.md, and run.log.
+An existing output folder is cleared only after confirmation (or with --overwrite).
 
 '''
 
@@ -31,7 +32,6 @@ Outputs go to results/benchmark_generate[_gqa]_<preset>_<device>/ as report.md, 
 import tyro
 
 from nanogpt.benchmarking import GenerateBenchConfig, report_generate, run_generate, run_or_load
-from nanogpt.reporting import collect_env
 
 #%% Main function:
 
@@ -39,13 +39,10 @@ def main(b: GenerateBenchConfig) -> None:
     '''Function to run (or reload) the selected generation benchmark suite and report the results.'''
 
     # Benchmark (or reload) the suite:
-    tables, meta = run_or_load(b.run_dir,
-                               run_fn=lambda: {'results': run_generate(b)},
-                               meta_fn=lambda: collect_env(b.device) | b.settings(),
-                               from_csv=b.from_csv)
+    tables, config, env = run_or_load(b, run_fn=lambda: {'results': run_generate(b)})
 
-    # Print the tables and save the report:
-    report_generate(tables['results'], b, meta)
+    # Log the tables and save the report:
+    report_generate(tables['results'], b, config, env)
 
 #%% Main call:
 

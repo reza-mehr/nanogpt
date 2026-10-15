@@ -24,8 +24,9 @@ Prefill and decode, with chosen variants from the inference journey:
 Rebuild the tables from saved results without profiling:
     uv run scripts/profile_model.py --preset main_cfg --mode train --from-csv
 
-Outputs go to results/profile_<mode>_<preset>_<device>/ as report.md, results.csv, ops.csv, env.json,
-and traces/<case>.json (open at https://ui.perfetto.dev).
+Outputs go to results/profile_<mode>_<preset>_<device>/ as config.json, env.json, results.csv, ops.csv, report.md,
+run.log, and traces/<case>.json (open at https://ui.perfetto.dev).
+An existing output folder is cleared only after confirmation (or with --overwrite).
 
 '''
 
@@ -34,7 +35,6 @@ and traces/<case>.json (open at https://ui.perfetto.dev).
 import tyro
 
 from nanogpt.benchmarking import ProfileConfig, report_profile, run_or_load, run_profile
-from nanogpt.reporting import collect_env
 
 #%% Main function:
 
@@ -42,13 +42,10 @@ def main(p: ProfileConfig) -> None:
     '''Function to profile (or reload) the selected variants and report the results.'''
 
     # Profile (or reload) the cases:
-    tables, meta = run_or_load(p.run_dir,
-                               run_fn=lambda: run_profile(p),
-                               meta_fn=lambda: collect_env(p.device) | p.settings(),
-                               from_csv=p.from_csv)
+    tables, config, env = run_or_load(p, run_fn=lambda: run_profile(p))
 
-    # Print the tables and save the report:
-    report_profile(tables, p, meta)
+    # Log the tables and save the report:
+    report_profile(tables, p, config, env)
 
 #%% Main call:
 

@@ -2,14 +2,16 @@
 '''
 This file contains the trainer code for the model.
 
-Each run folder ('cfg.run_dir') holds:
-- config.json, env.json: the run configuration and the environment at the start (code version, software, hardware)
-- metrics.csv: one row per evaluation, appended and flushed as training goes, trimmed on resume
+Each run folder ('cfg.run_dir', by default 'runs/train_<preset>_<device>') holds:
+- config.json, env.json: the full run configuration and the environment at the start (code version, software, hardware)
+- results.csv: one row per evaluation, appended and flushed as training goes, trimmed on resume
+- run.log: everything logged during the run, appended across resumes
 - tb/: TensorBoard event files for live monitoring
 - latest.pt, best.pt: training checkpoints (weights, optimizer and RNG states)
-- summary.json, samples.md: written when the run completes (final/best losses and throughput; fixed-seed samples)
+- report.md: written when the run completes; summary and fixed-seed samples first, then configuration and environment
 - model.pt: written when the run completes; inference-only export of best.pt (bf16 weights, configs, tokenizer)
-- the logger's output file from 'setup_logger'
+
+A fresh run into a folder that already holds files asks before clearing it (see 'prepare_run_dir').
 
 '''
 
@@ -33,9 +35,15 @@ from nanogpt.data import TokenSplit, get_batch
 from nanogpt.generation import generate_text
 from nanogpt.model import build_model
 from nanogpt.optimizer import build_optimizer, set_learning_rate
-from nanogpt.reporting import append_row_csv, collect_env, load_rows_csv, save_json, setup_logger, truncate_rows_csv
+from nanogpt.reporting import Col, append_row_csv, collect_env, load_json, load_rows_csv, prepare_run_dir, save_json
+from nanogpt.reporting import setup_logger, table_section, truncate_rows_csv, write_report
 from nanogpt.tokenizers import build_tokenizer
-from nanogpt.utils import autocast_ctx
+from nanogpt.utils import autocast_ctx, get_param_count
+
+#%% Global variables:
+
+# Columns of the summary table at the top of report.md:
+SUMMARY_COLS = [Col('metric', 'metric'), Col('value', 'value')]
 
 #%% Run state:
 
@@ -80,29 +88,28 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     # Fix the random seed for reproducibility:
     torch.manual_seed(cfg.seed)
 
-    # Create the run folder; a fresh run must not mix its records with an earlier run of the same name:
+    # Prepare the run folder; a fresh run must not mix its records with an earlier run of the same name:
     resuming = cfg.resume and (cfg.run_dir / 'latest.pt').exists()
-    if not resuming and (cfg.run_dir / 'metrics.csv').exists():
-        raise FileExistsError(f'{cfg.run_dir} already holds a run: resume it, choose another run name, or delete it.')
-    cfg.run_dir.mkdir(parents=True, exist_ok=True)
+    if not resuming:
+        prepare_run_dir(cfg.run_dir, cfg.overwrite)
+
+    # Logger:
+    logger = setup_logger(cfg.run_dir, cfg.log_level)
 
     # Initialization:
     with torch.device(cfg.device):
         model = build_model(cfg.model)
     optim = build_optimizer(model, cfg)
     latest = cfg.run_dir / 'latest.pt'          # path to the latest checkpoints
-    metrics_path = cfg.run_dir / 'metrics.csv'
+    results_path = cfg.run_dir / 'results.csv'
     start_step = 1
     best_val = float('inf')
-
-    # Logger:
-    logger = setup_logger(cfg)
 
     # Load the latest checkpoint if requested, and drop metrics logged after it:
     if resuming:
         start_step, best_val = load_checkpoint(latest, model, optim, cfg.device)
         start_step += 1
-        truncate_rows_csv(metrics_path, key='step', max_value=start_step - 1)
+        truncate_rows_csv(results_path, key='step', max_value=start_step - 1)
         logger.info(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
     else:
         # Record the configuration and the environment at the start of a fresh run:
@@ -133,8 +140,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
         writer.close()                    # flush event files, even on crash or early return
 
     # Records of the completed run:
-    write_summary(cfg, model, state)
-    write_samples(cfg, model, state)
+    write_run_report(cfg, model, state)
     write_inference_model(cfg, state)
 
     return model, state.best_val
@@ -191,7 +197,7 @@ def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, 
 
 def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, train_data: TokenSplit, val_data: TokenSplit, lr: float, grad_norm: float, state: RunState):
     '''
-    Function to estimate the smoothed losses, record them (log, TensorBoard, metrics.csv), and save checkpoints.
+    Function to estimate the smoothed losses, record them (log, TensorBoard, results.csv), and save checkpoints.
 
     Throughput covers only the training steps since the previous evaluation, so evaluation and checkpointing time
     does not dilute it.
@@ -232,9 +238,9 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     state.writer.add_scalar('eval/tok_per_sec', tok_per_sec, step)
     state.logger.info(f'step {step:5d} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | {tok_per_sec:,.0f} tok/s')
 
-    # Append one row to the metrics file (flushed immediately, so it survives a crash):
+    # Append one row to the results file (flushed immediately, so it survives a crash):
     append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr,
-                        grad_norm=grad_norm, tok_per_sec=tok_per_sec, train_s=train_s), cfg.run_dir / 'metrics.csv')
+                        grad_norm=grad_norm, tok_per_sec=tok_per_sec, train_s=train_s), cfg.run_dir / 'results.csv')
 
     # Save the latest and potentially best checkpoints:
     if step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
@@ -292,45 +298,48 @@ def estimate_loss(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, va
 
 #%% Run records:
 
-def write_summary(cfg: TrainConfig, model: nn.Module, state: RunState):
+def write_run_report(cfg: TrainConfig, model: nn.Module, state: RunState):
     '''
-    Function to save summary.json for a completed run from its metrics.csv, so resumed runs are summarized in full.
+    Function to save report.md for a completed run: the summary and the fixed-seed samples first, then the
+    configuration and the environment. The summary is computed from results.csv, so resumed runs are summarized in full.
 
     Parameters
     ----------
     cfg: TrainConfig
         Configurations used.
     model: nn.Module
-        Trained model, for the parameter count.
+        Trained model, for the parameter count and the samples.
     state: RunState
-        Logging tools.
+        Logging tools and the tokenizer metadata.
 
     '''
-    rows = load_rows_csv(cfg.run_dir / 'metrics.csv')
+    summary = table_section(summary_rows(cfg, model), SUMMARY_COLS, f'Summary: {cfg.run_dir.name}')
+    samples = samples_section(cfg, model, state)
+    write_report(cfg.run_dir / 'report.md', [summary, samples], config_record(cfg), load_json(cfg.run_dir / 'env.json'))
+
+
+def summary_rows(cfg: TrainConfig, model: nn.Module) -> list[dict]:
+    '''Function to compute the headline numbers of a run from its results.csv, as preformatted table rows.'''
+    rows = load_rows_csv(cfg.run_dir / 'results.csv')
     best, last = min(rows, key=lambda r: r['val']), rows[-1]
     train_s = sum(r['train_s'] for r in rows)
-    summary = dict(
-        run=cfg.run_name,
-        steps=last['step'],
-        tokens=last['tokens'],
-        final_train=last['train'],
-        final_val=last['val'],
-        best_val=best['val'],
-        best_step=best['step'],
-        n_params=sum(p.numel() for p in model.parameters() if p.requires_grad),
-        train_seconds=train_s,
-        mean_tok_per_sec=sum(r['tok_per_sec'] * r['train_s'] for r in rows) / train_s,     # tokens trained / seconds
-        seed=cfg.seed,
-        git=collect_env(cfg.device)['git'],
-    )
-    save_json(summary, cfg.run_dir / 'summary.json')
-    state.logger.info(f"Summary: best val {summary['best_val']:.4f} at step {summary['best_step']}, "
-                      f"{summary['mean_tok_per_sec']:,.0f} tok/s over {summary['train_seconds']:,.0f} s")
+    mean_tok_per_sec = sum(r['tok_per_sec'] * r['train_s'] for r in rows) / train_s     # tokens trained / seconds
+    summary = {
+        'steps': f"{last['step']:,}",
+        'tokens': f"{last['tokens']:,}",
+        'final train loss': f"{last['train']:.4f}",
+        'final val loss': f"{last['val']:.4f}",
+        'best val loss': f"{best['val']:.4f} (step {best['step']:,})",
+        'parameters': f'{get_param_count(model):,}',
+        'training time (s)': f'{train_s:,.0f}',
+        'mean throughput (tok/s)': f'{mean_tok_per_sec:,.0f}',
+    }
+    return [dict(metric=k, value=v) for k, v in summary.items()]
 
 
-def write_samples(cfg: TrainConfig, model: nn.Module, state: RunState):
+def samples_section(cfg: TrainConfig, model: nn.Module, state: RunState) -> str:
     '''
-    Function to save samples.md: one fixed-seed generation per prompt from the final model, comparable across runs.
+    Function to generate one fixed-seed sample per prompt from the final model, comparable across runs.
 
     Parameters
     ----------
@@ -341,16 +350,24 @@ def write_samples(cfg: TrainConfig, model: nn.Module, state: RunState):
     state: RunState
         Logging tools and the tokenizer metadata.
 
+    Returns
+    -------
+    section: str
+        Markdown section with the samples, or a note that sampling failed; sampling must not fail a finished run.
+
     '''
+    header = (f'### Samples\n\nFinal model (step {cfg.max_iters}), seed {cfg.sample_seed}, '
+              f'{cfg.sample_tokens} new tokens.')
     try:
         tok = build_tokenizer(state.tokenizer_meta)
-        sections = [f'Final model (step {cfg.max_iters}), seed {cfg.sample_seed}, {cfg.sample_tokens} new tokens.']
+        parts = [header]
         for prompt in cfg.sample_prompts:
             text = generate_text(model, tok, prompt, cfg.sample_tokens, temperature=1.0, top_k=None, use_cache=False, seed=cfg.sample_seed)
-            sections.append(f'### Prompt: {prompt!r}\n\n```text\n{text}\n```')
-        (cfg.run_dir / 'samples.md').write_text('\n\n'.join(sections) + '\n')
-    except Exception as err:                                            # sampling must not fail a finished run
+            parts.append(f'#### Prompt: {prompt!r}\n\n```text\n{text}\n```')
+        return '\n\n'.join(parts)
+    except Exception as err:
         state.logger.warning(f'Sampling failed: {err!r}')
+        return f'{header}\n\nSampling failed: `{err!r}`'
 
 
 def write_inference_model(cfg: TrainConfig, state: RunState):

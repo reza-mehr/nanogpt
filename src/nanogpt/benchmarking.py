@@ -2,16 +2,20 @@
 This file contains the benchmarking and profiling code: configurations, optimization journeys, measurement routines,
 benchmark-specific reports, and the memory model fit. Shared tables, records, and plot styling live in reporting.py.
 
-Every benchmark writes to 'results/<kind>_<preset>_<device>/':
-- report.md: the tables, followed by the environment
+Every benchmark and profile writes to 'results/<kind>_<preset>_<device>/' (the kind starts with 'benchmark' or
+'profile', which keeps these folders apart from training runs):
+- config.json: the full configuration, including derived values
+- env.json: code version, software, and hardware at the start
 - results.csv: flat raw rows, enough to rebuild the report with '--from-csv' (the profiler also writes ops.csv)
-- env.json: code version, software, hardware, and run settings
+- report.md: the tables, followed by the configuration and the environment
+- run.log: everything logged during the run
 
 '''
 
 #%% Imports:
 
 import gc
+import logging
 import math
 import re
 import statistics
@@ -26,13 +30,14 @@ from torch.profiler import ProfilerActivity, profile, record_function, schedule
 import numpy as np
 from tqdm import tqdm
 
-from nanogpt.config import DEVICE, PRESETS, ModelConfig, TrainConfig
+from nanogpt.config import DEVICE, PRESETS, ModelConfig, TrainConfig, config_record
 from nanogpt.kv_cache import KVCache
 from nanogpt.model import build_model
 from nanogpt.utils import autocast_ctx, enable_regions, prepare_for_inference, region, sync_device
 
 from nanogpt.reporting import Col, pivot_sections, report_pivot, table_section, write_report
-from nanogpt.reporting import load_json, save_json, load_rows_csv, save_rows_csv
+from nanogpt.reporting import collect_env, load_json, save_json, load_rows_csv, save_rows_csv
+from nanogpt.reporting import log, prepare_run_dir, setup_logger
 from nanogpt.reporting import SERIES_COLORS, new_axes, plot_markers, save_figure
 
 #%% Benchmark configurations:
@@ -47,6 +52,8 @@ class BenchBase:
     warmup: int = 3                         # untimed repeats before measuring (compiles kernels)
     out_dir: Path = Path('results')         # parent folder of each benchmark's output folder
     from_csv: bool = False                  # if True, skip measuring and rebuild the report from the CSV files
+    overwrite: bool = False                 # if True, clear an existing output folder without asking
+    log_level: int = logging.INFO           # logging level, 20 for INFO, 10 for DEBUG
 
     @property
     def kind(self) -> str:
@@ -79,11 +86,6 @@ class TrainBenchConfig(BenchBase):
     def batch(self) -> int:
         return self.batch_size or PRESETS[self.preset].batch_size
 
-    def settings(self) -> dict:
-        '''Function to return the run settings recorded next to the environment.'''
-        return {'preset': self.preset, 'batch size': self.batch,
-                'warmup / iters / trials': f'{self.warmup} / {self.iters} / {self.trials}'}
-
 
 @dataclass
 class GenerateBenchConfig(BenchBase):
@@ -105,12 +107,6 @@ class GenerateBenchConfig(BenchBase):
     @property
     def batch(self) -> int:
         return self.batch_size or 1                         # latency by default; larger values measure throughput
-
-    def settings(self) -> dict:
-        '''Function to return the run settings recorded next to the environment.'''
-        return {'suite': self.suite, 'preset': self.preset, 'batch size': self.batch, 'new tokens': self.new_tokens,
-                'precision': self.precision if self.suite == 'gqa' else 'per variant',
-                'warmup / trials': f'{self.warmup} / {self.trials}'}
 
 
 @dataclass
@@ -144,13 +140,6 @@ class ProfileConfig(BenchBase):
         '''Function to return the variant names to profile: explicit 'variants', otherwise the first and last steps.'''
         steps = TRAIN_JOURNEY if self.mode == 'train' else GENERATE_JOURNEY
         return list(self.variants) or [steps[0][0], steps[-1][0]]
-
-    def settings(self) -> dict:
-        '''Function to return the run settings recorded next to the environment.'''
-        return {'mode': self.mode, 'preset': self.preset, 'batch size': self.batch,
-                'variants': ', '.join(self.selected),
-                'schedule (wait / warmup / active)': f'{self.wait} / {self.warmup} / {self.active}',
-                'note': 'regions synchronize the device at their boundaries, so times are attributable but slightly inflated'}
 
 #%% Optimization journeys:
 
@@ -522,11 +511,11 @@ def run_generate(b: GenerateBenchConfig) -> list[dict]:
     return run_generate_gqa(b) if b.suite == 'gqa' else run_generate_journey(b)
 
 
-def report_generate(rows: list[dict], b: GenerateBenchConfig, meta: dict) -> None:
-    '''Function to print the generation tables and save the Markdown report.'''
+def report_generate(rows: list[dict], b: GenerateBenchConfig, config: dict, env: dict) -> None:
+    '''Function to log the generation tables and save the Markdown report.'''
     is_journey = b.suite == 'journey'
     report_pivot(rows, b.run_dir / 'report.md', row_key='variant', col_key='T', metrics=GENERATE_METRICS[b.suite],
-                 meta=meta, ref_key='ref',
+                 config=config, env=env, ref_key='ref',
                  total_label='total vs base' if is_journey else '',
                  total_row=GENERATE_JOURNEY[-1][0] if is_journey else None)
 
@@ -676,21 +665,23 @@ def run_profile(p: ProfileConfig) -> dict[str, list[dict]]:
     return {'results': rows, 'ops': ops}
 
 
-def report_profile(tables: dict[str, list[dict]], p: ProfileConfig, meta: dict) -> None:
-    '''Function to print the profiling tables (summary, region breakdown, top ops) and save the Markdown report.'''
+def report_profile(tables: dict[str, list[dict]], p: ProfileConfig, config: dict, env: dict) -> None:
+    '''Function to log the profiling tables (summary, region breakdown, top ops) and save the Markdown report.'''
     rows, ops = tables['results'], tables.get('ops', [])
     steps = [r for r in rows if r['region'] == 'step']
     parts = [r for r in rows if r['region'] != 'step']
     multi = len({r['variant'] for r in steps}) > 1
 
-    sections = pivot_sections(steps, 'variant', 'T', PROFILE_SUMMARY_METRICS, ref_key='ref',
-                              total_label='total vs base' if multi else '')
+    sections = ['Regions synchronize the device at their boundaries, so times are attributable but slightly '
+                'inflated: use the shares and op counts here, and the speeds from the benchmarks.']
+    sections += pivot_sections(steps, 'variant', 'T', PROFILE_SUMMARY_METRICS, ref_key='ref',
+                               total_label='total vs base' if multi else '')
     sections += pivot_sections(parts, 'region', 'case', PROFILE_BREAKDOWN_METRICS, ref_key='ref', total_label='')
     for case in dict.fromkeys(o['case'] for o in ops):
         sections.append(table_section([o for o in ops if o['case'] == case], OPS_COLS,
                                       f'Top ops by self CPU time ({case})'))
 
-    write_report(p.run_dir / 'report.md', sections, meta)
+    write_report(p.run_dir / 'report.md', sections, config, env)
 
 
 def _slug(text: str) -> str:
@@ -750,7 +741,7 @@ def fit_memory(rows: list[dict], group_key: str = 'variant', x_key: str = 'T', y
         points = [(r[x_key], r[y_key]) for r in rows
                   if r[group_key] == group and not math.isnan(float(r[y_key]))]
         if len({x for x, _ in points}) < 3:
-            print(f"Skipping '{group}': fewer than three lengths with measured memory.")
+            log.warning(f"Skipping '{group}': fewer than three lengths with measured memory.")
             continue
         x, y = zip(*sorted(points))
         c, a, b, r2 = fit_quadratic(x, y)
@@ -801,8 +792,8 @@ def report_memory_fit(run_dir: Path, group_key: str = 'variant', x_key: str = 'T
     '''
     Function to fit the memory model to a benchmark's results and save the fit table and plot in the same folder.
 
-    Reads 'results.csv' (and 'env.json' if present) from 'run_dir' and writes 'memory_fit.csv', 'memory_fit.md',
-    and 'memory_fit.png' next to them.
+    Reads 'results.csv' (and 'config.json' and 'env.json' if present) from 'run_dir' and writes 'memory_fit.csv',
+    'memory_fit.md', and 'memory_fit.png' next to them.
 
     Parameters
     ----------
@@ -816,52 +807,65 @@ def report_memory_fit(run_dir: Path, group_key: str = 'variant', x_key: str = 'T
     rows = load_rows_csv(run_dir / 'results.csv')
     fits = fit_memory(rows, group_key, x_key, y_key)
     if not fits:
-        print(f'No group in {run_dir} has measured memory at three or more lengths; nothing to fit.')
+        log.warning(f'No group in {run_dir} has measured memory at three or more lengths; nothing to fit.')
         return
 
     # Save the coefficients, the report, and the plot:
-    meta = load_json(run_dir / 'env.json') or None
     save_rows_csv(fits, run_dir / 'memory_fit.csv')
     title = 'Memory model fit: mem(T) = c + a T + b T²'
-    write_report(run_dir / 'memory_fit.md', [table_section(fits, FIT_COLS, title), '![memory fit](memory_fit.png)'], meta)
+    write_report(run_dir / 'memory_fit.md', [table_section(fits, FIT_COLS, title), '![memory fit](memory_fit.png)'],
+                 load_json(run_dir / 'config.json'), load_json(run_dir / 'env.json'))
     plot_memory_fit(rows, fits, run_dir / 'memory_fit.png', group_key, x_key, y_key)
-    print(f'Saved memory_fit.csv, memory_fit.md, and memory_fit.png in {run_dir}')
+    log.info(f'Saved memory_fit.csv, memory_fit.md, and memory_fit.png in {run_dir}')
 
 #%% Running and reloading:
 
-def run_or_load(run_dir: Path, run_fn: Callable[[], dict[str, list[dict]]], meta_fn: Callable[[], dict],
-                from_csv: bool) -> tuple[dict[str, list[dict]], dict]:
+def run_or_load(cfg: BenchBase, run_fn: Callable[[], dict[str, list[dict]]]) -> tuple[dict[str, list[dict]], dict, dict]:
     '''
-    Function to run a benchmark and save its tables and metadata, or load both from a previous run.
+    Function to run a benchmark or profile and save its records, or load them back with 'cfg.from_csv'.
+
+    A fresh run prepares 'cfg.run_dir' (asking before clearing an existing one), starts run.log, and saves config.json and env.json before measuring, so they capture the start state; the tables follow as CSV files.
 
     Parameters
     ----------
-    run_dir: Path
-        Benchmark output folder holding '<table>.csv' files and 'env.json'.
+    cfg: BenchBase
+        Benchmark or profile configuration; sets the folder, the overwrite and reload flags, and the log level.
     run_fn: callable
         Runs the benchmark and returns tables keyed by CSV file stem, e.g. {'results': rows}.
-    meta_fn: callable
-        Returns the environment and settings metadata; called before 'run_fn' so it captures the start state.
-    from_csv: bool
-        If True, load instead of running.
 
     Returns
     -------
     tables: dict[str, list[dict]]
         Flat rows per table.
-    meta: dict
-        Environment and settings metadata.
+    config: dict
+        Full configuration, as saved in config.json.
+    env: dict
+        Environment, as saved in env.json.
+
+    Raises
+    ------
+    FileNotFoundError
+        If reloading from a folder that does not exist.
 
     '''
-    meta_path = run_dir / 'env.json'
-    if from_csv:
-        tables = {path.stem: load_rows_csv(path) for path in sorted(run_dir.glob('*.csv'))}
-        return tables, load_json(meta_path)
+    run_dir = cfg.run_dir
 
-    run_dir.mkdir(parents=True, exist_ok=True)
-    meta = meta_fn()
+    # Reload the records of an earlier run:
+    if cfg.from_csv:
+        if not run_dir.is_dir():
+            raise FileNotFoundError(f'Nothing to reload: {run_dir} does not exist.')
+        setup_logger(run_dir, cfg.log_level)
+        tables = {path.stem: load_rows_csv(path) for path in sorted(run_dir.glob('*.csv'))}
+        return tables, load_json(run_dir / 'config.json'), load_json(run_dir / 'env.json')
+
+    # Fresh run: folder, log, configuration, and environment first, then the measurements:
+    prepare_run_dir(run_dir, cfg.overwrite)
+    setup_logger(run_dir, cfg.log_level)
+    config, env = config_record(cfg), collect_env(cfg.device)
+    save_json(config, run_dir / 'config.json')
+    save_json(env, run_dir / 'env.json')
+
     tables = run_fn()
     for name, rows in tables.items():
         save_rows_csv(rows, run_dir / f'{name}.csv')
-    save_json(meta, meta_path)
-    return tables, meta
+    return tables, config, env

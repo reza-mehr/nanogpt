@@ -104,7 +104,9 @@ uv run scripts/generate.py --out-dir "${RUNS}" --run-name shakespeare --prompt '
 uv run scripts/generate.py --out-dir "${RUNS}" --run-name stories --prompt 'Once upon a time' --new-tokens "${GEN_TOKENS}"
 
 step 'Plot runs'
-uv run scripts/plot_runs.py --path "${RUNS}" --per-run
+for run in shakespeare stories; do                          # loss curves only: the datasets differ, so no cross-run comparison
+    uv run scripts/plot_runs.py --path "${RUNS}/${run}"
+done
 
 #%% Benchmarks (stories_cfg):
 

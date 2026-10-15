@@ -2,12 +2,13 @@
 This file contains the code to plot training runs: loss curves for one run, or a comparison of several runs.
 The plotting and table code lives in src/nanogpt/reporting.py.
 
-- Run folder (contains metrics.csv): saves loss.png (train and val loss vs tokens seen) in that folder.
+- Training run folder (contains results.csv): saves loss.png (train and val loss vs tokens seen) in that folder.
 - Parent folder (its subfolders are runs): saves comparison.png, comparison.md, and comparison.csv in that folder,
   one curve per run, or per group of runs with '--group-by' (mean curve, min-max band, mean ± std table).
+  Benchmark and profile folders (names starting with 'benchmark' or 'profile') are skipped.
 
 Single run:
-    uv run scripts/plot_runs.py --path runs/2026-10-11_18-42-13
+    uv run scripts/plot_runs.py --path runs/train_main_cfg_mps
 
 Every run under a folder:
     uv run scripts/plot_runs.py --path runs/gqa
@@ -25,7 +26,7 @@ from typing import Literal
 
 import tyro
 
-from nanogpt.reporting import compare_runs, find_runs, plot_run
+from nanogpt.reporting import compare_runs, find_runs, log, plot_run, setup_logger
 
 #%% Configuration:
 
@@ -40,9 +41,10 @@ class PlotConfig:
 
 def main(p: PlotConfig) -> None:
     '''Function to plot a single run, or compare the runs under a folder.'''
+    setup_logger(None)                          # stdout only: a comparison spans runs, so no single run.log
     runs = find_runs(p.path)
     if runs == [p.path]:
-        print(f'Saved {plot_run(p.path)}')
+        log.info(f'Saved {plot_run(p.path)}')
         return
 
     compare_runs(p.path, p.group_by, p.split)

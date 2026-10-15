@@ -33,6 +33,7 @@ from nanogpt.trainer import train
 pytestmark = pytest.mark.smoke                  # every test in this file is a smoke test
 ROOT = Path(__file__).resolve().parents[1]      # repository root, where scripts/ lives
 TEXT = 'abcdefghijklmnopqrstuvwxyz \n'          # character vocabulary for the training test
+RUN_RECORDS = {'config.json', 'env.json', 'results.csv', 'report.md', 'run.log'}   # written by every run on every path
 
 #%% Utility functions:
 
@@ -99,13 +100,15 @@ def test_train_resume_and_records(trained_run):
     # Records of the fresh run:
     cfg, tok, train_data, val_data = trained_run
     run_dir = cfg.run_dir
-    _assert_files(run_dir, {'config.json', 'env.json', 'metrics.csv', 'summary.json', 'samples.md', 'latest.pt', 'best.pt', 'model.pt'})
-    assert [r['step'] for r in load_rows_csv(run_dir / 'metrics.csv')] == [2, 4]
-    assert (run_dir / 'samples.md').read_text().count('### Prompt') == 2
+    _assert_files(run_dir, RUN_RECORDS | {'latest.pt', 'best.pt', 'model.pt'})
+    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [2, 4]
+    report = (run_dir / 'report.md').read_text()
+    assert report.index('### Summary') < report.index('### Samples') < report.index('### Configuration')
+    assert report.count('#### Prompt') == 2
 
     # Resume to a later step:
     train(replace(cfg, max_iters=6, resume=True), train_data, val_data, tok.to_meta())
-    assert [r['step'] for r in load_rows_csv(run_dir / 'metrics.csv')] == [2, 4, 6]
+    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [2, 4, 6]
 
     # Plot the single run, then compare the runs under the parent folder:
     _run_script('plot_runs.py', '--path', str(run_dir))
@@ -130,7 +133,7 @@ def test_benchmark_train(tmp_path):
             '--iters', '1', '--trials', '1', '--warmup', '1', '--out-dir', str(tmp_path)]
     _run_script('benchmark_train.py', *args)
     run_dir = _only_subfolder(tmp_path)
-    _assert_files(run_dir, {'report.md', 'results.csv', 'env.json'})
+    _assert_files(run_dir, RUN_RECORDS)
     assert len(load_rows_csv(run_dir / 'results.csv')) == 6 * 2                    # variants x block sizes
 
     _run_script('benchmark_train.py', *args, '--from-csv')
@@ -143,7 +146,7 @@ def test_benchmark_generate(tmp_path, suite):
             '--new-tokens', '4', '--trials', '1', '--warmup', '1', '--out-dir', str(tmp_path)]
     _run_script('benchmark_generate.py', *args)
     run_dir = _only_subfolder(tmp_path)
-    _assert_files(run_dir, {'report.md', 'results.csv', 'env.json'})
+    _assert_files(run_dir, RUN_RECORDS)
 
     _run_script('benchmark_generate.py', *args, '--from-csv')
 
@@ -156,7 +159,7 @@ def test_profile_model(tmp_path, mode):
                 '--block-sizes', '8', '--wait', '0', '--warmup', '1', '--active', '1', '--no-export-trace',
                 '--out-dir', str(tmp_path))
     run_dir = _only_subfolder(tmp_path)
-    _assert_files(run_dir, {'report.md', 'results.csv', 'ops.csv', 'env.json'})
+    _assert_files(run_dir, RUN_RECORDS | {'ops.csv'})
 
     steps = [r for r in load_rows_csv(run_dir / 'results.csv') if r['region'] == 'step']
     assert steps and all(r['ms'] > 0 for r in steps), 'profiler recorded no step time'

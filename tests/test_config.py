@@ -3,8 +3,9 @@
 
 import pytest
 from dataclasses import replace
+from pathlib import Path
 
-from nanogpt.config import ModelConfig
+from nanogpt.config import PRESETS, ModelConfig, TrainConfig
 
 '''
 This file contains the code to test the config classes.
@@ -90,3 +91,20 @@ def test_rope_base():
         ModelConfig(pos_embed='rope', rope_base=0.)
     with pytest.raises(ValueError):
         ModelConfig(pos_embed='rope', rope_base=-11.)
+
+#%% Training run folder names:
+
+def test_default_run_dir_names_preset_and_device():
+    '''Function to test that a training run without a name gets a folder named after its preset and device.'''
+    cfg = replace(PRESETS['small_cfg'], device='cpu', out_dir='runs')
+    assert cfg.run_dir == Path('runs/train_small_cfg_cpu')
+    assert replace(cfg, device='mps').run_dir.name == 'train_small_cfg_mps'    # resolved lazily, never stale
+    assert replace(cfg, run_name='mine').run_dir == Path('runs/mine')
+    assert TrainConfig(device='cpu').run_dir.name == 'train_custom_cpu'        # built outside the presets
+
+
+@pytest.mark.parametrize('run_name', ['benchmark_x', 'profile_y'])
+def test_run_name_rejects_non_training_prefixes(run_name):
+    '''Function to test that training runs cannot take the folder prefixes that mark benchmarks and profiles.'''
+    with pytest.raises(ValueError, match='must not start with'):
+        TrainConfig(run_name=run_name)

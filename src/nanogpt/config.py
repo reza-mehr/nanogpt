@@ -4,10 +4,9 @@
 import sys
 from pathlib import Path
 import tyro
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass, replace
 import torch
 import inspect
-from datetime import datetime
 from typing import Literal
 import logging
 
@@ -21,6 +20,9 @@ DEVICE = (
     if torch.backends.mps.is_available()
     else 'cpu'
 )
+
+# Run folder name prefixes of benchmarks and profiles; training runs must not use them:
+NON_TRAINING_PREFIXES = ('benchmark', 'profile')
 
 #%% Main config:
 
@@ -110,9 +112,11 @@ class TrainConfig:
     # compute precision for forward passes; bf16 uses autocast, with weights kept in fp32
 
     seed: int = 1337                                        # random seed
-    run_name: str = ''                                      # run folder name, empty means a timestamp
+    preset: tyro.conf.Suppress[str] = 'custom'              # preset name, set in PRESETS, used in the default run name
+    run_name: str = ''                                      # run folder name, empty means 'train_<preset>_<device>'
     out_dir: str = 'runs'                                   # parent folder for runs
     resume: bool = False                                    # resume training from run_dir/latest.pt
+    overwrite: bool = False                                 # if True, clear an existing run folder without asking
     log_level: int = logging.INFO                           # logging level, 20 for INFO, 10 for DEBUG
 
     sample_prompts: tuple[str, ...] = ('',)                 # prompts for final samples; '' starts from the start token
@@ -123,12 +127,14 @@ class TrainConfig:
         '''Function to validate input arguments and assign default values.'''
         if self.lr_schedule == 'cosine' and not (0 < self.lr_warmup_iters < self.max_iters):
             raise ValueError(f"Warmup '{self.lr_warmup_iters}' must be between 0 and max iterations '{self.max_iters}'.")
-        if not self.run_name:
-            self.run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        if self.run_name.startswith(NON_TRAINING_PREFIXES):
+            raise ValueError(f"Run name '{self.run_name}' must not start with {NON_TRAINING_PREFIXES}; "
+                             f"those prefixes mark benchmark and profile folders.")
 
     @property
     def run_dir(self) -> Path:
-        return Path(self.out_dir) / self.run_name
+        '''Run folder: 'run_name' if given, otherwise named after the preset and device like the benchmarks.'''
+        return Path(self.out_dir) / (self.run_name or f'train_{self.preset}_{self.device}')
 
     @property
     def min_learning_rate(self) -> float:
@@ -155,13 +161,13 @@ stories_cfg = TrainConfig(data=DataConfig(dir='data/tinystories'),
                           lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95,
                           eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16')
 
-# Register the preset configs:
-PRESETS: dict[str, TrainConfig] = {
+# Register the preset configs, each carrying its own name for the default run folder:
+PRESETS: dict[str, TrainConfig] = {name: replace(cfg, preset=name) for name, cfg in {
     'main_cfg': main_cfg,
     'small_cfg': small_cfg,
     'bigram_cfg': bigram_cfg,
     'stories_cfg': stories_cfg,
-}
+}.items()}
 
 #%% Function to parse arguments:
 

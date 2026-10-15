@@ -1,6 +1,7 @@
 '''
 This file contains the shared reporting utilities for training runs, benchmarks, and profiling:
-- logging to terminal and file (moved from logs.py)
+- run folders: creation, and confirmation before clearing an existing one
+- logging to terminal and run.log
 - environment capture (code version, software, hardware)
 - CSV and JSON records
 - terminal and Markdown tables, including pivot tables with percent changes
@@ -15,6 +16,7 @@ import json
 import math
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import logging
@@ -26,49 +28,97 @@ from typing import Literal
 import numpy as np
 import torch
 
-from nanogpt.config import TrainConfig
+from nanogpt.config import NON_TRAINING_PREFIXES
 
 #%% Global variables:
 
 LOGGER_NAME = 'nanogpt'
+log = logging.getLogger(LOGGER_NAME)                # shared by every module; handlers are set by 'setup_logger'
 
-#%% Logging (moved from logs.py):
+# Column width for printing a table (fits '(+999%)' and '(-100%)'):
+_PCT_WIDTH = 7
 
-def setup_logger(cfg: TrainConfig) -> logging.Logger:
+# Validated categorical palette (light surface), assigned in fixed order, never cycled:
+SERIES_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948']
+_SURFACE, _TEXT, _TEXT_MUTED, _GRID = '#fcfcfb', '#0b0b0b', '#52514e', '#e4e3df'
+
+#%% Run folders:
+
+def prepare_run_dir(run_dir: Path, overwrite: bool = False) -> None:
     '''
-    Function to set up logging to stdout and run_dir/train.log.
-    Safe to call more than once per process.
+    Function to create an empty run folder, clearing an existing non-empty one only after confirmation.
 
     Parameters
     ----------
-    cfg: TrainConfig
-        Configurations to use.
+    run_dir: Path
+        Run folder to prepare.
+    overwrite: bool, optional
+        If True, clear an existing folder without asking. The default is False.
+
+    Raises
+    ------
+    FileExistsError
+        If the folder holds files and clearing it is not confirmed. Without a terminal to ask on (scripts, CI),
+        the answer is no, so nothing is ever deleted silently.
+
+    '''
+    if run_dir.is_dir() and any(run_dir.iterdir()):
+        question = f"'{run_dir}' already holds files. Delete them and start over? [y/N] "
+        if not (overwrite or _confirm(question)):
+            raise FileExistsError(f'{run_dir} already holds files: confirm, pass --overwrite, choose another '
+                                  f'folder name, or resume a training run with --resume.')
+        shutil.rmtree(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _confirm(question: str) -> bool:
+    '''Function to ask a yes/no question on the terminal; anything but yes, or no terminal at all, means no.'''
+    if not sys.stdin.isatty():
+        return False
+    try:
+        return input(question).strip().lower() in ('y', 'yes')
+    except EOFError:
+        return False
+
+#%% Logging:
+
+def setup_logger(run_dir: Path | None, level: int = logging.INFO) -> logging.Logger:
+    '''
+    Function to set up logging to stdout and, for a run, to 'run_dir/run.log'.
+    Safe to call more than once per process; each call replaces the previous handlers.
+
+    Parameters
+    ----------
+    run_dir: Path or None
+        Existing run folder to append run.log to; None logs to stdout only (e.g. cross-run comparisons).
+    level: int, optional
+        Logging level, e.g. logging.INFO (20) or logging.DEBUG (10). The default is logging.INFO.
 
     Returns
     -------
     logger: logging.Logger
-        Constructed logger.
+        Configured logger.
 
     '''
     # Initialization:
-    logger = logging.getLogger(LOGGER_NAME)
-    logger.setLevel(cfg.log_level)
-    logger.propagate = False                        # don't also print via the root logger
+    log.setLevel(level)
+    log.propagate = False                           # don't also print via the root logger
     fmt = logging.Formatter('%(asctime)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    out_dir = cfg.run_dir
 
     # Clear handlers from a previous run:
-    for h in list(logger.handlers):
+    for h in list(log.handlers):
         h.close()
-        logger.removeHandler(h)
+        log.removeHandler(h)
 
-    # Recollect the handles:
-    for handler in (logging.StreamHandler(sys.stdout),
-                    logging.FileHandler(out_dir / 'train.log', mode='a')):
+    # Attach the new handlers:
+    handlers = [logging.StreamHandler(sys.stdout)]
+    if run_dir is not None:
+        handlers.append(logging.FileHandler(run_dir / 'run.log', mode='a'))
+    for handler in handlers:
         handler.setFormatter(fmt)
-        logger.addHandler(handler)
+        log.addHandler(handler)
 
-    return logger
+    return log
 
 
 #%% Environment capture:
@@ -121,6 +171,22 @@ def _run_cmd(cmd: list[str]) -> str:
 def _meta_lines(meta: dict, bullet: str = '') -> list[str]:
     '''Function to format metadata as 'key: value' lines, optionally as Markdown bullets.'''
     return [f'{bullet}**{k}:** {v}' if bullet else f'{k}: {v}' for k, v in meta.items()]
+
+
+def _flat_scalars(d: dict, prefix: str = '') -> dict:
+    '''
+    Function to flatten a nested config record into dotted keys, keeping scalars and lists of scalars only.
+    Larger derived values (e.g. a profile's journey) stay in config.json but are left out of the report.
+
+    '''
+    out = {}
+    for k, v in d.items():
+        key = f'{prefix}{k}'
+        if isinstance(v, dict):
+            out |= _flat_scalars(v, f'{key}.')
+        elif not isinstance(v, (list, tuple)) or all(not isinstance(x, (list, tuple, dict)) for x in v):
+            out[key] = v
+    return out
 
 #%% CSV and JSON records:
 
@@ -200,15 +266,12 @@ class Col:
         return self.title_align or self.justify
 
 
-# Column width for printing a table (fits '(+999%)' and '(-100%)'):
-_PCT_WIDTH = 7
-
-
 def report_pivot(rows: list[dict], path: Path, row_key: str, col_key: str, metrics: list[tuple[str, str, str]],
-                 total_label: str = 'total vs base', meta: dict | None = None, ref_key: str | None = None,
-                 total_row: str | None = None) -> None:
+                 total_label: str = 'total vs base', config: dict | None = None, env: dict | None = None,
+                 ref_key: str | None = None, total_row: str | None = None) -> None:
     '''
-    Function to print one pivot table per metric and save them all, with the environment, to a single Markdown file.
+    Function to log one pivot table per metric and save them all, with the configuration and the environment, to a
+    single Markdown file.
 
     Parameters
     ----------
@@ -222,19 +285,19 @@ def report_pivot(rows: list[dict], path: Path, row_key: str, col_key: str, metri
         '(value_key, title, fmt)' per table, e.g. ('tps', 'Throughput (tokens/sec)', ',.0f').
     total_label: str, optional
         Label of the total row; empty to omit it. The default is 'total vs base'.
-    meta: dict, optional
-        Environment and run settings, e.g. from 'collect_env'. The default is None (omitted).
+    config, env: dict, optional
+        Run configuration (config.json) and environment (env.json). The defaults are None (omitted).
     ref_key, total_row: str, optional
         Reference rows for percent changes and the total row, see 'pivot_rows'. The defaults are None.
 
     '''
-    write_report(path, pivot_sections(rows, row_key, col_key, metrics, total_label, ref_key, total_row), meta)
+    write_report(path, pivot_sections(rows, row_key, col_key, metrics, total_label, ref_key, total_row), config, env)
 
 
 def pivot_sections(rows: list[dict], row_key: str, col_key: str, metrics: list[tuple[str, str, str]],
                    total_label: str = 'total vs base', ref_key: str | None = None,
                    total_row: str | None = None) -> list[str]:
-    '''Function to print one pivot table per metric and return their Markdown sections.'''
+    '''Function to log one pivot table per metric and return their Markdown sections.'''
     sections = []
     for value_key, title, fmt in metrics:
         table, cols = pivot_rows(rows, row_key, col_key, value_key, fmt, total_label, ref_key, total_row)
@@ -243,23 +306,41 @@ def pivot_sections(rows: list[dict], row_key: str, col_key: str, metrics: list[t
 
 
 def table_section(rows: list[dict], cols: list[Col], title: str) -> str:
-    '''Function to print a titled table and return it as a Markdown section.'''
+    '''Function to log a titled table and return it as a Markdown section.'''
     print_table(rows, cols, title)
     return f'### {title}\n\n{markdown_table(rows, cols)}'
 
 
-def write_report(path: Path, sections: list[str], meta: dict | None = None) -> None:
-    '''Function to save Markdown sections to a report, appending and printing the environment if given.'''
-    if meta:
-        print('\nEnvironment\n' + '-'*35 + '\n' + '\n'.join(_meta_lines(meta)) + '\n')
-        sections = sections + ['### Environment\n\n' + '\n'.join(_meta_lines(meta, bullet='- '))]
+def write_report(path: Path, sections: list[str], config: dict | None = None, env: dict | None = None) -> None:
+    '''
+    Function to save a Markdown report: the given sections, then the configuration and the environment.
+    The environment is also logged.
+
+    Parameters
+    ----------
+    path: Path
+        Output Markdown file; parent folders are created if missing.
+    sections: list[str]
+        Markdown sections to put first, e.g. a summary, tables, and samples.
+    config: dict, optional
+        Run configuration as saved in config.json; nested keys are flattened to dotted names. The default is None.
+    env: dict, optional
+        Environment as saved in env.json. The default is None.
+
+    '''
+    sections = list(sections)
+    if config:
+        sections.append('### Configuration\n\n' + '\n'.join(_meta_lines(_flat_scalars(config), bullet='- ')))
+    if env:
+        log.info('\nEnvironment\n' + '-'*35 + '\n' + '\n'.join(_meta_lines(env)) + '\n')
+        sections.append('### Environment\n\n' + '\n'.join(_meta_lines(env, bullet='- ')))
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text('\n\n'.join(sections) + '\n')
 
 
 def print_table(rows: list[dict], cols: list[Col], title: str = '', gap: int = 6) -> None:
-    '''Function to print an aligned console table, optionally preceded by a title.'''
+    '''Function to log an aligned table, optionally preceded by a title, as one multi-line message.'''
     if not rows: return
 
     # Initialization:
@@ -267,14 +348,11 @@ def print_table(rows: list[dict], cols: list[Col], title: str = '', gap: int = 6
     def line(cells):
         return (' ' * gap).join(cells)
 
-    # Print the table:
+    # Log the table (the leading newline keeps the header aligned below the timestamp):
     header = line(f'{c.title:{c.title_justify}{w}}' for c, w in zip(cols, widths))
-    if title: print(f'\n{title}')
-    print('\n' + header if not title else header)
-    print('-' * len(header))
-    for r in rows:
-        print(line(_pad(c, w, _cell_text(c, r[c.key])) for c, w in zip(cols, widths)))
-    print()
+    lines = ([title] if title else []) + [header, '-' * len(header)]
+    lines += [line(_pad(c, w, _cell_text(c, r[c.key])) for c, w in zip(cols, widths)) for r in rows]
+    log.info('\n' + '\n'.join(lines) + '\n')
 
 
 def markdown_table(rows: list[dict], cols: list[Col]) -> str:
@@ -397,11 +475,6 @@ def _cell_text(c: Col, v) -> str:
 
 #%% Plot styling:
 
-# Validated categorical palette (light surface), assigned in fixed order, never cycled:
-SERIES_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948']
-_SURFACE, _TEXT, _TEXT_MUTED, _GRID = '#fcfcfb', '#0b0b0b', '#52514e', '#e4e3df'
-
-
 def new_axes(title: str, xlabel: str, ylabel: str, n_series: int = 1):
     '''
     Function to create a styled figure and axes: recessive grid and spines, text in text colors.
@@ -467,11 +540,18 @@ RUN_COLS = [Col('group', 'run / group'), Col('runs', 'runs', 'd'), Col('tokens',
             Col('best_val', 'best val', '.4f'), Col('best_val_std', '± std', '.4f')]
 
 
+def is_training_run(path: Path) -> bool:
+    '''Function to tell a training run folder: it holds results.csv and its name has no benchmark or profile prefix.'''
+    return (path / 'results.csv').is_file() and not path.name.startswith(NON_TRAINING_PREFIXES)
+
+
 def find_runs(root: Path) -> list[Path]:
-    '''Function to return run folders: 'root' itself if it holds metrics.csv, otherwise its subfolders that do.'''
-    if (root / 'metrics.csv').exists():
+    '''Function to return training run folders: 'root' itself if it is one, otherwise its subfolders that are.'''
+    if is_training_run(root):
         return [root]
-    return sorted(p.parent for p in root.glob('*/metrics.csv'))
+    if not root.is_dir():
+        return []
+    return sorted(p for p in root.iterdir() if p.is_dir() and is_training_run(p))
 
 
 def get_dotted(d: dict, key: str):
@@ -510,7 +590,7 @@ def plot_run(run_dir: Path) -> Path:
     Parameters
     ----------
     run_dir: Path
-        Run folder containing metrics.csv.
+        Training run folder containing results.csv.
 
     Returns
     -------
@@ -518,7 +598,7 @@ def plot_run(run_dir: Path) -> Path:
         Saved figure, 'run_dir/loss.png'.
 
     '''
-    rows = load_rows_csv(run_dir / 'metrics.csv')
+    rows = load_rows_csv(run_dir / 'results.csv')
     fig, ax = new_axes(f'Loss: {run_dir.name}', 'tokens seen', 'cross-entropy loss', n_series=2)
     for color, split in zip(SERIES_COLORS, ('train', 'val')):
         x = [r['tokens'] for r in rows]
@@ -541,7 +621,7 @@ def compare_runs(root: Path, group_by: str | None = None, split: Literal['train'
     Parameters
     ----------
     root: Path
-        Folder whose subfolders are runs (each with metrics.csv, and config.json for grouping).
+        Folder whose subfolders are training runs (each with results.csv, and config.json for grouping).
     group_by: str, optional
         Dotted config key to group runs by. The default is None.
     split: str, optional
@@ -560,7 +640,7 @@ def compare_runs(root: Path, group_by: str | None = None, split: Literal['train'
             raise KeyError(f"'{group_by}' not in {config_path} ({err})") from err
         grouped.setdefault(value, []).append(run_dir)
     if not grouped:
-        print(f'No runs with metrics.csv found under {root}.')
+        log.info(f'No training runs with results.csv found under {root}.')
         return
     numeric = all(isinstance(v, (int, float)) for v in grouped)
     order = sorted(grouped, key=lambda v: v if numeric else str(v))
@@ -571,7 +651,7 @@ def compare_runs(root: Path, group_by: str | None = None, split: Literal['train'
                        n_series=len(groups))
     table = []
     for color, (label, run_dirs) in zip(SERIES_COLORS, groups.items()):
-        curves = [load_rows_csv(d / 'metrics.csv') for d in run_dirs]
+        curves = [load_rows_csv(d / 'results.csv') for d in run_dirs]
         x = np.array([r['tokens'] for r in curves[0]], dtype=float)                # common grid: first run's evals
         ys = np.array([np.interp(x, [r['tokens'] for r in c], [r[split] for r in c]) for c in curves])
         ax.plot(x, ys.mean(axis=0), color=color, linewidth=2, label=f'{label} (n={len(run_dirs)})')
@@ -590,7 +670,7 @@ def compare_runs(root: Path, group_by: str | None = None, split: Literal['train'
     save_rows_csv(table, root / 'comparison.csv')
     title = f'Validation loss by {group_by or "run"} (mean over runs; band in the plot is min-max)'
     write_report(root / 'comparison.md', [table_section(table, RUN_COLS, title), '![comparison](comparison.png)'])
-    print(f'Saved comparison.png, comparison.md, and comparison.csv in {root}')
+    log.info(f'Saved comparison.png, comparison.md, and comparison.csv in {root}')
 
 
 def _format_token_axis(ax) -> None:

@@ -11,7 +11,8 @@ Full run (plugged in, other apps closed):
 Rebuild the tables from saved results without benchmarking:
     uv run scripts/benchmark_train.py --preset main_cfg --from-csv
 
-Outputs go to results/benchmark_train_<preset>_<device>/ as report.md, results.csv, and env.json.
+Outputs go to results/benchmark_train_<preset>_<device>/ as config.json, env.json, results.csv, report.md, and run.log.
+An existing output folder is cleared only after confirmation (or with --overwrite).
 
 '''
 
@@ -20,7 +21,7 @@ Outputs go to results/benchmark_train_<preset>_<device>/ as report.md, results.c
 import tyro
 
 from nanogpt.benchmarking import TRAIN_METRICS, TrainBenchConfig, run_or_load, run_train_journey
-from nanogpt.reporting import collect_env, report_pivot
+from nanogpt.reporting import report_pivot
 
 #%% Main function:
 
@@ -28,14 +29,11 @@ def main(b: TrainBenchConfig) -> None:
     '''Function to run (or reload) the training benchmark journey and report the results.'''
 
     # Benchmark (or reload) the journey:
-    tables, meta = run_or_load(b.run_dir,
-                               run_fn=lambda: {'results': run_train_journey(b)},
-                               meta_fn=lambda: collect_env(b.device) | b.settings(),
-                               from_csv=b.from_csv)
+    tables, config, env = run_or_load(b, run_fn=lambda: {'results': run_train_journey(b)})
 
-    # Print the tables and save the report:
+    # Log the tables and save the report:
     report_pivot(tables['results'], b.run_dir / 'report.md', row_key='variant', col_key='T',
-                 metrics=TRAIN_METRICS, meta=meta, ref_key='ref')
+                 metrics=TRAIN_METRICS, config=config, env=env, ref_key='ref')
 
 #%% Main call:
 
