@@ -52,7 +52,7 @@ class RunState:
     '''Class to hold the logging tools and bookkeeping shared by the training loop functions.'''
     logger: Logger
     writer: SummaryWriter
-    git: dict                       # commit, dirty flag, diff, and untracked to save to checkpoint
+    git: dict                       # commit, tag, dirty flag, diff, and untracked files to save to checkpoint
     tokenizer_meta: dict            # tokenizer metadata to save to checkpoint and to rebuild the tokenizer
     best_val: float                 # best smoothed validation loss so far
     mark_time: float                # wall time when the current training interval started (after the last eval)

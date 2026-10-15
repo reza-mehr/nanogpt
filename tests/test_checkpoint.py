@@ -6,12 +6,14 @@ This file contains the code to test checkpoint resumption and the inference-only
 
 #%% Imports:
 
+import subprocess
 import numpy as np
 from dataclasses import replace
 
 import pytest
 import torch
 
+from nanogpt import checkpoint
 from nanogpt.checkpoint import git_info, load_model_tokenizer, save_checkpoint
 from nanogpt.checkpoint import check_inference_checkpoint, save_inference_checkpoint
 from nanogpt.config import ModelConfig, TrainConfig
@@ -120,3 +122,24 @@ def test_inference_checkpoint_detects_wrong_weights(tmp_path):
 
     with pytest.raises(RuntimeError, match='logits differ'):
         check_inference_checkpoint(src, dst)
+
+#%% Code version:
+
+def _fake_git(tag: str | None):
+    '''Function to return a stand-in for subprocess.check_output that answers git queries without a repository.'''
+    def check_output(cmd, **kwargs):
+        if cmd[1] == 'describe':
+            if tag is None:
+                raise subprocess.CalledProcessError(128, cmd)       # what git does when no tag is reachable
+            return f'{tag}\n'
+        return {'rev-parse': 'abc1234\n', 'diff': '', 'ls-files': ''}[cmd[1]]
+    return check_output
+
+
+@pytest.mark.parametrize('tag', ['v0.1-3-gabc1234', None], ids=['tagged', 'untagged'])
+def test_git_info_records_tag_and_commit(monkeypatch, tag):
+    '''Function to test that git_info() records the readable tag, and that a missing tag does not lose the commit.'''
+    monkeypatch.setattr(checkpoint.subprocess, 'check_output', _fake_git(tag))
+    info = git_info()
+    assert info['tag'] == tag
+    assert info['commit'] == 'abc1234' and info['dirty'] is False

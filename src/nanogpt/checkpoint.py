@@ -23,7 +23,12 @@ from nanogpt.tokenizers import Tokenizer, build_tokenizer
 #%% Checkpoint utilities:
 
 def git_info() -> dict:
-    '''Function to get the status of the code at checkpointing time: commit, dirty flag, diff, and untracked files.'''
+    '''
+    Function to get the status of the code at checkpointing time: commit, readable tag, dirty flag, diff, and untracked
+    files. The tag (from 'git describe --tags', e.g. 'v0.1-3-gabc1234' for 3 commits after v0.1) is None when no tag is
+    reachable from the commit; the other fields are None when git is unavailable.
+
+    '''
     def _git(*args: str) -> str:
         return subprocess.check_output(['git', *args], text=True, stderr=subprocess.DEVNULL)
 
@@ -31,9 +36,16 @@ def git_info() -> dict:
         commit = _git('rev-parse', 'HEAD').strip()
         diff = _git('diff', 'HEAD')                     # staged and unstaged changes to tracked files
         untracked = _git('ls-files', '--others', '--exclude-standard').split()
-        return {'commit': commit, 'dirty': bool(diff or untracked), 'diff': diff, 'untracked': untracked}
     except Exception:                                   # not a git repository, or git not installed
-        return {'commit': None, 'dirty': None, 'diff': None, 'untracked': None}
+        return {'commit': None, 'tag': None, 'dirty': None, 'diff': None, 'untracked': None}
+
+    # Queried separately, so a repository without tags still records its commit:
+    try:
+        tag = _git('describe', '--tags').strip()
+    except subprocess.CalledProcessError:               # no tag reachable from the commit
+        tag = None
+
+    return {'commit': commit, 'tag': tag, 'dirty': bool(diff or untracked), 'diff': diff, 'untracked': untracked}
 
 
 def save_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, step: int,
@@ -58,7 +70,7 @@ def save_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, step: in
     cfg: TrainConfig
         Full training configuration, including the model configuration.
     git: dict
-        Commit, dirty flag, diff, and untracked, captured once at the start of the run.
+        Commit, tag, dirty flag, diff, and untracked files, captured once at the start of the run.
 
     '''
     ckpt = {
