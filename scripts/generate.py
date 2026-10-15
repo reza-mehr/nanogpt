@@ -11,18 +11,9 @@ import torch
 from dataclasses import dataclass
 import tyro
 
+from nanogpt.config import DEVICE
 from nanogpt.checkpoint import load_model_tokenizer
 from nanogpt.generation import generate_text
-
-#%% Global variables:
-
-device = (
-    'cuda'
-    if torch.cuda.is_available()
-    else 'mps'
-    if torch.backends.mps.is_available()
-    else 'cpu'
-)
 
 #%% Generation configurations:
 
@@ -39,7 +30,7 @@ class GenerateConfig:
     use_cache: bool = True              # use key-value cache if True, ignored for Bigram model
 
     seed: int = 1337                    # random seed
-    device: str = device                # device to run the generation on
+    device: str = DEVICE                # device to run the generation on
 
 #%% Main function:
 

@@ -4,7 +4,6 @@
 import pytest
 import torch
 import math
-import copy
 
 from nanogpt.config import ModelConfig
 from nanogpt.model import build_model

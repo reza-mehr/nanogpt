@@ -13,7 +13,7 @@ This file contains tests for optimizer including learning rate scheduling and se
 
 #%% Set up the configs:
 
-# Number of words in the synthetic dataset:
+# Number of tokens in the synthetic dataset:
 VOCAB = 16
 
 tiny_cfg = TrainConfig(

@@ -610,11 +610,12 @@ class GPT(nn.Module):
         train_mode = self.training
         self.eval()
 
-        # Generate the new tokens:
-        if use_cache: idx_new = self._generate_cached(idx, new_tokens, temperature, top_k, cache)
-        else: idx_new = self._generate(idx, new_tokens, temperature, top_k)
-
-        if train_mode: self.train()                             # revert to original training mode
+        try:
+            # Generate the new tokens:
+            if use_cache: idx_new = self._generate_cached(idx, new_tokens, temperature, top_k, cache)
+            else: idx_new = self._generate(idx, new_tokens, temperature, top_k)
+        finally:
+            if train_mode: self.train()                             # revert to original training mode
 
         return idx_new
 
@@ -686,8 +687,8 @@ class GPT(nn.Module):
         B, T0 = idx.shape
         if T0 + new_tokens - 1 > cfg.block_size:
             raise ValueError(f'Prompt ({T0} tokens) + new_tokens ({new_tokens} tokens), '
-                            f'exceeds the model block size ({cfg.block_size}); use --no-use-cache '
-                            f'for longer generation.')
+                            f"exceeds the model block size ({cfg.block_size}); set 'use_case' to False "
+                            'for longer generation.')
 
         # Construct the cache:
         if cache is None:

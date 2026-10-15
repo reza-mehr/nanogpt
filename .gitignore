@@ -17,6 +17,7 @@ checkpoints/
 logs/
 *.pt
 results/
+bigram.ipynb
 
 # Claude files:
 .claude/

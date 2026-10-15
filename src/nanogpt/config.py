@@ -14,7 +14,7 @@ import logging
 
 #%% Global variables:
 
-device = (
+DEVICE = (
     'cuda'
     if torch.cuda.is_available()
     else 'mps'
@@ -105,7 +105,7 @@ class TrainConfig:
     eval_iters: int = 200                                   # batches averaged per evaluation
     ckpt_interval: int = 500                                # steps between saves of latest.pt
 
-    device: str = device                                    # device to run the training on
+    device: str = DEVICE                                    # device to run the training on
     precision: Literal['fp32', 'mixed_bf16'] = 'fp32'
     # compute precision for forward passes; bf16 uses autocast, with weights kept in fp32
 
@@ -179,7 +179,6 @@ def parse_config() -> TrainConfig:
 def config_record(obj) -> dict:
     '''
     Function to convert a config to a dict of its fields and its properties (derived values such as n_kv_head).
-
     For records only (config.json). Unlike asdict(), the result cannot rebuild the config, since properties are
     not constructor arguments; checkpoints keep asdict() for that.
 

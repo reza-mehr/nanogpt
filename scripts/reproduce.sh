@@ -13,17 +13,17 @@
 #
 # Everything is logged to logs/reproduce_<mode>_<timestamp>.log; results land in runs/ and results/.
 
-set -eo pipefail                                       # no -u: empty arrays fail under macOS bash 3.2
+set -eo pipefail                                # no -u: empty arrays fail under macOS bash 3.2
 
 #%% Settings:
 
-MODE="${1:-smoke}"                                      # 'smoke' (laptop) or 'full' (GPU)
-ABLATIONS="${2:-run}"                                   # 'run' or 'skip-ablations'
+MODE="${1:-smoke}"                              # 'smoke' (laptop) or 'full' (GPU)
+ABLATIONS="${2:-run}"                           # 'run' or 'skip-ablations'
 STAMP="$(date +%Y-%m-%d_%H-%M-%S)"
-RUNS="runs/${MODE}"                                     # parent folder for the training runs
-RESULTS="results/${MODE}"                               # parent folder for benchmarks and profiles
+RUNS="runs/${MODE}"                             # parent folder for the training runs
+RESULTS="results/${MODE}"                       # parent folder for benchmarks and profiles
 SHAKES_DIR='data/tinyshakespeare'
-STORIES_VOCAB=50257                                     # synthetic vocabulary for benchmarks; match the TinyStories tokenizer
+STORIES_VOCAB=50257                             # synthetic vocabulary for benchmarks; match the TinyStories tokenizer
 
 if [[ "${MODE}" == 'smoke' ]]; then
     # Data: a small TinyStories subset in its own folder, so a later full run can never pick it up:
@@ -45,7 +45,7 @@ elif [[ "${MODE}" == 'full' ]]; then
     STORIES_DIR='data/tinystories'
     STORIES_PREP_ARGS=()
     TRAIN_ARGS=()
-    # Batch 64 on an A100: 32k tokens per step, ~330M tokens over 10k steps (about 0.7 epoch of TinyStories):
+    # Batch 64 on an A100: 32k tokens per step, ~330M tokens over 10k steps (about 69% epoch of TinyStories):
     STORIES_ARGS=(--batch-size 64)
     GEN_TOKENS=200
     BENCH_ARGS=()
@@ -61,9 +61,9 @@ else
     exit 1
 fi
 
-rm -rf "${RUNS}" "${RESULTS}"                           # start clean; earlier logs and tarballs are kept
+rm -rf "${RUNS}" "${RESULTS}"                               # start clean; earlier logs and tarballs are kept
 mkdir -p logs
-exec > >(tee "logs/reproduce_${MODE}_${STAMP}.log") 2>&1   # log everything, still print to the terminal
+exec > >(tee "logs/reproduce_${MODE}_${STAMP}.log") 2>&1    # log everything, still print to the terminal
 
 step() { echo; echo "=== $(date +%H:%M:%S) | $* ==="; }
 
@@ -76,9 +76,9 @@ command -v nvidia-smi > /dev/null && nvidia-smi || true
 
 step 'Tests'
 if [[ "${MODE}" == 'smoke' ]]; then
-    uv run pytest                                       # everything, smoke tests included
+    uv run pytest                                           # everything, smoke tests included
 else
-    uv run pytest -m 'not smoke'                        # unit tests only; the smoke tests ran on the laptop
+    uv run pytest -m 'not smoke'                            # unit tests only; the smoke tests ran on the laptop
 fi
 
 #%% Data (skipped when the splits already exist; each mode has its own TinyStories folder):
@@ -156,7 +156,7 @@ ablation_group() {
 if [[ "${ABLATIONS}" == 'run' ]]; then
     step 'Ablations: train'
     for seed in "${SEEDS[@]}"; do
-        ablation_run baseline "${seed}" --model.kv-head-num 12              # explicit MHA, so groups sort numerically
+        ablation_run baseline "${seed}" --model.kv-head-num 12            # explicit MHA, so groups sort numerically
         ablation_run kv4 "${seed}" --model.kv-head-num 4                  # GQA, 3 query heads per KV head
         ablation_run kv1 "${seed}" --model.kv-head-num 1                  # MQA
         ablation_run learned "${seed}" --model.pos-embed learned          # learned absolute positions
