@@ -26,6 +26,7 @@ from typing import Callable, Literal
 
 import torch
 from torch import nn
+from torch.autograd import DeviceType
 from torch.profiler import ProfilerActivity, profile, record_function, schedule
 import numpy as np
 from tqdm import tqdm
@@ -257,6 +258,10 @@ PROFILE_REGIONS = ('embed', 'layernorm', 'attn.qkv', 'attn.rope', 'attn.cache', 
                    'attn.proj', 'mlp', 'lm_head', 'loss', 'backward', 'optimizer')
 
 OPS_COLS = [Col('op', 'op'), Col('self_ms', 'self CPU ms/step', ',.3f'), Col('calls', 'calls/step', ',.1f')]
+
+# On CUDA the ops are ranked by GPU time; CPU time stays alongside (a large CPU share means launch-bound):
+OPS_COLS_CUDA = [Col('op', 'op'), Col('self_device_ms', 'self GPU ms/step', ',.3f'),
+                 Col('self_ms', 'self CPU ms/step', ',.3f'), Col('calls', 'calls/step', ',.1f')]
 
 FIT_COLS = [Col('variant', 'variant'), Col('c', 'c (MB)', ',.0f'), Col('a', 'a (MB/token)', ',.3f'),
             Col('b', 'b (MB/token²)', '.2e'), Col('quad_pct', 'T² share at max T (%)', '.0f'),
@@ -590,7 +595,13 @@ def profile_case(step_fn: Callable[[], None], p: ProfileConfig, trace_path: Path
     n_ops: float
         aten op calls per step.
     top_ops: list[dict]
-        The 'p.top_ops' aten ops with the largest self CPU time: 'op', 'self_ms', and 'calls' per step.
+        The 'p.top_ops' aten ops with the largest self time: 'op', 'self_ms' (CPU), and 'calls' per step. On CUDA
+        they are ranked by GPU time and also carry 'self_device_ms'; elsewhere they are ranked by CPU time.
+
+    Raises
+    ------
+    RuntimeError
+        If the profiler reports the same CPU event name more than once.
 
     '''
     # Initialization:
@@ -613,15 +624,57 @@ def profile_case(step_fn: Callable[[], None], p: ProfileConfig, trace_path: Path
         trace_path.parent.mkdir(parents=True, exist_ok=True)
         prof.export_chrome_trace(str(trace_path))
 
-    # Per-step summaries over the active steps:
-    events = prof.key_averages()
-    times = {e.key: e.cpu_time_total / p.active / 1e3 for e in events}
+    # Per-step summaries over the active steps, from CPU-side events only:
+    events = [e for e in prof.key_averages() if e.device_type == DeviceType.CPU]
+    times = _cpu_ms_per_step(events, p.active)
     aten = [e for e in events if e.key.startswith('aten::')]
     n_ops = sum(e.count for e in aten) / p.active
-    top = sorted(aten, key=lambda e: e.self_cpu_time_total, reverse=True)[:p.top_ops]
-    top_ops = [dict(op=e.key, self_ms=e.self_cpu_time_total / p.active / 1e3, calls=e.count / p.active) for e in top]
+
+    # Top ops: GPU time is the real cost on CUDA (kernels run asynchronously); CPU time is the cost elsewhere:
+    on_cuda = p.device == 'cuda'
+    rank_by = (lambda e: e.self_device_time_total) if on_cuda else (lambda e: e.self_cpu_time_total)
+    top_ops = []
+    for e in sorted(aten, key=rank_by, reverse=True)[:p.top_ops]:
+        row = dict(op=e.key, self_ms=e.self_cpu_time_total / p.active / 1e3, calls=e.count / p.active)
+        if on_cuda:
+            row['self_device_ms'] = e.self_device_time_total / p.active / 1e3
+        top_ops.append(row)
 
     return times, n_ops, top_ops
+
+
+def _cpu_ms_per_step(events: list, active: int) -> dict[str, float]:
+    '''
+    Function to map each CPU event name to its CPU time per step in ms, never overwriting a duplicate silently.
+
+    With CUDA activity, the profiler records every 'record_function' label twice: a CPU event and a GPU-side
+    annotation that holds no CPU time. Callers pass CPU events only, so a name that still appears more than once
+    means the profiler output is not understood, and the times cannot be trusted.
+
+    Parameters
+    ----------
+    events: list
+        CPU-side entries of 'prof.key_averages()'.
+    active: int
+        Number of recorded steps the totals cover.
+
+    Returns
+    -------
+    times: dict[str, float]
+        CPU time per step in ms, keyed by event name.
+
+    Raises
+    ------
+    RuntimeError
+        If an event name appears more than once.
+
+    '''
+    times = {}
+    for e in events:
+        if e.key in times:
+            raise RuntimeError(f"Profiler reported the CPU event '{e.key}' more than once; refusing to pick one.")
+        times[e.key] = e.cpu_time_total / active / 1e3
+    return times
 
 
 def run_profile(p: ProfileConfig) -> dict[str, list[dict]]:
@@ -647,6 +700,9 @@ def run_profile(p: ProfileConfig) -> dict[str, list[dict]]:
 
             # Whole step, compared with the previous variant:
             step_ms = times.get('step', math.nan)
+            if not step_ms > 0:                             # also catches NaN
+                raise RuntimeError(f"Profiler recorded no CPU time for 'step' in '{case}' (got {step_ms}); "
+                                   f'check the schedule and that CPU events are being read.')
             ref = variants[n - 1] if n > 0 else ''
             rows.append(dict(variant=variant, ref=ref, T=T, case=case, region='step', ms=step_ms, pct=100.0, n_ops=n_ops))
 
@@ -677,9 +733,11 @@ def report_profile(tables: dict[str, list[dict]], p: ProfileConfig, config: dict
     sections += pivot_sections(steps, 'variant', 'T', PROFILE_SUMMARY_METRICS, ref_key='ref',
                                total_label='total vs base' if multi else '')
     sections += pivot_sections(parts, 'region', 'case', PROFILE_BREAKDOWN_METRICS, ref_key='ref', total_label='')
+    on_cuda = p.device == 'cuda'
+    ops_cols, ranked_by = (OPS_COLS_CUDA, 'GPU') if on_cuda else (OPS_COLS, 'CPU')
     for case in dict.fromkeys(o['case'] for o in ops):
-        sections.append(table_section([o for o in ops if o['case'] == case], OPS_COLS,
-                                      f'Top ops by self CPU time ({case})'))
+        sections.append(table_section([o for o in ops if o['case'] == case], ops_cols,
+                                      f'Top ops by self {ranked_by} time ({case})'))
 
     write_report(p.run_dir / 'report.md', sections, config, env)
 
