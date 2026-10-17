@@ -5,7 +5,6 @@ build/
 dist/
 wheels/
 *.egg-info
-*.tar.gz
 
 # Virtual environments
 .venv
@@ -16,8 +15,11 @@ runs/
 mlruns/
 checkpoints/
 logs/
-*.pt
 results/
+zipped/
+*.gz
+*.zip
+*.pt
 bigram.ipynb
 
 # Claude files:
