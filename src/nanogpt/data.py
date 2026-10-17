@@ -27,7 +27,7 @@ class TokenSplit:
         dtype: str, optional
             Data type for the binary split. The default is '<u2' indicating 2 bytes per token id in little endian convention.
         in_memory: bool, optional
-            Keep small datasets in RAM if True. The default is None in which case, files under 512 MB are kept in RAM.
+            Keep small datasets in RAM if True. The default is None in which case, files under 512 MiB are kept in RAM.
 
         Attributes
         ----------
@@ -43,7 +43,7 @@ class TokenSplit:
 
         # Keep small files in RAM, memmap large ones:
         if in_memory is None:
-            in_memory = self.path.stat().st_size < 512 * 2**20     # under 512 MB
+            in_memory = self.path.stat().st_size < 512 * 2**20     # under 512 MiB
         self._array = np.fromfile(self.path, dtype=self.dtype) if in_memory else None
 
 

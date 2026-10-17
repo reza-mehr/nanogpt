@@ -235,16 +235,16 @@ def find_variant(variants: list[tuple[str, str, dict, dict]], name: str) -> tupl
 
 # Entries: (row key, table title, number format)
 TRAIN_METRICS = [('tps', 'Training throughput (tokens/sec)', ',.0f'),
-                 ('mem', 'Peak memory (MB)', ',.0f')]
+                 ('mem', 'Peak memory (MiB)', ',.0f')]
 
 GENERATE_METRICS = {
     'journey': [('tps', 'Decode throughput (tokens/sec)', ',.0f'),
                 ('ttft', 'Time to first token (ms, lower is better)', ',.1f'),
-                ('mem', 'Memory after generation (MB)', ',.0f')],
+                ('mem', 'Memory after generation (MiB)', ',.0f')],
     'gqa':     [('tps', 'Decode throughput (tokens/sec)', ',.0f'),
                 ('ttft', 'Time to first token (ms, lower is better)', ',.1f'),
-                ('mem', 'Memory after generation (MB)', ',.0f'),
-                ('cache_mb', 'KV cache in use (MB)', ',.1f')],
+                ('mem', 'Memory after generation (MiB)', ',.0f'),
+                ('cache_mib', 'KV cache in use (MiB)', ',.1f')],
 }
 
 PROFILE_SUMMARY_METRICS = [('ms', 'Step time under the profiler (ms, lower is better)', ',.2f'),
@@ -263,8 +263,8 @@ OPS_COLS = [Col('op', 'op'), Col('self_ms', 'self CPU ms/step', ',.3f'), Col('ca
 OPS_COLS_CUDA = [Col('op', 'op'), Col('self_device_ms', 'self GPU ms/step', ',.3f'),
                  Col('self_ms', 'self CPU ms/step', ',.3f'), Col('calls', 'calls/step', ',.1f')]
 
-FIT_COLS = [Col('variant', 'variant'), Col('c', 'c (MB)', ',.0f'), Col('a', 'a (MB/token)', ',.3f'),
-            Col('b', 'b (MB/token²)', '.2e'), Col('quad_pct', 'T² share at max T (%)', '.0f'),
+FIT_COLS = [Col('variant', 'variant'), Col('c', 'c (MiB)', ',.0f'), Col('a', 'a (MiB/token)', ',.3f'),
+            Col('b', 'b (MiB/token²)', '.2e'), Col('quad_pct', 'T² share at max T (%)', '.0f'),
             Col('r2', 'R²', '.4f'), Col('n', 'points', 'd')]
 
 #%% Model and config builders:
@@ -336,8 +336,8 @@ def median_time(fn: Callable[[], object], device: str, trials: int) -> float:
     return statistics.median(times)
 
 
-def device_memory_mb(device: str) -> float:
-    '''Function to read device memory in MB: peak on CUDA, currently allocated on MPS, NaN on CPU.'''
+def device_memory_mib(device: str) -> float:
+    '''Function to read device memory in MiB: peak on CUDA, currently allocated on MPS, NaN on CPU.'''
     if device == 'cuda':
         return torch.cuda.max_memory_allocated() / 2**20
     if device == 'mps':
@@ -374,7 +374,7 @@ def make_step(cfg: TrainConfig):
     return step
 
 
-def measure_peak_mb(step_fn, device: str) -> float:
+def measure_peak_mib(step_fn, device: str) -> float:
     '''Function to measure peak memory for one training step. CUDA: true peak. MPS: memory after forward.'''
     if device == 'cuda':
         torch.cuda.reset_peak_memory_stats()
@@ -387,7 +387,7 @@ def measure_peak_mb(step_fn, device: str) -> float:
 
 
 def bench_train_cell(cfg: TrainConfig, b: TrainBenchConfig) -> tuple[float, float]:
-    '''Function to measure training throughput (tokens/sec) and peak memory (MB) for one config.'''
+    '''Function to measure training throughput (tokens/sec) and peak memory (MiB) for one config.'''
 
     # Initialization:
     batch_size, T, device = cfg.batch_size, cfg.model.block_size, cfg.device
@@ -399,7 +399,7 @@ def bench_train_cell(cfg: TrainConfig, b: TrainBenchConfig) -> tuple[float, floa
         step()
 
     # Measure the memory and the time per trial:
-    memory_mb = measure_peak_mb(step, device)
+    memory_mib = measure_peak_mib(step, device)
 
     def run_iters():
         for _ in range(b.iters):
@@ -407,7 +407,7 @@ def bench_train_cell(cfg: TrainConfig, b: TrainBenchConfig) -> tuple[float, floa
 
     seconds = median_time(run_iters, device, b.trials)
 
-    return b.iters * batch_size * T / seconds, memory_mb
+    return b.iters * batch_size * T / seconds, memory_mib
 
 
 def run_train_journey(b: TrainBenchConfig) -> list[dict]:
@@ -444,7 +444,7 @@ def bench_generate_cell(model: nn.Module, ctx, use_cache: bool, b: GenerateBench
     Returns
     -------
     metrics: dict
-        'tps' (decode tokens/sec), 'ttft' (ms), and 'mem' (MB).
+        'tps' (decode tokens/sec), 'ttft' (ms), and 'mem' (MiB).
 
     '''
     # Initialization:
@@ -467,7 +467,7 @@ def bench_generate_cell(model: nn.Module, ctx, use_cache: bool, b: GenerateBench
     tN = median_time(lambda: gen(N), device, b.trials)
     tpot = (tN - t1) / (N - 1)
 
-    return dict(tps=B / tpot, ttft=1e3 * t1, mem=device_memory_mb(device))
+    return dict(tps=B / tpot, ttft=1e3 * t1, mem=device_memory_mib(device))
 
 
 def run_generate_journey(b: GenerateBenchConfig) -> list[dict]:
@@ -504,8 +504,8 @@ def run_generate_gqa(b: GenerateBenchConfig) -> list[dict]:
         model, ctx = build_inference_model(base, best | dict(kv_head_num=n_kv), b.precision, b.device)
         for T in b.prompt_lens:
             used = T + b.new_tokens - 1                     # cache positions filled by the end of generation
-            cache_mb = 2 * base.n_blocks * b.batch * n_kv * used * base.head_size * bytes_per / 2**20
-            rows.append(dict(variant=label(n_kv), ref=label(n_kvs[0]), T=T, cache_mb=cache_mb,
+            cache_mib = 2 * base.n_blocks * b.batch * n_kv * used * base.head_size * bytes_per / 2**20
+            rows.append(dict(variant=label(n_kv), ref=label(n_kvs[0]), T=T, cache_mib=cache_mib,
                              **bench_generate_cell(model, ctx, True, b, T)))
         del model
     return rows
@@ -830,7 +830,7 @@ def plot_memory_fit(rows: list[dict], fits: list[dict], path: Path, group_key: s
     '''
     # Initialization:
     fig, ax = new_axes(title or 'Memory vs length: markers measured, lines fitted c + aT + bT²',
-                       f'{x_key} (tokens)', 'memory (MB)', n_series=len(fits))
+                       f'{x_key} (tokens)', 'memory (MiB)', n_series=len(fits))
 
     # One color per group, in fixed order: measured points and the fitted curve:
     for color, fit in zip(SERIES_COLORS, fits):

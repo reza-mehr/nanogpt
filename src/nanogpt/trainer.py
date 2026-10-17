@@ -236,7 +236,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     state.writer.add_scalar('eval/train_loss', train_loss, step)
     state.writer.add_scalar('eval/val_loss', val_loss, step)
     state.writer.add_scalar('eval/tok_per_sec', tok_per_sec, step)
-    state.logger.info(f'step {step:5d} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | {tok_per_sec:,.0f} tok/s')
+    state.logger.info(f'step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | {tok_per_sec:,.0f} tok/s')
 
     # Append one row to the results file (flushed immediately, so it survives a crash):
     append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr,
@@ -387,5 +387,5 @@ def write_inference_model(cfg: TrainConfig, state: RunState):
     src, dst = cfg.run_dir / 'best.pt', cfg.run_dir / 'model.pt'
     save_inference_checkpoint(src, dst)
     rel_err = check_inference_checkpoint(src, dst)
-    state.logger.info(f'Saved {dst} ({dst.stat().st_size / 2**20:,.0f} MB, '
+    state.logger.info(f'Saved {dst} ({dst.stat().st_size / 2**20:,.0f} MiB, '
                       f'logits relative error vs best.pt {rel_err:.1e})')
