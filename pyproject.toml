@@ -1,6 +1,6 @@
 [project]
 name = "nanogpt"
-version = "0.1.0"
+version = "1.0.0"
 description = "GPT from scratch in PyTorch: KV cache, GQA, RoPE, mixed precision, with benchmarks, profiles, and ablations"
 readme = "README.md"
 authors = [
