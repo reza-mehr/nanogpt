@@ -1,0 +1,42 @@
+2026-10-16 03:53:52 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/kv1_s0/tb
+
+2026-10-16 03:55:22 | step   250 | train 3.1522 | val 3.1593 | lr 3.00e-04 | 116,670 tok/s
+2026-10-16 03:56:53 | step   500 | train 2.5203 | val 2.5176 | lr 6.00e-04 | 117,656 tok/s
+2026-10-16 03:58:23 | step   750 | train 2.1721 | val 2.1819 | lr 5.87e-04 | 117,416 tok/s
+2026-10-16 03:59:53 | step  1000 | train 1.9888 | val 2.0005 | lr 5.48e-04 | 117,718 tok/s
+2026-10-16 04:01:23 | step  1250 | train 1.8778 | val 1.8884 | lr 4.89e-04 | 117,468 tok/s
+2026-10-16 04:02:53 | step  1500 | train 1.7957 | val 1.8081 | lr 4.13e-04 | 117,525 tok/s
+2026-10-16 04:04:24 | step  1750 | train 1.7356 | val 1.7548 | lr 3.30e-04 | 117,545 tok/s
+2026-10-16 04:05:54 | step  2000 | train 1.6839 | val 1.6907 | lr 2.47e-04 | 117,488 tok/s
+2026-10-16 04:07:24 | step  2250 | train 1.6402 | val 1.6513 | lr 1.71e-04 | 117,392 tok/s
+2026-10-16 04:08:54 | step  2500 | train 1.6099 | val 1.6171 | lr 1.12e-04 | 117,775 tok/s
+2026-10-16 04:10:25 | step  2750 | train 1.5912 | val 1.6016 | lr 7.32e-05 | 117,505 tok/s
+2026-10-16 04:11:55 | step  3000 | train 1.5716 | val 1.5797 | lr 6.00e-05 | 117,458 tok/s
+2026-10-16 04:11:57 | 
+Summary: kv1_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5716             
+final val loss               1.5797             
+best val loss                1.5797 (step 3,000)
+parameters                   149,297,233        
+training time (s)            837                
+mean throughput (tok/s)      117,467            
+
+2026-10-16 04:11:58 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:53:52
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 04:12:01 | Saved runs/full/ablations/runs/kv1_s0/model.pt (285 MB, logits relative error vs best.pt 3.5e-03)

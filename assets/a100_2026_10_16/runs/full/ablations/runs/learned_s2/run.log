@@ -1,0 +1,42 @@
+2026-10-16 06:41:09 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/learned_s2/tb
+
+2026-10-16 06:42:34 | step   250 | train 3.7422 | val 3.7371 | lr 3.00e-04 | 124,860 tok/s
+2026-10-16 06:43:58 | step   500 | train 2.9122 | val 2.9187 | lr 6.00e-04 | 125,654 tok/s
+2026-10-16 06:45:22 | step   750 | train 2.4124 | val 2.4213 | lr 5.87e-04 | 125,934 tok/s
+2026-10-16 06:46:46 | step  1000 | train 2.1689 | val 2.1738 | lr 5.48e-04 | 126,077 tok/s
+2026-10-16 06:48:09 | step  1250 | train 2.0166 | val 2.0186 | lr 4.89e-04 | 126,056 tok/s
+2026-10-16 06:49:33 | step  1500 | train 1.9149 | val 1.9156 | lr 4.13e-04 | 126,131 tok/s
+2026-10-16 06:50:57 | step  1750 | train 1.8323 | val 1.8447 | lr 3.30e-04 | 126,107 tok/s
+2026-10-16 06:52:21 | step  2000 | train 1.7683 | val 1.7831 | lr 2.47e-04 | 126,144 tok/s
+2026-10-16 06:53:45 | step  2250 | train 1.7118 | val 1.7261 | lr 1.71e-04 | 126,171 tok/s
+2026-10-16 06:55:08 | step  2500 | train 1.6840 | val 1.6922 | lr 1.12e-04 | 126,219 tok/s
+2026-10-16 06:56:32 | step  2750 | train 1.6636 | val 1.6736 | lr 7.32e-05 | 126,024 tok/s
+2026-10-16 06:57:56 | step  3000 | train 1.6481 | val 1.6476 | lr 6.00e-05 | 126,129 tok/s
+2026-10-16 06:57:58 | 
+Summary: learned_s2
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.6481             
+final val loss               1.6476             
+best val loss                1.6476 (step 3,000)
+parameters                   162,666,577        
+training time (s)            780                
+mean throughput (tok/s)      125,958            
+
+2026-10-16 06:57:59 | 
+Environment
+-----------------------------------
+date: 2026-10-16T06:41:09
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 06:58:02 | Saved runs/full/ablations/runs/learned_s2/model.pt (310 MB, logits relative error vs best.pt 3.7e-03)

@@ -1,0 +1,107 @@
+{
+  "preset": "stories_cfg",
+  "device": "cuda",
+  "vocab_size": 50257,
+  "batch_size": null,
+  "warmup": 2,
+  "out_dir": "results/full",
+  "from_csv": false,
+  "overwrite": false,
+  "log_level": 20,
+  "mode": "train",
+  "variants": [],
+  "block_sizes": [
+    512
+  ],
+  "wait": 1,
+  "active": 3,
+  "top_ops": 10,
+  "export_trace": true,
+  "batch": 32,
+  "journey": [
+    [
+      "baseline",
+      "",
+      {
+        "batched_attention": false,
+        "ln_torch": false,
+        "scaled_dot_prod": false
+      },
+      {
+        "adamw_fused": false,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+batched attn",
+      "baseline",
+      {
+        "batched_attention": true,
+        "ln_torch": false,
+        "scaled_dot_prod": false
+      },
+      {
+        "adamw_fused": false,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+torch LN",
+      "+batched attn",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": false
+      },
+      {
+        "adamw_fused": false,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+fused AdamW",
+      "+torch LN",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": false
+      },
+      {
+        "adamw_fused": true,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+SDPA",
+      "+fused AdamW",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": true
+      },
+      {
+        "adamw_fused": true,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+mixed bf16",
+      "+SDPA",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": true
+      },
+      {
+        "adamw_fused": true,
+        "precision": "mixed_bf16"
+      }
+    ]
+  ],
+  "kind": "profile_train",
+  "run_dir": "results/full/profile_train_stories_cfg_cuda",
+  "selected": [
+    "baseline",
+    "+mixed bf16"
+  ]
+}

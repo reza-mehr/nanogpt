@@ -10,12 +10,12 @@ wheels/
 .venv
 
 # ML files:
-data/
-runs/
-mlruns/
-checkpoints/
-logs/
-results/
+/data/
+/runs/
+/mlruns/
+/checkpoints/
+/logs/
+/results/
 zipped/
 *.gz
 *.zip

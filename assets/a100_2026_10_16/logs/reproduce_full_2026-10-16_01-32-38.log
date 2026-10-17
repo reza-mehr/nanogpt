@@ -1,0 +1,1309 @@
+
+=== 01:32:38 | Environment ===
+Resolved 140 packages in 3ms
+Checked 117 packages in 3ms
+2.14.0+cu130 NVIDIA A100-SXM4-80GB
+Fri Oct 16 01:32:40 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.159.04             Driver Version: 580.159.04     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          On  |   00000000:0F:00.0 Off |                    0 |
+| N/A   27C    P0             87W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+=== 01:32:40 | Tests ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /root/nanogpt
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, platformdirs-4.12.0, typeguard-4.6.0
+collected 201 items / 10 deselected / 191 selected
+
+tests/test_attention.py ..                                               [  1%]
+tests/test_checkpoint.py .......                                         [  4%]
+tests/test_config.py ...................                                 [ 14%]
+tests/test_generate.py .                                                 [ 15%]
+tests/test_kv_cache.py ....................................              [ 34%]
+tests/test_layernorm.py .                                                [ 34%]
+tests/test_model.py .................................................... [ 61%]
+...............................................                          [ 86%]
+tests/test_optimizer.py ....                                             [ 88%]
+tests/test_reporting.py ......                                           [ 91%]
+tests/test_rope.py .........                                             [ 96%]
+tests/test_tokenizers.py .......                                         [100%]
+
+===================== 191 passed, 10 deselected in 19.29s ======================
+
+=== 01:33:01 | Prepare TinyShakespeare ===
+
+=== 01:33:01 | Prepare TinyStories ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+tokenizing train (num_proc=8):   0%|          | 0/2119719 [00:00<?, ? examples/s]tokenizing train (num_proc=8):   0%|          | 1000/2119719 [00:00<07:17, 4844.17 examples/s]tokenizing train (num_proc=8):   0%|          | 10000/2119719 [00:00<00:54, 38803.13 examples/s]tokenizing train (num_proc=8):   1%|          | 20000/2119719 [00:00<00:34, 60488.51 examples/s]tokenizing train (num_proc=8):   1%|▏         | 30000/2119719 [00:00<00:30, 68295.10 examples/s]tokenizing train (num_proc=8):   2%|▏         | 39000/2119719 [00:00<00:27, 74704.63 examples/s]tokenizing train (num_proc=8):   2%|▏         | 49000/2119719 [00:00<00:25, 82231.46 examples/s]tokenizing train (num_proc=8):   3%|▎         | 58000/2119719 [00:00<00:24, 83151.63 examples/s]tokenizing train (num_proc=8):   3%|▎         | 68000/2119719 [00:00<00:25, 81317.20 examples/s]tokenizing train (num_proc=8):   4%|▎         | 77000/2119719 [00:01<00:24, 83183.49 examples/s]tokenizing train (num_proc=8):   4%|▍         | 88000/2119719 [00:01<00:22, 90181.30 examples/s]tokenizing train (num_proc=8):   5%|▍         | 98000/2119719 [00:01<00:22, 88574.29 examples/s]tokenizing train (num_proc=8):   5%|▌         | 107000/2119719 [00:01<00:23, 87044.03 examples/s]tokenizing train (num_proc=8):   6%|▌         | 117000/2119719 [00:01<00:22, 90447.12 examples/s]tokenizing train (num_proc=8):   6%|▌         | 129000/2119719 [00:01<00:22, 90156.33 examples/s]tokenizing train (num_proc=8):   7%|▋         | 141000/2119719 [00:01<00:20, 96825.21 examples/s]tokenizing train (num_proc=8):   7%|▋         | 151000/2119719 [00:01<00:22, 87130.01 examples/s]tokenizing train (num_proc=8):   8%|▊         | 160000/2119719 [00:02<00:23, 85187.66 examples/s]tokenizing train (num_proc=8):   8%|▊         | 169000/2119719 [00:02<00:23, 84583.51 examples/s]tokenizing train (num_proc=8):   8%|▊         | 179000/2119719 [00:02<00:22, 87625.28 examples/s]tokenizing train (num_proc=8):   9%|▉         | 188000/2119719 [00:02<00:22, 85216.87 examples/s]tokenizing train (num_proc=8):   9%|▉         | 197000/2119719 [00:02<00:23, 83143.69 examples/s]tokenizing train (num_proc=8):  10%|▉         | 208000/2119719 [00:02<00:21, 89652.17 examples/s]tokenizing train (num_proc=8):  10%|█         | 219000/2119719 [00:02<00:20, 92992.54 examples/s]tokenizing train (num_proc=8):  11%|█         | 229000/2119719 [00:02<00:21, 89668.10 examples/s]tokenizing train (num_proc=8):  11%|█▏        | 239000/2119719 [00:02<00:20, 92193.42 examples/s]tokenizing train (num_proc=8):  12%|█▏        | 251000/2119719 [00:02<00:18, 99506.70 examples/s]tokenizing train (num_proc=8):  12%|█▏        | 262000/2119719 [00:03<00:20, 89769.87 examples/s]tokenizing train (num_proc=8):  13%|█▎        | 272000/2119719 [00:03<00:20, 89264.94 examples/s]tokenizing train (num_proc=8):  13%|█▎        | 282000/2119719 [00:03<00:19, 92089.92 examples/s]tokenizing train (num_proc=8):  14%|█▍        | 292000/2119719 [00:03<00:20, 89902.31 examples/s]tokenizing train (num_proc=8):  14%|█▍        | 304000/2119719 [00:03<00:19, 92163.49 examples/s]tokenizing train (num_proc=8):  15%|█▍        | 314000/2119719 [00:03<00:19, 93856.75 examples/s]tokenizing train (num_proc=8):  15%|█▌        | 324000/2119719 [00:03<00:19, 91954.11 examples/s]tokenizing train (num_proc=8):  16%|█▌        | 334000/2119719 [00:03<00:18, 94019.85 examples/s]tokenizing train (num_proc=8):  16%|█▋        | 345000/2119719 [00:04<00:18, 95489.96 examples/s]tokenizing train (num_proc=8):  17%|█▋        | 356000/2119719 [00:04<00:19, 92182.48 examples/s]tokenizing train (num_proc=8):  17%|█▋        | 367000/2119719 [00:04<00:18, 95023.34 examples/s]tokenizing train (num_proc=8):  18%|█▊        | 377000/2119719 [00:04<00:18, 92826.35 examples/s]tokenizing train (num_proc=8):  18%|█▊        | 388000/2119719 [00:04<00:17, 97280.61 examples/s]tokenizing train (num_proc=8):  19%|█▉        | 398000/2119719 [00:04<00:18, 91684.22 examples/s]tokenizing train (num_proc=8):  19%|█▉        | 409000/2119719 [00:04<00:17, 96461.43 examples/s]tokenizing train (num_proc=8):  20%|█▉        | 419000/2119719 [00:04<00:18, 90300.77 examples/s]tokenizing train (num_proc=8):  20%|██        | 429000/2119719 [00:04<00:18, 91167.50 examples/s]tokenizing train (num_proc=8):  21%|██        | 439000/2119719 [00:05<00:18, 92229.17 examples/s]tokenizing train (num_proc=8):  21%|██▏       | 451000/2119719 [00:05<00:17, 96437.39 examples/s]tokenizing train (num_proc=8):  22%|██▏       | 461000/2119719 [00:05<00:18, 91482.33 examples/s]tokenizing train (num_proc=8):  22%|██▏       | 471000/2119719 [00:05<00:17, 93549.20 examples/s]tokenizing train (num_proc=8):  23%|██▎       | 481000/2119719 [00:05<00:17, 93866.12 examples/s]tokenizing train (num_proc=8):  23%|██▎       | 493000/2119719 [00:05<00:17, 94724.11 examples/s]tokenizing train (num_proc=8):  24%|██▎       | 503000/2119719 [00:05<00:17, 93039.07 examples/s]tokenizing train (num_proc=8):  24%|██▍       | 514000/2119719 [00:05<00:16, 95770.31 examples/s]tokenizing train (num_proc=8):  25%|██▍       | 524000/2119719 [00:05<00:17, 92792.27 examples/s]tokenizing train (num_proc=8):  25%|██▌       | 534000/2119719 [00:06<00:17, 88458.90 examples/s]tokenizing train (num_proc=8):  26%|██▌       | 545000/2119719 [00:06<00:17, 90783.30 examples/s]tokenizing train (num_proc=8):  26%|██▌       | 556000/2119719 [00:06<00:16, 95197.58 examples/s]tokenizing train (num_proc=8):  27%|██▋       | 566000/2119719 [00:06<00:17, 88617.96 examples/s]tokenizing train (num_proc=8):  27%|██▋       | 579000/2119719 [00:06<00:15, 99133.40 examples/s]tokenizing train (num_proc=8):  28%|██▊       | 590000/2119719 [00:06<00:16, 91113.00 examples/s]tokenizing train (num_proc=8):  28%|██▊       | 600000/2119719 [00:06<00:16, 93145.69 examples/s]tokenizing train (num_proc=8):  29%|██▉       | 610000/2119719 [00:06<00:16, 90253.44 examples/s]tokenizing train (num_proc=8):  29%|██▉       | 620000/2119719 [00:06<00:16, 91684.51 examples/s]tokenizing train (num_proc=8):  30%|██▉       | 631000/2119719 [00:07<00:16, 91932.67 examples/s]tokenizing train (num_proc=8):  30%|███       | 642000/2119719 [00:07<00:15, 96716.32 examples/s]tokenizing train (num_proc=8):  31%|███       | 652000/2119719 [00:07<00:15, 93921.25 examples/s]tokenizing train (num_proc=8):  31%|███       | 662000/2119719 [00:07<00:15, 92713.44 examples/s]tokenizing train (num_proc=8):  32%|███▏      | 672000/2119719 [00:07<00:15, 93190.50 examples/s]tokenizing train (num_proc=8):  32%|███▏      | 682000/2119719 [00:07<00:15, 93810.09 examples/s]tokenizing train (num_proc=8):  33%|███▎      | 692000/2119719 [00:07<00:15, 92724.21 examples/s]tokenizing train (num_proc=8):  33%|███▎      | 702000/2119719 [00:07<00:15, 94039.30 examples/s]tokenizing train (num_proc=8):  34%|███▎      | 713000/2119719 [00:07<00:15, 92714.45 examples/s]tokenizing train (num_proc=8):  34%|███▍      | 724000/2119719 [00:08<00:14, 93976.69 examples/s]tokenizing train (num_proc=8):  35%|███▍      | 734000/2119719 [00:08<00:15, 91588.61 examples/s]tokenizing train (num_proc=8):  35%|███▌      | 745000/2119719 [00:08<00:14, 95904.22 examples/s]tokenizing train (num_proc=8):  36%|███▌      | 756000/2119719 [00:08<00:14, 95486.16 examples/s]tokenizing train (num_proc=8):  36%|███▌      | 766000/2119719 [00:08<00:14, 92656.36 examples/s]tokenizing train (num_proc=8):  37%|███▋      | 776000/2119719 [00:08<00:14, 92944.80 examples/s]tokenizing train (num_proc=8):  37%|███▋      | 786000/2119719 [00:08<00:14, 91638.50 examples/s]tokenizing train (num_proc=8):  38%|███▊      | 798000/2119719 [00:08<00:14, 93334.87 examples/s]tokenizing train (num_proc=8):  38%|███▊      | 808000/2119719 [00:08<00:14, 93617.92 examples/s]tokenizing train (num_proc=8):  39%|███▊      | 818000/2119719 [00:09<00:13, 95175.49 examples/s]tokenizing train (num_proc=8):  39%|███▉      | 828000/2119719 [00:09<00:13, 92996.40 examples/s]tokenizing train (num_proc=8):  40%|███▉      | 839000/2119719 [00:09<00:13, 95647.39 examples/s]tokenizing train (num_proc=8):  40%|████      | 849000/2119719 [00:09<00:13, 93175.49 examples/s]tokenizing train (num_proc=8):  41%|████      | 859000/2119719 [00:09<00:13, 93198.61 examples/s]tokenizing train (num_proc=8):  41%|████      | 869000/2119719 [00:09<00:13, 93902.53 examples/s]tokenizing train (num_proc=8):  41%|████▏     | 879000/2119719 [00:09<00:13, 91865.40 examples/s]tokenizing train (num_proc=8):  42%|████▏     | 889000/2119719 [00:09<00:13, 92709.15 examples/s]tokenizing train (num_proc=8):  42%|████▏     | 899000/2119719 [00:09<00:13, 91710.81 examples/s]tokenizing train (num_proc=8):  43%|████▎     | 910000/2119719 [00:10<00:12, 95874.86 examples/s]tokenizing train (num_proc=8):  43%|████▎     | 920000/2119719 [00:10<00:12, 94199.83 examples/s]tokenizing train (num_proc=8):  44%|████▍     | 931000/2119719 [00:10<00:12, 96553.62 examples/s]tokenizing train (num_proc=8):  44%|████▍     | 941000/2119719 [00:10<00:12, 93713.72 examples/s]tokenizing train (num_proc=8):  45%|████▍     | 951000/2119719 [00:10<00:12, 92964.31 examples/s]tokenizing train (num_proc=8):  45%|████▌     | 961000/2119719 [00:10<00:12, 94860.34 examples/s]tokenizing train (num_proc=8):  46%|████▌     | 971000/2119719 [00:10<00:12, 91246.55 examples/s]tokenizing train (num_proc=8):  46%|████▋     | 982000/2119719 [00:10<00:12, 91385.61 examples/s]tokenizing train (num_proc=8):  47%|████▋     | 992000/2119719 [00:10<00:12, 91844.75 examples/s]tokenizing train (num_proc=8):  47%|████▋     | 1002000/2119719 [00:11<00:12, 89391.01 examples/s]tokenizing train (num_proc=8):  48%|████▊     | 1012000/2119719 [00:11<00:12, 92113.95 examples/s]tokenizing train (num_proc=8):  48%|████▊     | 1023000/2119719 [00:11<00:11, 91437.90 examples/s]tokenizing train (num_proc=8):  49%|████▊     | 1033000/2119719 [00:11<00:11, 92886.57 examples/s]tokenizing train (num_proc=8):  49%|████▉     | 1043000/2119719 [00:11<00:11, 91803.67 examples/s]tokenizing train (num_proc=8):  50%|████▉     | 1053000/2119719 [00:11<00:11, 91619.55 examples/s]tokenizing train (num_proc=8):  50%|█████     | 1063000/2119719 [00:11<00:11, 91718.98 examples/s]tokenizing train (num_proc=8):  51%|█████     | 1075000/2119719 [00:11<00:10, 97341.41 examples/s]tokenizing train (num_proc=8):  51%|█████     | 1085000/2119719 [00:11<00:11, 88776.23 examples/s]tokenizing train (num_proc=8):  52%|█████▏    | 1097000/2119719 [00:12<00:10, 97019.27 examples/s]tokenizing train (num_proc=8):  52%|█████▏    | 1107000/2119719 [00:12<00:10, 96828.30 examples/s]tokenizing train (num_proc=8):  53%|█████▎    | 1117000/2119719 [00:12<00:11, 88970.85 examples/s]tokenizing train (num_proc=8):  53%|█████▎    | 1128000/2119719 [00:12<00:10, 92411.01 examples/s]tokenizing train (num_proc=8):  54%|█████▎    | 1138000/2119719 [00:12<00:10, 94119.16 examples/s]tokenizing train (num_proc=8):  54%|█████▍    | 1149000/2119719 [00:12<00:10, 89150.21 examples/s]tokenizing train (num_proc=8):  55%|█████▍    | 1161000/2119719 [00:12<00:10, 95834.01 examples/s]tokenizing train (num_proc=8):  55%|█████▌    | 1171000/2119719 [00:12<00:09, 95739.90 examples/s]tokenizing train (num_proc=8):  56%|█████▌    | 1181000/2119719 [00:13<00:10, 91003.85 examples/s]tokenizing train (num_proc=8):  56%|█████▋    | 1193000/2119719 [00:13<00:09, 98064.71 examples/s]tokenizing train (num_proc=8):  57%|█████▋    | 1203000/2119719 [00:13<00:10, 91303.31 examples/s]tokenizing train (num_proc=8):  57%|█████▋    | 1215000/2119719 [00:13<00:09, 94987.80 examples/s]tokenizing train (num_proc=8):  58%|█████▊    | 1225000/2119719 [00:13<00:09, 94674.17 examples/s]tokenizing train (num_proc=8):  58%|█████▊    | 1236000/2119719 [00:13<00:09, 97624.38 examples/s]tokenizing train (num_proc=8):  59%|█████▉    | 1247000/2119719 [00:13<00:09, 94654.45 examples/s]tokenizing train (num_proc=8):  59%|█████▉    | 1258000/2119719 [00:13<00:09, 88653.36 examples/s]tokenizing train (num_proc=8):  60%|█████▉    | 1270000/2119719 [00:13<00:08, 94986.07 examples/s]tokenizing train (num_proc=8):  60%|██████    | 1281000/2119719 [00:14<00:08, 98080.89 examples/s]tokenizing train (num_proc=8):  61%|██████    | 1291000/2119719 [00:14<00:09, 89439.00 examples/s]tokenizing train (num_proc=8):  61%|██████▏   | 1301000/2119719 [00:14<00:09, 88782.88 examples/s]tokenizing train (num_proc=8):  62%|██████▏   | 1313000/2119719 [00:14<00:08, 96981.80 examples/s]tokenizing train (num_proc=8):  62%|██████▏   | 1323000/2119719 [00:14<00:08, 89976.88 examples/s]tokenizing train (num_proc=8):  63%|██████▎   | 1334000/2119719 [00:14<00:08, 91136.08 examples/s]tokenizing train (num_proc=8):  63%|██████▎   | 1345000/2119719 [00:14<00:08, 94009.27 examples/s]tokenizing train (num_proc=8):  64%|██████▍   | 1355000/2119719 [00:14<00:08, 95248.67 examples/s]tokenizing train (num_proc=8):  64%|██████▍   | 1365000/2119719 [00:14<00:08, 89627.46 examples/s]tokenizing train (num_proc=8):  65%|██████▍   | 1375000/2119719 [00:15<00:08, 89252.22 examples/s]tokenizing train (num_proc=8):  65%|██████▌   | 1385000/2119719 [00:15<00:08, 89846.33 examples/s]tokenizing train (num_proc=8):  66%|██████▌   | 1395000/2119719 [00:15<00:08, 89810.47 examples/s]tokenizing train (num_proc=8):  66%|██████▋   | 1406000/2119719 [00:15<00:07, 94257.19 examples/s]tokenizing train (num_proc=8):  67%|██████▋   | 1416000/2119719 [00:15<00:07, 92562.50 examples/s]tokenizing train (num_proc=8):  67%|██████▋   | 1426000/2119719 [00:15<00:07, 89479.72 examples/s]tokenizing train (num_proc=8):  68%|██████▊   | 1438000/2119719 [00:15<00:07, 96652.81 examples/s]tokenizing train (num_proc=8):  68%|██████▊   | 1448000/2119719 [00:15<00:07, 91637.36 examples/s]tokenizing train (num_proc=8):  69%|██████▉   | 1459000/2119719 [00:15<00:07, 91345.53 examples/s]tokenizing train (num_proc=8):  69%|██████▉   | 1469000/2119719 [00:16<00:06, 93614.44 examples/s]tokenizing train (num_proc=8):  70%|██████▉   | 1479000/2119719 [00:16<00:06, 94394.91 examples/s]tokenizing train (num_proc=8):  70%|███████   | 1489000/2119719 [00:16<00:06, 93864.02 examples/s]tokenizing train (num_proc=8):  71%|███████   | 1499000/2119719 [00:16<00:06, 90741.73 examples/s]tokenizing train (num_proc=8):  71%|███████   | 1509000/2119719 [00:16<00:06, 92008.12 examples/s]tokenizing train (num_proc=8):  72%|███████▏  | 1520000/2119719 [00:16<00:06, 92061.40 examples/s]tokenizing train (num_proc=8):  72%|███████▏  | 1530000/2119719 [00:16<00:06, 90658.48 examples/s]tokenizing train (num_proc=8):  73%|███████▎  | 1542000/2119719 [00:16<00:06, 94439.52 examples/s]tokenizing train (num_proc=8):  73%|███████▎  | 1552000/2119719 [00:17<00:06, 90832.58 examples/s]tokenizing train (num_proc=8):  74%|███████▎  | 1563000/2119719 [00:17<00:05, 95715.57 examples/s]tokenizing train (num_proc=8):  74%|███████▍  | 1573000/2119719 [00:17<00:05, 94903.24 examples/s]tokenizing train (num_proc=8):  75%|███████▍  | 1583000/2119719 [00:17<00:05, 91815.45 examples/s]tokenizing train (num_proc=8):  75%|███████▌  | 1593000/2119719 [00:17<00:05, 91588.78 examples/s]tokenizing train (num_proc=8):  76%|███████▌  | 1603000/2119719 [00:17<00:05, 90478.30 examples/s]tokenizing train (num_proc=8):  76%|███████▌  | 1613000/2119719 [00:17<00:05, 93089.12 examples/s]tokenizing train (num_proc=8):  77%|███████▋  | 1623000/2119719 [00:17<00:05, 94887.52 examples/s]tokenizing train (num_proc=8):  77%|███████▋  | 1633000/2119719 [00:17<00:05, 90557.83 examples/s]tokenizing train (num_proc=8):  78%|███████▊  | 1643000/2119719 [00:17<00:05, 89965.56 examples/s]tokenizing train (num_proc=8):  78%|███████▊  | 1654000/2119719 [00:18<00:05, 90685.38 examples/s]tokenizing train (num_proc=8):  79%|███████▊  | 1665000/2119719 [00:18<00:04, 94841.52 examples/s]tokenizing train (num_proc=8):  79%|███████▉  | 1675000/2119719 [00:18<00:04, 91443.96 examples/s]tokenizing train (num_proc=8):  79%|███████▉  | 1685000/2119719 [00:18<00:04, 91443.60 examples/s]tokenizing train (num_proc=8):  80%|███████▉  | 1695000/2119719 [00:18<00:04, 90939.54 examples/s]tokenizing train (num_proc=8):  80%|████████  | 1706000/2119719 [00:18<00:04, 95087.89 examples/s]tokenizing train (num_proc=8):  81%|████████  | 1716000/2119719 [00:18<00:04, 95459.17 examples/s]tokenizing train (num_proc=8):  81%|████████▏ | 1727000/2119719 [00:18<00:03, 98201.72 examples/s]tokenizing train (num_proc=8):  82%|████████▏ | 1737000/2119719 [00:18<00:04, 94720.07 examples/s]tokenizing train (num_proc=8):  82%|████████▏ | 1747000/2119719 [00:19<00:04, 90912.39 examples/s]tokenizing train (num_proc=8):  83%|████████▎ | 1757000/2119719 [00:19<00:03, 93284.67 examples/s]tokenizing train (num_proc=8):  83%|████████▎ | 1767000/2119719 [00:19<00:03, 92232.06 examples/s]tokenizing train (num_proc=8):  84%|████████▍ | 1777000/2119719 [00:19<00:03, 89033.62 examples/s]tokenizing train (num_proc=8):  84%|████████▍ | 1787000/2119719 [00:19<00:03, 91376.23 examples/s]tokenizing train (num_proc=8):  85%|████████▍ | 1797000/2119719 [00:19<00:03, 92154.80 examples/s]tokenizing train (num_proc=8):  85%|████████▌ | 1808000/2119719 [00:19<00:03, 91172.52 examples/s]tokenizing train (num_proc=8):  86%|████████▌ | 1819000/2119719 [00:19<00:03, 90849.45 examples/s]tokenizing train (num_proc=8):  86%|████████▋ | 1829000/2119719 [00:20<00:03, 90074.39 examples/s]tokenizing train (num_proc=8):  87%|████████▋ | 1840000/2119719 [00:20<00:02, 93490.40 examples/s]tokenizing train (num_proc=8):  87%|████████▋ | 1850000/2119719 [00:20<00:03, 89874.01 examples/s]tokenizing train (num_proc=8):  88%|████████▊ | 1860000/2119719 [00:20<00:02, 89688.78 examples/s]tokenizing train (num_proc=8):  88%|████████▊ | 1869000/2119719 [00:20<00:02, 87525.29 examples/s]tokenizing train (num_proc=8):  89%|████████▊ | 1878000/2119719 [00:20<00:02, 88078.18 examples/s]tokenizing train (num_proc=8):  89%|████████▉ | 1887000/2119719 [00:20<00:02, 87832.04 examples/s]tokenizing train (num_proc=8):  89%|████████▉ | 1897000/2119719 [00:20<00:02, 90970.28 examples/s]tokenizing train (num_proc=8):  90%|████████▉ | 1907000/2119719 [00:20<00:02, 90104.20 examples/s]tokenizing train (num_proc=8):  90%|█████████ | 1917000/2119719 [00:20<00:02, 90225.15 examples/s]tokenizing train (num_proc=8):  91%|█████████ | 1927000/2119719 [00:21<00:02, 91105.85 examples/s]tokenizing train (num_proc=8):  91%|█████████▏| 1937000/2119719 [00:21<00:02, 87480.97 examples/s]tokenizing train (num_proc=8):  92%|█████████▏| 1947000/2119719 [00:21<00:01, 88411.66 examples/s]tokenizing train (num_proc=8):  92%|█████████▏| 1957000/2119719 [00:21<00:01, 90164.35 examples/s]tokenizing train (num_proc=8):  93%|█████████▎| 1967000/2119719 [00:21<00:01, 89006.23 examples/s]tokenizing train (num_proc=8):  93%|█████████▎| 1979000/2119719 [00:21<00:01, 93616.93 examples/s]tokenizing train (num_proc=8):  94%|█████████▍| 1990000/2119719 [00:21<00:01, 95477.11 examples/s]tokenizing train (num_proc=8):  94%|█████████▍| 2000000/2119719 [00:21<00:01, 91799.15 examples/s]tokenizing train (num_proc=8):  95%|█████████▍| 2011000/2119719 [00:22<00:01, 90134.44 examples/s]tokenizing train (num_proc=8):  95%|█████████▌| 2021000/2119719 [00:22<00:01, 90210.26 examples/s]tokenizing train (num_proc=8):  96%|█████████▌| 2031000/2119719 [00:22<00:00, 91392.36 examples/s]tokenizing train (num_proc=8):  96%|█████████▋| 2043000/2119719 [00:22<00:00, 97039.14 examples/s]tokenizing train (num_proc=8):  97%|█████████▋| 2053000/2119719 [00:22<00:00, 91364.88 examples/s]tokenizing train (num_proc=8):  97%|█████████▋| 2064000/2119719 [00:22<00:00, 92357.52 examples/s]tokenizing train (num_proc=8):  98%|█████████▊| 2076000/2119719 [00:22<00:00, 89473.58 examples/s]tokenizing train (num_proc=8):  98%|█████████▊| 2086965/2119719 [00:22<00:00, 89322.50 examples/s]tokenizing train (num_proc=8):  99%|█████████▉| 2096895/2119719 [00:22<00:00, 87105.77 examples/s]tokenizing train (num_proc=8):  99%|█████████▉| 2105824/2119719 [00:23<00:00, 72248.06 examples/s]tokenizing train (num_proc=8): 100%|█████████▉| 2113824/2119719 [00:23<00:00, 57121.70 examples/s]tokenizing train (num_proc=8): 100%|██████████| 2119719/2119719 [00:23<00:00, 89625.29 examples/s]
+train.bin:   0%|          | 0/1024 [00:00<?, ?it/s]train.bin:   0%|          | 1/1024 [00:00<10:27,  1.63it/s]train.bin:   0%|          | 2/1024 [00:01<10:24,  1.64it/s]train.bin:   0%|          | 3/1024 [00:01<10:22,  1.64it/s]train.bin:   0%|          | 4/1024 [00:02<10:20,  1.64it/s]train.bin:   0%|          | 5/1024 [00:03<10:18,  1.65it/s]train.bin:   1%|          | 6/1024 [00:03<10:18,  1.65it/s]train.bin:   1%|          | 7/1024 [00:04<10:23,  1.63it/s]train.bin:   1%|          | 8/1024 [00:04<10:21,  1.63it/s]train.bin:   1%|          | 9/1024 [00:05<10:18,  1.64it/s]train.bin:   1%|          | 10/1024 [00:06<10:15,  1.65it/s]train.bin:   1%|          | 11/1024 [00:06<10:13,  1.65it/s]train.bin:   1%|          | 12/1024 [00:07<10:12,  1.65it/s]train.bin:   1%|▏         | 13/1024 [00:07<10:12,  1.65it/s]train.bin:   1%|▏         | 14/1024 [00:08<10:11,  1.65it/s]train.bin:   1%|▏         | 15/1024 [00:09<10:12,  1.65it/s]train.bin:   2%|▏         | 16/1024 [00:09<10:10,  1.65it/s]train.bin:   2%|▏         | 17/1024 [00:10<10:08,  1.65it/s]train.bin:   2%|▏         | 18/1024 [00:10<10:07,  1.65it/s]train.bin:   2%|▏         | 19/1024 [00:11<10:07,  1.65it/s]train.bin:   2%|▏         | 20/1024 [00:12<10:06,  1.66it/s]train.bin:   2%|▏         | 21/1024 [00:12<10:05,  1.66it/s]train.bin:   2%|▏         | 22/1024 [00:13<10:04,  1.66it/s]train.bin:   2%|▏         | 23/1024 [00:13<10:03,  1.66it/s]train.bin:   2%|▏         | 24/1024 [00:14<10:02,  1.66it/s]train.bin:   2%|▏         | 25/1024 [00:15<10:02,  1.66it/s]train.bin:   3%|▎         | 26/1024 [00:15<10:02,  1.66it/s]train.bin:   3%|▎         | 27/1024 [00:16<10:02,  1.65it/s]train.bin:   3%|▎         | 28/1024 [00:16<10:01,  1.66it/s]train.bin:   3%|▎         | 29/1024 [00:17<10:01,  1.65it/s]train.bin:   3%|▎         | 30/1024 [00:18<10:01,  1.65it/s]train.bin:   3%|▎         | 31/1024 [00:18<09:59,  1.66it/s]train.bin:   3%|▎         | 32/1024 [00:19<09:58,  1.66it/s]train.bin:   3%|▎         | 33/1024 [00:19<09:58,  1.66it/s]train.bin:   3%|▎         | 34/1024 [00:20<09:57,  1.66it/s]train.bin:   3%|▎         | 35/1024 [00:21<09:56,  1.66it/s]train.bin:   4%|▎         | 36/1024 [00:21<09:56,  1.66it/s]train.bin:   4%|▎         | 37/1024 [00:22<09:56,  1.66it/s]train.bin:   4%|▎         | 38/1024 [00:23<09:54,  1.66it/s]train.bin:   4%|▍         | 39/1024 [00:23<09:54,  1.66it/s]train.bin:   4%|▍         | 40/1024 [00:24<09:53,  1.66it/s]train.bin:   4%|▍         | 41/1024 [00:24<09:53,  1.66it/s]train.bin:   4%|▍         | 42/1024 [00:25<09:52,  1.66it/s]train.bin:   4%|▍         | 43/1024 [00:26<09:57,  1.64it/s]train.bin:   4%|▍         | 44/1024 [00:26<09:55,  1.65it/s]train.bin:   4%|▍         | 45/1024 [00:27<09:53,  1.65it/s]train.bin:   4%|▍         | 46/1024 [00:27<09:52,  1.65it/s]train.bin:   5%|▍         | 47/1024 [00:28<09:50,  1.65it/s]train.bin:   5%|▍         | 48/1024 [00:29<09:49,  1.66it/s]train.bin:   5%|▍         | 49/1024 [00:29<09:48,  1.66it/s]train.bin:   5%|▍         | 50/1024 [00:30<09:46,  1.66it/s]train.bin:   5%|▍         | 51/1024 [00:30<09:46,  1.66it/s]train.bin:   5%|▌         | 52/1024 [00:31<09:46,  1.66it/s]train.bin:   5%|▌         | 53/1024 [00:32<09:46,  1.66it/s]train.bin:   5%|▌         | 54/1024 [00:32<09:46,  1.65it/s]train.bin:   5%|▌         | 55/1024 [00:33<09:46,  1.65it/s]train.bin:   5%|▌         | 56/1024 [00:33<09:45,  1.65it/s]train.bin:   6%|▌         | 57/1024 [00:34<09:46,  1.65it/s]train.bin:   6%|▌         | 58/1024 [00:35<09:44,  1.65it/s]train.bin:   6%|▌         | 59/1024 [00:35<09:44,  1.65it/s]train.bin:   6%|▌         | 60/1024 [00:36<09:45,  1.65it/s]train.bin:   6%|▌         | 61/1024 [00:36<09:43,  1.65it/s]train.bin:   6%|▌         | 62/1024 [00:37<09:42,  1.65it/s]train.bin:   6%|▌         | 63/1024 [00:38<09:42,  1.65it/s]train.bin:   6%|▋         | 64/1024 [00:38<09:41,  1.65it/s]train.bin:   6%|▋         | 65/1024 [00:39<09:39,  1.65it/s]train.bin:   6%|▋         | 66/1024 [00:39<09:38,  1.66it/s]train.bin:   7%|▋         | 67/1024 [00:40<09:37,  1.66it/s]train.bin:   7%|▋         | 68/1024 [00:41<09:37,  1.65it/s]train.bin:   7%|▋         | 69/1024 [00:41<09:38,  1.65it/s]train.bin:   7%|▋         | 70/1024 [00:42<09:37,  1.65it/s]train.bin:   7%|▋         | 71/1024 [00:42<09:37,  1.65it/s]train.bin:   7%|▋         | 72/1024 [00:43<09:37,  1.65it/s]train.bin:   7%|▋         | 73/1024 [00:44<09:35,  1.65it/s]train.bin:   7%|▋         | 74/1024 [00:44<09:34,  1.65it/s]train.bin:   7%|▋         | 75/1024 [00:45<09:33,  1.65it/s]train.bin:   7%|▋         | 76/1024 [00:45<09:33,  1.65it/s]train.bin:   8%|▊         | 77/1024 [00:46<09:33,  1.65it/s]train.bin:   8%|▊         | 78/1024 [00:47<09:31,  1.66it/s]train.bin:   8%|▊         | 79/1024 [00:47<09:30,  1.66it/s]train.bin:   8%|▊         | 80/1024 [00:48<09:29,  1.66it/s]train.bin:   8%|▊         | 81/1024 [00:49<09:29,  1.66it/s]train.bin:   8%|▊         | 82/1024 [00:49<09:28,  1.66it/s]train.bin:   8%|▊         | 83/1024 [00:50<09:28,  1.66it/s]train.bin:   8%|▊         | 84/1024 [00:50<09:28,  1.65it/s]train.bin:   8%|▊         | 85/1024 [00:51<09:29,  1.65it/s]train.bin:   8%|▊         | 86/1024 [00:52<09:29,  1.65it/s]train.bin:   8%|▊         | 87/1024 [00:52<09:28,  1.65it/s]train.bin:   9%|▊         | 88/1024 [00:53<09:27,  1.65it/s]train.bin:   9%|▊         | 89/1024 [00:53<09:26,  1.65it/s]train.bin:   9%|▉         | 90/1024 [00:54<09:24,  1.65it/s]train.bin:   9%|▉         | 91/1024 [00:55<09:23,  1.65it/s]train.bin:   9%|▉         | 92/1024 [00:55<09:23,  1.65it/s]train.bin:   9%|▉         | 93/1024 [00:56<09:23,  1.65it/s]train.bin:   9%|▉         | 94/1024 [00:56<09:23,  1.65it/s]train.bin:   9%|▉         | 95/1024 [00:57<09:23,  1.65it/s]train.bin:   9%|▉         | 96/1024 [00:58<09:23,  1.65it/s]train.bin:   9%|▉         | 97/1024 [00:58<09:21,  1.65it/s]train.bin:  10%|▉         | 98/1024 [00:59<09:21,  1.65it/s]train.bin:  10%|▉         | 99/1024 [00:59<09:20,  1.65it/s]train.bin:  10%|▉         | 100/1024 [01:00<09:20,  1.65it/s]train.bin:  10%|▉         | 101/1024 [01:01<09:19,  1.65it/s]train.bin:  10%|▉         | 102/1024 [01:01<09:19,  1.65it/s]train.bin:  10%|█         | 103/1024 [01:02<09:18,  1.65it/s]train.bin:  10%|█         | 104/1024 [01:02<09:16,  1.65it/s]train.bin:  10%|█         | 105/1024 [01:03<09:15,  1.65it/s]train.bin:  10%|█         | 106/1024 [01:04<09:15,  1.65it/s]train.bin:  10%|█         | 107/1024 [01:04<09:14,  1.65it/s]train.bin:  11%|█         | 108/1024 [01:05<09:13,  1.65it/s]train.bin:  11%|█         | 109/1024 [01:05<09:14,  1.65it/s]train.bin:  11%|█         | 110/1024 [01:06<09:13,  1.65it/s]train.bin:  11%|█         | 111/1024 [01:07<09:13,  1.65it/s]train.bin:  11%|█         | 112/1024 [01:07<09:13,  1.65it/s]train.bin:  11%|█         | 113/1024 [01:08<09:13,  1.65it/s]train.bin:  11%|█         | 114/1024 [01:09<09:13,  1.65it/s]train.bin:  11%|█         | 115/1024 [01:09<09:11,  1.65it/s]train.bin:  11%|█▏        | 116/1024 [01:10<09:10,  1.65it/s]train.bin:  11%|█▏        | 117/1024 [01:10<09:09,  1.65it/s]train.bin:  12%|█▏        | 118/1024 [01:11<09:07,  1.65it/s]train.bin:  12%|█▏        | 119/1024 [01:12<09:07,  1.65it/s]train.bin:  12%|█▏        | 120/1024 [01:12<09:06,  1.65it/s]train.bin:  12%|█▏        | 121/1024 [01:13<09:06,  1.65it/s]train.bin:  12%|█▏        | 122/1024 [01:13<09:05,  1.65it/s]train.bin:  12%|█▏        | 123/1024 [01:14<09:04,  1.65it/s]train.bin:  12%|█▏        | 124/1024 [01:15<09:04,  1.65it/s]train.bin:  12%|█▏        | 125/1024 [01:15<09:03,  1.65it/s]train.bin:  12%|█▏        | 126/1024 [01:16<09:03,  1.65it/s]train.bin:  12%|█▏        | 127/1024 [01:16<09:03,  1.65it/s]train.bin:  12%|█▎        | 128/1024 [01:17<09:33,  1.56it/s]train.bin:  13%|█▎        | 129/1024 [01:18<09:23,  1.59it/s]train.bin:  13%|█▎        | 130/1024 [01:18<09:17,  1.60it/s]train.bin:  13%|█▎        | 131/1024 [01:19<09:12,  1.62it/s]train.bin:  13%|█▎        | 132/1024 [01:20<09:08,  1.63it/s]train.bin:  13%|█▎        | 133/1024 [01:20<09:04,  1.64it/s]train.bin:  13%|█▎        | 134/1024 [01:21<09:01,  1.64it/s]train.bin:  13%|█▎        | 135/1024 [01:21<08:59,  1.65it/s]train.bin:  13%|█▎        | 136/1024 [01:22<08:58,  1.65it/s]train.bin:  13%|█▎        | 137/1024 [01:23<08:56,  1.65it/s]train.bin:  13%|█▎        | 138/1024 [01:23<08:55,  1.65it/s]train.bin:  14%|█▎        | 139/1024 [01:24<08:54,  1.66it/s]train.bin:  14%|█▎        | 140/1024 [01:24<08:53,  1.66it/s]train.bin:  14%|█▍        | 141/1024 [01:25<08:53,  1.65it/s]train.bin:  14%|█▍        | 142/1024 [01:26<08:52,  1.65it/s]train.bin:  14%|█▍        | 143/1024 [01:26<08:52,  1.65it/s]train.bin:  14%|█▍        | 144/1024 [01:27<08:52,  1.65it/s]train.bin:  14%|█▍        | 145/1024 [01:27<08:51,  1.65it/s]train.bin:  14%|█▍        | 146/1024 [01:28<08:49,  1.66it/s]train.bin:  14%|█▍        | 147/1024 [01:29<08:48,  1.66it/s]train.bin:  14%|█▍        | 148/1024 [01:29<08:48,  1.66it/s]train.bin:  15%|█▍        | 149/1024 [01:30<08:47,  1.66it/s]train.bin:  15%|█▍        | 150/1024 [01:30<08:46,  1.66it/s]train.bin:  15%|█▍        | 151/1024 [01:31<08:45,  1.66it/s]train.bin:  15%|█▍        | 152/1024 [01:32<08:45,  1.66it/s]train.bin:  15%|█▍        | 153/1024 [01:32<08:46,  1.65it/s]train.bin:  15%|█▌        | 154/1024 [01:33<08:46,  1.65it/s]train.bin:  15%|█▌        | 155/1024 [01:33<08:45,  1.65it/s]train.bin:  15%|█▌        | 156/1024 [01:34<08:45,  1.65it/s]train.bin:  15%|█▌        | 157/1024 [01:35<08:45,  1.65it/s]train.bin:  15%|█▌        | 158/1024 [01:35<08:45,  1.65it/s]train.bin:  16%|█▌        | 159/1024 [01:36<08:44,  1.65it/s]train.bin:  16%|█▌        | 160/1024 [01:36<08:43,  1.65it/s]train.bin:  16%|█▌        | 161/1024 [01:37<08:42,  1.65it/s]train.bin:  16%|█▌        | 162/1024 [01:38<08:42,  1.65it/s]train.bin:  16%|█▌        | 163/1024 [01:38<08:42,  1.65it/s]train.bin:  16%|█▌        | 164/1024 [01:39<08:40,  1.65it/s]train.bin:  16%|█▌        | 165/1024 [01:39<08:39,  1.65it/s]train.bin:  16%|█▌        | 166/1024 [01:40<08:38,  1.66it/s]train.bin:  16%|█▋        | 167/1024 [01:41<08:38,  1.65it/s]train.bin:  16%|█▋        | 168/1024 [01:41<08:37,  1.65it/s]train.bin:  17%|█▋        | 169/1024 [01:42<08:36,  1.65it/s]train.bin:  17%|█▋        | 170/1024 [01:42<08:36,  1.65it/s]train.bin:  17%|█▋        | 171/1024 [01:43<08:37,  1.65it/s]train.bin:  17%|█▋        | 172/1024 [01:44<08:36,  1.65it/s]train.bin:  17%|█▋        | 173/1024 [01:44<08:35,  1.65it/s]train.bin:  17%|█▋        | 174/1024 [01:45<08:34,  1.65it/s]train.bin:  17%|█▋        | 175/1024 [01:46<08:33,  1.65it/s]train.bin:  17%|█▋        | 176/1024 [01:46<08:32,  1.65it/s]train.bin:  17%|█▋        | 177/1024 [01:47<08:31,  1.66it/s]train.bin:  17%|█▋        | 178/1024 [01:47<08:30,  1.66it/s]train.bin:  17%|█▋        | 179/1024 [01:48<08:30,  1.66it/s]train.bin:  18%|█▊        | 180/1024 [01:49<08:29,  1.66it/s]train.bin:  18%|█▊        | 181/1024 [01:49<08:29,  1.66it/s]train.bin:  18%|█▊        | 182/1024 [01:50<08:28,  1.66it/s]train.bin:  18%|█▊        | 183/1024 [01:50<08:28,  1.65it/s]train.bin:  18%|█▊        | 184/1024 [01:51<08:27,  1.65it/s]train.bin:  18%|█▊        | 185/1024 [01:52<08:27,  1.65it/s]train.bin:  18%|█▊        | 186/1024 [01:52<08:27,  1.65it/s]train.bin:  18%|█▊        | 187/1024 [01:53<08:26,  1.65it/s]train.bin:  18%|█▊        | 188/1024 [01:53<08:26,  1.65it/s]train.bin:  18%|█▊        | 189/1024 [01:54<08:25,  1.65it/s]train.bin:  19%|█▊        | 190/1024 [01:55<08:25,  1.65it/s]train.bin:  19%|█▊        | 191/1024 [01:55<08:24,  1.65it/s]train.bin:  19%|█▉        | 192/1024 [01:56<08:24,  1.65it/s]train.bin:  19%|█▉        | 193/1024 [01:56<08:23,  1.65it/s]train.bin:  19%|█▉        | 194/1024 [01:57<08:23,  1.65it/s]train.bin:  19%|█▉        | 195/1024 [01:58<08:23,  1.65it/s]train.bin:  19%|█▉        | 196/1024 [01:58<08:22,  1.65it/s]train.bin:  19%|█▉        | 197/1024 [01:59<08:22,  1.64it/s]train.bin:  19%|█▉        | 198/1024 [01:59<08:22,  1.64it/s]train.bin:  19%|█▉        | 199/1024 [02:00<08:22,  1.64it/s]train.bin:  20%|█▉        | 200/1024 [02:01<08:21,  1.64it/s]train.bin:  20%|█▉        | 201/1024 [02:01<08:20,  1.65it/s]train.bin:  20%|█▉        | 202/1024 [02:02<08:18,  1.65it/s]train.bin:  20%|█▉        | 203/1024 [02:02<08:17,  1.65it/s]train.bin:  20%|█▉        | 204/1024 [02:03<08:16,  1.65it/s]train.bin:  20%|██        | 205/1024 [02:04<08:17,  1.65it/s]train.bin:  20%|██        | 206/1024 [02:04<08:16,  1.65it/s]train.bin:  20%|██        | 207/1024 [02:05<08:15,  1.65it/s]train.bin:  20%|██        | 208/1024 [02:06<08:14,  1.65it/s]train.bin:  20%|██        | 209/1024 [02:06<08:13,  1.65it/s]train.bin:  21%|██        | 210/1024 [02:07<08:12,  1.65it/s]train.bin:  21%|██        | 211/1024 [02:07<08:11,  1.65it/s]train.bin:  21%|██        | 212/1024 [02:08<08:11,  1.65it/s]train.bin:  21%|██        | 213/1024 [02:09<08:12,  1.65it/s]train.bin:  21%|██        | 214/1024 [02:09<08:11,  1.65it/s]train.bin:  21%|██        | 215/1024 [02:10<08:10,  1.65it/s]train.bin:  21%|██        | 216/1024 [02:10<08:09,  1.65it/s]train.bin:  21%|██        | 217/1024 [02:11<08:07,  1.65it/s]train.bin:  21%|██▏       | 218/1024 [02:12<08:06,  1.66it/s]train.bin:  21%|██▏       | 219/1024 [02:12<08:05,  1.66it/s]train.bin:  21%|██▏       | 220/1024 [02:13<08:04,  1.66it/s]train.bin:  22%|██▏       | 221/1024 [02:13<08:05,  1.65it/s]train.bin:  22%|██▏       | 222/1024 [02:14<08:04,  1.66it/s]train.bin:  22%|██▏       | 223/1024 [02:15<08:03,  1.66it/s]train.bin:  22%|██▏       | 224/1024 [02:15<08:03,  1.65it/s]train.bin:  22%|██▏       | 225/1024 [02:16<08:03,  1.65it/s]train.bin:  22%|██▏       | 226/1024 [02:16<08:15,  1.61it/s]train.bin:  22%|██▏       | 227/1024 [02:17<08:11,  1.62it/s]train.bin:  22%|██▏       | 228/1024 [02:18<08:07,  1.63it/s]train.bin:  22%|██▏       | 229/1024 [02:18<08:05,  1.64it/s]train.bin:  22%|██▏       | 230/1024 [02:19<08:03,  1.64it/s]train.bin:  23%|██▎       | 231/1024 [02:19<08:01,  1.65it/s]train.bin:  23%|██▎       | 232/1024 [02:20<08:01,  1.65it/s]train.bin:  23%|██▎       | 233/1024 [02:21<08:00,  1.65it/s]train.bin:  23%|██▎       | 234/1024 [02:21<07:59,  1.65it/s]train.bin:  23%|██▎       | 235/1024 [02:22<07:58,  1.65it/s]train.bin:  23%|██▎       | 236/1024 [02:23<07:57,  1.65it/s]train.bin:  23%|██▎       | 237/1024 [02:23<07:57,  1.65it/s]train.bin:  23%|██▎       | 238/1024 [02:24<07:56,  1.65it/s]train.bin:  23%|██▎       | 239/1024 [02:24<07:55,  1.65it/s]train.bin:  23%|██▎       | 240/1024 [02:25<07:54,  1.65it/s]train.bin:  24%|██▎       | 241/1024 [02:26<07:54,  1.65it/s]train.bin:  24%|██▎       | 242/1024 [02:26<07:54,  1.65it/s]train.bin:  24%|██▎       | 243/1024 [02:27<07:52,  1.65it/s]train.bin:  24%|██▍       | 244/1024 [02:27<07:52,  1.65it/s]train.bin:  24%|██▍       | 245/1024 [02:28<07:51,  1.65it/s]train.bin:  24%|██▍       | 246/1024 [02:29<07:51,  1.65it/s]train.bin:  24%|██▍       | 247/1024 [02:29<07:50,  1.65it/s]train.bin:  24%|██▍       | 248/1024 [02:30<07:50,  1.65it/s]train.bin:  24%|██▍       | 249/1024 [02:30<07:49,  1.65it/s]train.bin:  24%|██▍       | 250/1024 [02:31<07:48,  1.65it/s]train.bin:  25%|██▍       | 251/1024 [02:32<07:47,  1.65it/s]train.bin:  25%|██▍       | 252/1024 [02:32<07:47,  1.65it/s]train.bin:  25%|██▍       | 253/1024 [02:33<07:47,  1.65it/s]train.bin:  25%|██▍       | 254/1024 [02:33<07:47,  1.65it/s]train.bin:  25%|██▍       | 255/1024 [02:34<07:47,  1.65it/s]train.bin:  25%|██▌       | 256/1024 [02:35<08:10,  1.57it/s]train.bin:  25%|██▌       | 257/1024 [02:35<08:03,  1.59it/s]train.bin:  25%|██▌       | 258/1024 [02:36<07:57,  1.60it/s]train.bin:  25%|██▌       | 259/1024 [02:37<07:51,  1.62it/s]train.bin:  25%|██▌       | 260/1024 [02:37<07:48,  1.63it/s]train.bin:  25%|██▌       | 261/1024 [02:38<07:45,  1.64it/s]train.bin:  26%|██▌       | 262/1024 [02:38<07:43,  1.64it/s]train.bin:  26%|██▌       | 263/1024 [02:39<07:42,  1.65it/s]train.bin:  26%|██▌       | 264/1024 [02:40<07:41,  1.65it/s]train.bin:  26%|██▌       | 265/1024 [02:40<07:39,  1.65it/s]train.bin:  26%|██▌       | 266/1024 [02:41<07:39,  1.65it/s]train.bin:  26%|██▌       | 267/1024 [02:41<07:38,  1.65it/s]train.bin:  26%|██▌       | 268/1024 [02:42<07:38,  1.65it/s]train.bin:  26%|██▋       | 269/1024 [02:43<07:38,  1.65it/s]train.bin:  26%|██▋       | 270/1024 [02:43<07:37,  1.65it/s]train.bin:  26%|██▋       | 271/1024 [02:44<07:37,  1.65it/s]train.bin:  27%|██▋       | 272/1024 [02:44<07:37,  1.64it/s]train.bin:  27%|██▋       | 273/1024 [02:45<07:36,  1.64it/s]train.bin:  27%|██▋       | 274/1024 [02:46<07:34,  1.65it/s]train.bin:  27%|██▋       | 275/1024 [02:46<07:33,  1.65it/s]train.bin:  27%|██▋       | 276/1024 [02:47<07:32,  1.65it/s]train.bin:  27%|██▋       | 277/1024 [02:47<07:31,  1.65it/s]train.bin:  27%|██▋       | 278/1024 [02:48<07:31,  1.65it/s]train.bin:  27%|██▋       | 279/1024 [02:49<07:30,  1.65it/s]train.bin:  27%|██▋       | 280/1024 [02:49<07:31,  1.65it/s]train.bin:  27%|██▋       | 281/1024 [02:50<07:33,  1.64it/s]train.bin:  28%|██▊       | 282/1024 [02:51<07:32,  1.64it/s]train.bin:  28%|██▊       | 283/1024 [02:51<07:31,  1.64it/s]train.bin:  28%|██▊       | 284/1024 [02:52<07:29,  1.65it/s]train.bin:  28%|██▊       | 285/1024 [02:52<07:29,  1.65it/s]train.bin:  28%|██▊       | 286/1024 [02:53<07:27,  1.65it/s]train.bin:  28%|██▊       | 287/1024 [02:54<07:26,  1.65it/s]train.bin:  28%|██▊       | 288/1024 [02:54<07:24,  1.65it/s]train.bin:  28%|██▊       | 289/1024 [02:55<07:24,  1.65it/s]train.bin:  28%|██▊       | 290/1024 [02:55<07:23,  1.65it/s]train.bin:  28%|██▊       | 291/1024 [02:56<07:24,  1.65it/s]train.bin:  29%|██▊       | 292/1024 [02:57<07:24,  1.65it/s]train.bin:  29%|██▊       | 293/1024 [02:57<07:23,  1.65it/s]train.bin:  29%|██▊       | 294/1024 [02:58<07:23,  1.65it/s]train.bin:  29%|██▉       | 295/1024 [02:58<07:21,  1.65it/s]train.bin:  29%|██▉       | 296/1024 [02:59<07:20,  1.65it/s]train.bin:  29%|██▉       | 297/1024 [03:00<07:20,  1.65it/s]train.bin:  29%|██▉       | 298/1024 [03:00<07:20,  1.65it/s]train.bin:  29%|██▉       | 299/1024 [03:01<07:20,  1.65it/s]train.bin:  29%|██▉       | 300/1024 [03:01<07:19,  1.65it/s]train.bin:  29%|██▉       | 301/1024 [03:02<07:18,  1.65it/s]train.bin:  29%|██▉       | 302/1024 [03:03<07:17,  1.65it/s]train.bin:  30%|██▉       | 303/1024 [03:03<07:16,  1.65it/s]train.bin:  30%|██▉       | 304/1024 [03:04<07:16,  1.65it/s]train.bin:  30%|██▉       | 305/1024 [03:04<07:15,  1.65it/s]train.bin:  30%|██▉       | 306/1024 [03:05<07:15,  1.65it/s]train.bin:  30%|██▉       | 307/1024 [03:06<07:14,  1.65it/s]train.bin:  30%|███       | 308/1024 [03:06<07:13,  1.65it/s]train.bin:  30%|███       | 309/1024 [03:07<07:13,  1.65it/s]train.bin:  30%|███       | 310/1024 [03:07<07:12,  1.65it/s]train.bin:  30%|███       | 311/1024 [03:08<07:12,  1.65it/s]train.bin:  30%|███       | 312/1024 [03:09<07:12,  1.65it/s]train.bin:  31%|███       | 313/1024 [03:09<07:12,  1.64it/s]train.bin:  31%|███       | 314/1024 [03:10<07:11,  1.64it/s]train.bin:  31%|███       | 315/1024 [03:11<07:11,  1.64it/s]train.bin:  31%|███       | 316/1024 [03:11<07:10,  1.65it/s]train.bin:  31%|███       | 317/1024 [03:12<07:09,  1.65it/s]train.bin:  31%|███       | 318/1024 [03:12<07:08,  1.65it/s]train.bin:  31%|███       | 319/1024 [03:13<07:07,  1.65it/s]train.bin:  31%|███▏      | 320/1024 [03:14<07:06,  1.65it/s]train.bin:  31%|███▏      | 321/1024 [03:14<07:05,  1.65it/s]train.bin:  31%|███▏      | 322/1024 [03:15<07:05,  1.65it/s]train.bin:  32%|███▏      | 323/1024 [03:15<07:04,  1.65it/s]train.bin:  32%|███▏      | 324/1024 [03:16<07:03,  1.65it/s]train.bin:  32%|███▏      | 325/1024 [03:17<07:06,  1.64it/s]train.bin:  32%|███▏      | 326/1024 [03:17<07:04,  1.65it/s]train.bin:  32%|███▏      | 327/1024 [03:18<07:02,  1.65it/s]train.bin:  32%|███▏      | 328/1024 [03:18<07:02,  1.65it/s]train.bin:  32%|███▏      | 329/1024 [03:19<07:01,  1.65it/s]train.bin:  32%|███▏      | 330/1024 [03:20<07:00,  1.65it/s]train.bin:  32%|███▏      | 331/1024 [03:20<06:59,  1.65it/s]train.bin:  32%|███▏      | 332/1024 [03:21<06:58,  1.65it/s]train.bin:  33%|███▎      | 333/1024 [03:21<06:57,  1.66it/s]train.bin:  33%|███▎      | 334/1024 [03:22<06:57,  1.65it/s]train.bin:  33%|███▎      | 335/1024 [03:23<06:57,  1.65it/s]train.bin:  33%|███▎      | 336/1024 [03:23<06:57,  1.65it/s]train.bin:  33%|███▎      | 337/1024 [03:24<06:57,  1.65it/s]train.bin:  33%|███▎      | 338/1024 [03:24<06:58,  1.64it/s]train.bin:  33%|███▎      | 339/1024 [03:25<06:57,  1.64it/s]train.bin:  33%|███▎      | 340/1024 [03:26<06:56,  1.64it/s]train.bin:  33%|███▎      | 341/1024 [03:26<06:55,  1.64it/s]train.bin:  33%|███▎      | 342/1024 [03:27<06:56,  1.64it/s]train.bin:  33%|███▎      | 343/1024 [03:28<06:55,  1.64it/s]train.bin:  34%|███▎      | 344/1024 [03:28<06:53,  1.64it/s]train.bin:  34%|███▎      | 345/1024 [03:29<06:53,  1.64it/s]train.bin:  34%|███▍      | 346/1024 [03:29<06:51,  1.65it/s]train.bin:  34%|███▍      | 347/1024 [03:30<06:51,  1.65it/s]train.bin:  34%|███▍      | 348/1024 [03:31<06:49,  1.65it/s]train.bin:  34%|███▍      | 349/1024 [03:31<06:50,  1.65it/s]train.bin:  34%|███▍      | 350/1024 [03:32<06:49,  1.64it/s]train.bin:  34%|███▍      | 351/1024 [03:32<06:49,  1.65it/s]train.bin:  34%|███▍      | 352/1024 [03:33<06:48,  1.65it/s]train.bin:  34%|███▍      | 353/1024 [03:34<06:47,  1.65it/s]train.bin:  35%|███▍      | 354/1024 [03:34<06:46,  1.65it/s]train.bin:  35%|███▍      | 355/1024 [03:35<06:45,  1.65it/s]train.bin:  35%|███▍      | 356/1024 [03:35<06:45,  1.65it/s]train.bin:  35%|███▍      | 357/1024 [03:36<06:44,  1.65it/s]train.bin:  35%|███▍      | 358/1024 [03:37<06:44,  1.65it/s]train.bin:  35%|███▌      | 359/1024 [03:37<06:45,  1.64it/s]train.bin:  35%|███▌      | 360/1024 [03:38<06:43,  1.65it/s]train.bin:  35%|███▌      | 361/1024 [03:38<06:42,  1.65it/s]train.bin:  35%|███▌      | 362/1024 [03:39<06:41,  1.65it/s]train.bin:  35%|███▌      | 363/1024 [03:40<06:41,  1.65it/s]train.bin:  36%|███▌      | 364/1024 [03:40<06:40,  1.65it/s]train.bin:  36%|███▌      | 365/1024 [03:41<06:38,  1.65it/s]train.bin:  36%|███▌      | 366/1024 [03:41<06:37,  1.65it/s]train.bin:  36%|███▌      | 367/1024 [03:42<06:37,  1.65it/s]train.bin:  36%|███▌      | 368/1024 [03:43<06:36,  1.65it/s]train.bin:  36%|███▌      | 369/1024 [03:43<06:36,  1.65it/s]train.bin:  36%|███▌      | 370/1024 [03:44<06:36,  1.65it/s]train.bin:  36%|███▌      | 371/1024 [03:45<06:35,  1.65it/s]train.bin:  36%|███▋      | 372/1024 [03:45<06:34,  1.65it/s]train.bin:  36%|███▋      | 373/1024 [03:46<06:34,  1.65it/s]train.bin:  37%|███▋      | 374/1024 [03:46<06:32,  1.65it/s]train.bin:  37%|███▋      | 375/1024 [03:47<06:32,  1.65it/s]train.bin:  37%|███▋      | 376/1024 [03:48<06:32,  1.65it/s]train.bin:  37%|███▋      | 377/1024 [03:48<06:31,  1.65it/s]train.bin:  37%|███▋      | 378/1024 [03:49<06:31,  1.65it/s]train.bin:  37%|███▋      | 379/1024 [03:49<06:30,  1.65it/s]train.bin:  37%|███▋      | 380/1024 [03:50<06:29,  1.65it/s]train.bin:  37%|███▋      | 381/1024 [03:51<06:29,  1.65it/s]train.bin:  37%|███▋      | 382/1024 [03:51<06:28,  1.65it/s]train.bin:  37%|███▋      | 383/1024 [03:52<06:28,  1.65it/s]train.bin:  38%|███▊      | 384/1024 [03:52<06:48,  1.57it/s]train.bin:  38%|███▊      | 385/1024 [03:53<06:42,  1.59it/s]train.bin:  38%|███▊      | 386/1024 [03:54<06:38,  1.60it/s]train.bin:  38%|███▊      | 387/1024 [03:54<06:34,  1.62it/s]train.bin:  38%|███▊      | 388/1024 [03:55<06:31,  1.63it/s]train.bin:  38%|███▊      | 389/1024 [03:56<06:29,  1.63it/s]train.bin:  38%|███▊      | 390/1024 [03:56<06:27,  1.64it/s]train.bin:  38%|███▊      | 391/1024 [03:57<06:25,  1.64it/s]train.bin:  38%|███▊      | 392/1024 [03:57<06:25,  1.64it/s]train.bin:  38%|███▊      | 393/1024 [03:58<06:23,  1.64it/s]train.bin:  38%|███▊      | 394/1024 [03:59<06:23,  1.64it/s]train.bin:  39%|███▊      | 395/1024 [03:59<06:22,  1.65it/s]train.bin:  39%|███▊      | 396/1024 [04:00<06:21,  1.64it/s]train.bin:  39%|███▉      | 397/1024 [04:00<06:21,  1.64it/s]train.bin:  39%|███▉      | 398/1024 [04:01<06:21,  1.64it/s]train.bin:  39%|███▉      | 399/1024 [04:02<06:20,  1.64it/s]train.bin:  39%|███▉      | 400/1024 [04:02<06:19,  1.64it/s]train.bin:  39%|███▉      | 401/1024 [04:03<06:19,  1.64it/s]train.bin:  39%|███▉      | 402/1024 [04:03<06:18,  1.64it/s]train.bin:  39%|███▉      | 403/1024 [04:04<06:17,  1.64it/s]train.bin:  39%|███▉      | 404/1024 [04:05<06:16,  1.64it/s]train.bin:  40%|███▉      | 405/1024 [04:05<06:16,  1.65it/s]train.bin:  40%|███▉      | 406/1024 [04:06<06:15,  1.65it/s]train.bin:  40%|███▉      | 407/1024 [04:06<06:13,  1.65it/s]train.bin:  40%|███▉      | 408/1024 [04:07<06:13,  1.65it/s]train.bin:  40%|███▉      | 409/1024 [04:08<06:13,  1.65it/s]train.bin:  40%|████      | 410/1024 [04:08<06:12,  1.65it/s]train.bin:  40%|████      | 411/1024 [04:09<06:12,  1.65it/s]train.bin:  40%|████      | 412/1024 [04:09<06:11,  1.65it/s]train.bin:  40%|████      | 413/1024 [04:10<06:11,  1.64it/s]train.bin:  40%|████      | 414/1024 [04:11<06:10,  1.65it/s]train.bin:  41%|████      | 415/1024 [04:11<06:09,  1.65it/s]train.bin:  41%|████      | 416/1024 [04:12<06:08,  1.65it/s]train.bin:  41%|████      | 417/1024 [04:13<06:08,  1.65it/s]train.bin:  41%|████      | 418/1024 [04:13<06:07,  1.65it/s]train.bin:  41%|████      | 419/1024 [04:14<06:06,  1.65it/s]train.bin:  41%|████      | 420/1024 [04:14<06:05,  1.65it/s]train.bin:  41%|████      | 421/1024 [04:15<06:04,  1.65it/s]train.bin:  41%|████      | 422/1024 [04:16<06:04,  1.65it/s]train.bin:  41%|████▏     | 423/1024 [04:16<06:03,  1.65it/s]train.bin:  41%|████▏     | 424/1024 [04:17<06:03,  1.65it/s]train.bin:  42%|████▏     | 425/1024 [04:17<06:02,  1.65it/s]train.bin:  42%|████▏     | 426/1024 [04:18<06:03,  1.65it/s]train.bin:  42%|████▏     | 427/1024 [04:19<06:03,  1.64it/s]train.bin:  42%|████▏     | 428/1024 [04:19<06:02,  1.65it/s]train.bin:  42%|████▏     | 429/1024 [04:20<06:01,  1.65it/s]train.bin:  42%|████▏     | 430/1024 [04:20<06:00,  1.65it/s]train.bin:  42%|████▏     | 431/1024 [04:21<05:59,  1.65it/s]train.bin:  42%|████▏     | 432/1024 [04:22<05:59,  1.65it/s]train.bin:  42%|████▏     | 433/1024 [04:22<05:58,  1.65it/s]train.bin:  42%|████▏     | 434/1024 [04:23<05:57,  1.65it/s]train.bin:  42%|████▏     | 435/1024 [04:23<05:57,  1.65it/s]train.bin:  43%|████▎     | 436/1024 [04:24<05:56,  1.65it/s]train.bin:  43%|████▎     | 437/1024 [04:25<05:56,  1.65it/s]train.bin:  43%|████▎     | 438/1024 [04:25<05:55,  1.65it/s]train.bin:  43%|████▎     | 439/1024 [04:26<05:55,  1.65it/s]train.bin:  43%|████▎     | 440/1024 [04:26<05:53,  1.65it/s]train.bin:  43%|████▎     | 441/1024 [04:27<05:53,  1.65it/s]train.bin:  43%|████▎     | 442/1024 [04:28<05:52,  1.65it/s]train.bin:  43%|████▎     | 443/1024 [04:28<05:52,  1.65it/s]train.bin:  43%|████▎     | 444/1024 [04:29<05:50,  1.65it/s]train.bin:  43%|████▎     | 445/1024 [04:30<05:50,  1.65it/s]train.bin:  44%|████▎     | 446/1024 [04:30<05:49,  1.65it/s]train.bin:  44%|████▎     | 447/1024 [04:31<05:49,  1.65it/s]train.bin:  44%|████▍     | 448/1024 [04:31<05:48,  1.65it/s]train.bin:  44%|████▍     | 449/1024 [04:32<05:47,  1.65it/s]train.bin:  44%|████▍     | 450/1024 [04:33<05:47,  1.65it/s]train.bin:  44%|████▍     | 451/1024 [04:33<05:46,  1.65it/s]train.bin:  44%|████▍     | 452/1024 [04:34<05:46,  1.65it/s]train.bin:  44%|████▍     | 453/1024 [04:34<05:45,  1.65it/s]train.bin:  44%|████▍     | 454/1024 [04:35<05:45,  1.65it/s]train.bin:  44%|████▍     | 455/1024 [04:36<05:53,  1.61it/s]train.bin:  45%|████▍     | 456/1024 [04:36<05:50,  1.62it/s]train.bin:  45%|████▍     | 457/1024 [04:37<05:48,  1.63it/s]train.bin:  45%|████▍     | 458/1024 [04:37<05:46,  1.64it/s]train.bin:  45%|████▍     | 459/1024 [04:38<05:44,  1.64it/s]train.bin:  45%|████▍     | 460/1024 [04:39<05:43,  1.64it/s]train.bin:  45%|████▌     | 461/1024 [04:39<05:41,  1.65it/s]train.bin:  45%|████▌     | 462/1024 [04:40<05:40,  1.65it/s]train.bin:  45%|████▌     | 463/1024 [04:40<05:40,  1.65it/s]train.bin:  45%|████▌     | 464/1024 [04:41<05:39,  1.65it/s]train.bin:  45%|████▌     | 465/1024 [04:42<05:38,  1.65it/s]train.bin:  46%|████▌     | 466/1024 [04:42<05:37,  1.65it/s]train.bin:  46%|████▌     | 467/1024 [04:43<05:36,  1.65it/s]train.bin:  46%|████▌     | 468/1024 [04:43<05:37,  1.65it/s]train.bin:  46%|████▌     | 469/1024 [04:44<05:36,  1.65it/s]train.bin:  46%|████▌     | 470/1024 [04:45<05:36,  1.65it/s]train.bin:  46%|████▌     | 471/1024 [04:45<05:35,  1.65it/s]train.bin:  46%|████▌     | 472/1024 [04:46<05:34,  1.65it/s]train.bin:  46%|████▌     | 473/1024 [04:47<05:33,  1.65it/s]train.bin:  46%|████▋     | 474/1024 [04:47<05:32,  1.65it/s]train.bin:  46%|████▋     | 475/1024 [04:48<05:31,  1.66it/s]train.bin:  46%|████▋     | 476/1024 [04:48<05:31,  1.65it/s]train.bin:  47%|████▋     | 477/1024 [04:49<05:31,  1.65it/s]train.bin:  47%|████▋     | 478/1024 [04:50<05:30,  1.65it/s]train.bin:  47%|████▋     | 479/1024 [04:50<05:29,  1.65it/s]train.bin:  47%|████▋     | 480/1024 [04:51<05:28,  1.65it/s]train.bin:  47%|████▋     | 481/1024 [04:51<05:28,  1.65it/s]train.bin:  47%|████▋     | 482/1024 [04:52<05:28,  1.65it/s]train.bin:  47%|████▋     | 483/1024 [04:53<05:28,  1.65it/s]train.bin:  47%|████▋     | 484/1024 [04:53<05:27,  1.65it/s]train.bin:  47%|████▋     | 485/1024 [04:54<05:27,  1.65it/s]train.bin:  47%|████▋     | 486/1024 [04:54<05:26,  1.65it/s]train.bin:  48%|████▊     | 487/1024 [04:55<05:25,  1.65it/s]train.bin:  48%|████▊     | 488/1024 [04:56<05:25,  1.64it/s]train.bin:  48%|████▊     | 489/1024 [04:56<05:24,  1.65it/s]train.bin:  48%|████▊     | 490/1024 [04:57<05:24,  1.65it/s]train.bin:  48%|████▊     | 491/1024 [04:57<05:24,  1.64it/s]train.bin:  48%|████▊     | 492/1024 [04:58<05:23,  1.64it/s]train.bin:  48%|████▊     | 493/1024 [04:59<05:22,  1.65it/s]train.bin:  48%|████▊     | 494/1024 [04:59<05:22,  1.65it/s]train.bin:  48%|████▊     | 495/1024 [05:00<05:21,  1.65it/s]train.bin:  48%|████▊     | 496/1024 [05:00<05:20,  1.65it/s]train.bin:  49%|████▊     | 497/1024 [05:01<05:20,  1.65it/s]train.bin:  49%|████▊     | 498/1024 [05:02<05:19,  1.65it/s]train.bin:  49%|████▊     | 499/1024 [05:02<05:18,  1.65it/s]train.bin:  49%|████▉     | 500/1024 [05:03<05:17,  1.65it/s]train.bin:  49%|████▉     | 501/1024 [05:03<05:17,  1.64it/s]train.bin:  49%|████▉     | 502/1024 [05:04<05:17,  1.64it/s]train.bin:  49%|████▉     | 503/1024 [05:05<05:16,  1.65it/s]train.bin:  49%|████▉     | 504/1024 [05:05<05:16,  1.65it/s]train.bin:  49%|████▉     | 505/1024 [05:06<05:14,  1.65it/s]train.bin:  49%|████▉     | 506/1024 [05:07<05:14,  1.65it/s]train.bin:  50%|████▉     | 507/1024 [05:07<05:13,  1.65it/s]train.bin:  50%|████▉     | 508/1024 [05:08<05:14,  1.64it/s]train.bin:  50%|████▉     | 509/1024 [05:08<05:13,  1.64it/s]train.bin:  50%|████▉     | 510/1024 [05:09<05:13,  1.64it/s]train.bin:  50%|████▉     | 511/1024 [05:10<05:13,  1.64it/s]train.bin:  50%|█████     | 512/1024 [05:10<05:28,  1.56it/s]train.bin:  50%|█████     | 513/1024 [05:11<05:22,  1.58it/s]train.bin:  50%|█████     | 514/1024 [05:12<05:18,  1.60it/s]train.bin:  50%|█████     | 515/1024 [05:12<05:14,  1.62it/s]train.bin:  50%|█████     | 516/1024 [05:13<05:12,  1.63it/s]train.bin:  50%|█████     | 517/1024 [05:13<05:10,  1.63it/s]train.bin:  51%|█████     | 518/1024 [05:14<05:10,  1.63it/s]train.bin:  51%|█████     | 519/1024 [05:15<05:09,  1.63it/s]train.bin:  51%|█████     | 520/1024 [05:15<05:07,  1.64it/s]train.bin:  51%|█████     | 521/1024 [05:16<05:06,  1.64it/s]train.bin:  51%|█████     | 522/1024 [05:16<05:05,  1.64it/s]train.bin:  51%|█████     | 523/1024 [05:17<05:04,  1.65it/s]train.bin:  51%|█████     | 524/1024 [05:18<05:03,  1.65it/s]train.bin:  51%|█████▏    | 525/1024 [05:18<05:02,  1.65it/s]train.bin:  51%|█████▏    | 526/1024 [05:19<05:01,  1.65it/s]train.bin:  51%|█████▏    | 527/1024 [05:19<05:02,  1.65it/s]train.bin:  52%|█████▏    | 528/1024 [05:20<05:01,  1.65it/s]train.bin:  52%|█████▏    | 529/1024 [05:21<04:59,  1.65it/s]train.bin:  52%|█████▏    | 530/1024 [05:21<04:59,  1.65it/s]train.bin:  52%|█████▏    | 531/1024 [05:22<04:58,  1.65it/s]train.bin:  52%|█████▏    | 532/1024 [05:22<04:57,  1.65it/s]train.bin:  52%|█████▏    | 533/1024 [05:23<04:56,  1.66it/s]train.bin:  52%|█████▏    | 534/1024 [05:24<04:55,  1.66it/s]train.bin:  52%|█████▏    | 535/1024 [05:24<04:55,  1.65it/s]train.bin:  52%|█████▏    | 536/1024 [05:25<04:55,  1.65it/s]train.bin:  52%|█████▏    | 537/1024 [05:25<04:55,  1.65it/s]train.bin:  53%|█████▎    | 538/1024 [05:26<04:55,  1.65it/s]train.bin:  53%|█████▎    | 539/1024 [05:27<04:55,  1.64it/s]train.bin:  53%|█████▎    | 540/1024 [05:27<04:54,  1.64it/s]train.bin:  53%|█████▎    | 541/1024 [05:28<04:54,  1.64it/s]train.bin:  53%|█████▎    | 542/1024 [05:29<04:54,  1.64it/s]train.bin:  53%|█████▎    | 543/1024 [05:29<04:53,  1.64it/s]train.bin:  53%|█████▎    | 544/1024 [05:30<04:52,  1.64it/s]train.bin:  53%|█████▎    | 545/1024 [05:30<04:52,  1.64it/s]train.bin:  53%|█████▎    | 546/1024 [05:31<04:50,  1.64it/s]train.bin:  53%|█████▎    | 547/1024 [05:32<04:49,  1.65it/s]train.bin:  54%|█████▎    | 548/1024 [05:32<04:48,  1.65it/s]train.bin:  54%|█████▎    | 549/1024 [05:33<04:47,  1.65it/s]train.bin:  54%|█████▎    | 550/1024 [05:33<04:47,  1.65it/s]train.bin:  54%|█████▍    | 551/1024 [05:34<04:46,  1.65it/s]train.bin:  54%|█████▍    | 552/1024 [05:35<04:46,  1.65it/s]train.bin:  54%|█████▍    | 553/1024 [05:35<04:46,  1.64it/s]train.bin:  54%|█████▍    | 554/1024 [05:36<04:46,  1.64it/s]train.bin:  54%|█████▍    | 555/1024 [05:36<04:46,  1.64it/s]train.bin:  54%|█████▍    | 556/1024 [05:37<04:44,  1.64it/s]train.bin:  54%|█████▍    | 557/1024 [05:38<04:43,  1.65it/s]train.bin:  54%|█████▍    | 558/1024 [05:38<04:42,  1.65it/s]train.bin:  55%|█████▍    | 559/1024 [05:39<04:41,  1.65it/s]train.bin:  55%|█████▍    | 560/1024 [05:39<04:41,  1.65it/s]train.bin:  55%|█████▍    | 561/1024 [05:40<04:40,  1.65it/s]train.bin:  55%|█████▍    | 562/1024 [05:41<04:40,  1.65it/s]train.bin:  55%|█████▍    | 563/1024 [05:41<04:40,  1.65it/s]train.bin:  55%|█████▌    | 564/1024 [05:42<04:39,  1.65it/s]train.bin:  55%|█████▌    | 565/1024 [05:42<04:38,  1.65it/s]train.bin:  55%|█████▌    | 566/1024 [05:43<04:37,  1.65it/s]train.bin:  55%|█████▌    | 567/1024 [05:44<04:37,  1.65it/s]train.bin:  55%|█████▌    | 568/1024 [05:44<04:37,  1.64it/s]train.bin:  56%|█████▌    | 569/1024 [05:45<04:36,  1.64it/s]train.bin:  56%|█████▌    | 570/1024 [05:46<04:36,  1.64it/s]train.bin:  56%|█████▌    | 571/1024 [05:46<04:35,  1.65it/s]train.bin:  56%|█████▌    | 572/1024 [05:47<04:34,  1.65it/s]train.bin:  56%|█████▌    | 573/1024 [05:47<04:33,  1.65it/s]train.bin:  56%|█████▌    | 574/1024 [05:48<04:33,  1.65it/s]train.bin:  56%|█████▌    | 575/1024 [05:49<04:33,  1.64it/s]train.bin:  56%|█████▋    | 576/1024 [05:49<04:33,  1.64it/s]train.bin:  56%|█████▋    | 577/1024 [05:50<04:33,  1.64it/s]train.bin:  56%|█████▋    | 578/1024 [05:50<04:31,  1.64it/s]train.bin:  57%|█████▋    | 579/1024 [05:51<04:30,  1.64it/s]train.bin:  57%|█████▋    | 580/1024 [05:52<04:29,  1.64it/s]train.bin:  57%|█████▋    | 581/1024 [05:52<04:29,  1.65it/s]train.bin:  57%|█████▋    | 582/1024 [05:53<04:28,  1.65it/s]train.bin:  57%|█████▋    | 583/1024 [05:53<04:28,  1.64it/s]train.bin:  57%|█████▋    | 584/1024 [05:54<04:27,  1.64it/s]train.bin:  57%|█████▋    | 585/1024 [05:55<04:27,  1.64it/s]train.bin:  57%|█████▋    | 586/1024 [05:55<04:26,  1.64it/s]train.bin:  57%|█████▋    | 587/1024 [05:56<04:26,  1.64it/s]train.bin:  57%|█████▋    | 588/1024 [05:56<04:26,  1.64it/s]train.bin:  58%|█████▊    | 589/1024 [05:57<04:25,  1.64it/s]train.bin:  58%|█████▊    | 590/1024 [05:58<04:24,  1.64it/s]train.bin:  58%|█████▊    | 591/1024 [05:58<04:23,  1.64it/s]train.bin:  58%|█████▊    | 592/1024 [05:59<04:22,  1.65it/s]train.bin:  58%|█████▊    | 593/1024 [06:00<04:21,  1.65it/s]train.bin:  58%|█████▊    | 594/1024 [06:00<04:20,  1.65it/s]train.bin:  58%|█████▊    | 595/1024 [06:01<04:20,  1.64it/s]train.bin:  58%|█████▊    | 596/1024 [06:01<04:19,  1.65it/s]train.bin:  58%|█████▊    | 597/1024 [06:02<04:19,  1.65it/s]train.bin:  58%|█████▊    | 598/1024 [06:03<04:18,  1.65it/s]train.bin:  58%|█████▊    | 599/1024 [06:03<04:17,  1.65it/s]train.bin:  59%|█████▊    | 600/1024 [06:04<04:17,  1.65it/s]train.bin:  59%|█████▊    | 601/1024 [06:04<04:16,  1.65it/s]train.bin:  59%|█████▉    | 602/1024 [06:05<04:16,  1.65it/s]train.bin:  59%|█████▉    | 603/1024 [06:06<04:15,  1.65it/s]train.bin:  59%|█████▉    | 604/1024 [06:06<04:15,  1.65it/s]train.bin:  59%|█████▉    | 605/1024 [06:07<04:14,  1.65it/s]train.bin:  59%|█████▉    | 606/1024 [06:07<04:13,  1.65it/s]train.bin:  59%|█████▉    | 607/1024 [06:08<04:12,  1.65it/s]train.bin:  59%|█████▉    | 608/1024 [06:09<04:12,  1.65it/s]train.bin:  59%|█████▉    | 609/1024 [06:09<04:11,  1.65it/s]train.bin:  60%|█████▉    | 610/1024 [06:10<04:10,  1.65it/s]train.bin:  60%|█████▉    | 611/1024 [06:10<04:10,  1.65it/s]train.bin:  60%|█████▉    | 612/1024 [06:11<04:10,  1.65it/s]train.bin:  60%|█████▉    | 613/1024 [06:12<04:09,  1.65it/s]train.bin:  60%|█████▉    | 614/1024 [06:12<04:08,  1.65it/s]train.bin:  60%|██████    | 615/1024 [06:13<04:07,  1.65it/s]train.bin:  60%|██████    | 616/1024 [06:13<04:06,  1.65it/s]train.bin:  60%|██████    | 617/1024 [06:14<04:06,  1.65it/s]train.bin:  60%|██████    | 618/1024 [06:15<04:05,  1.65it/s]train.bin:  60%|██████    | 619/1024 [06:15<04:04,  1.65it/s]train.bin:  61%|██████    | 620/1024 [06:16<04:04,  1.65it/s]train.bin:  61%|██████    | 621/1024 [06:17<04:04,  1.65it/s]train.bin:  61%|██████    | 622/1024 [06:17<04:03,  1.65it/s]train.bin:  61%|██████    | 623/1024 [06:18<04:03,  1.65it/s]train.bin:  61%|██████    | 624/1024 [06:18<04:02,  1.65it/s]train.bin:  61%|██████    | 625/1024 [06:19<04:01,  1.65it/s]train.bin:  61%|██████    | 626/1024 [06:20<04:01,  1.65it/s]train.bin:  61%|██████    | 627/1024 [06:20<04:01,  1.64it/s]train.bin:  61%|██████▏   | 628/1024 [06:21<04:00,  1.65it/s]train.bin:  61%|██████▏   | 629/1024 [06:21<04:00,  1.65it/s]train.bin:  62%|██████▏   | 630/1024 [06:22<03:59,  1.65it/s]train.bin:  62%|██████▏   | 631/1024 [06:23<03:57,  1.65it/s]train.bin:  62%|██████▏   | 632/1024 [06:23<03:57,  1.65it/s]train.bin:  62%|██████▏   | 633/1024 [06:24<03:56,  1.65it/s]train.bin:  62%|██████▏   | 634/1024 [06:24<03:55,  1.65it/s]train.bin:  62%|██████▏   | 635/1024 [06:25<03:55,  1.65it/s]train.bin:  62%|██████▏   | 636/1024 [06:26<03:55,  1.65it/s]train.bin:  62%|██████▏   | 637/1024 [06:26<03:54,  1.65it/s]train.bin:  62%|██████▏   | 638/1024 [06:27<03:54,  1.64it/s]train.bin:  62%|██████▏   | 639/1024 [06:27<03:54,  1.64it/s]train.bin:  62%|██████▎   | 640/1024 [06:28<04:06,  1.56it/s]train.bin:  63%|██████▎   | 641/1024 [06:29<04:02,  1.58it/s]train.bin:  63%|██████▎   | 642/1024 [06:29<03:58,  1.60it/s]train.bin:  63%|██████▎   | 643/1024 [06:30<03:56,  1.61it/s]train.bin:  63%|██████▎   | 644/1024 [06:31<03:54,  1.62it/s]train.bin:  63%|██████▎   | 645/1024 [06:31<03:53,  1.63it/s]train.bin:  63%|██████▎   | 646/1024 [06:32<03:51,  1.63it/s]train.bin:  63%|██████▎   | 647/1024 [06:32<03:49,  1.64it/s]train.bin:  63%|██████▎   | 648/1024 [06:33<03:48,  1.65it/s]train.bin:  63%|██████▎   | 649/1024 [06:34<03:47,  1.65it/s]train.bin:  63%|██████▎   | 650/1024 [06:34<03:46,  1.65it/s]train.bin:  64%|██████▎   | 651/1024 [06:35<03:45,  1.65it/s]train.bin:  64%|██████▎   | 652/1024 [06:35<03:45,  1.65it/s]train.bin:  64%|██████▍   | 653/1024 [06:36<03:44,  1.65it/s]train.bin:  64%|██████▍   | 654/1024 [06:37<03:44,  1.65it/s]train.bin:  64%|██████▍   | 655/1024 [06:37<03:44,  1.64it/s]train.bin:  64%|██████▍   | 656/1024 [06:38<03:43,  1.65it/s]train.bin:  64%|██████▍   | 657/1024 [06:38<03:42,  1.65it/s]train.bin:  64%|██████▍   | 658/1024 [06:39<03:41,  1.65it/s]train.bin:  64%|██████▍   | 659/1024 [06:40<03:41,  1.65it/s]train.bin:  64%|██████▍   | 660/1024 [06:40<03:40,  1.65it/s]train.bin:  65%|██████▍   | 661/1024 [06:41<03:39,  1.65it/s]train.bin:  65%|██████▍   | 662/1024 [06:41<03:39,  1.65it/s]train.bin:  65%|██████▍   | 663/1024 [06:42<03:39,  1.65it/s]train.bin:  65%|██████▍   | 664/1024 [06:43<03:38,  1.65it/s]train.bin:  65%|██████▍   | 665/1024 [06:43<03:37,  1.65it/s]train.bin:  65%|██████▌   | 666/1024 [06:44<03:37,  1.65it/s]train.bin:  65%|██████▌   | 667/1024 [06:45<03:36,  1.65it/s]train.bin:  65%|██████▌   | 668/1024 [06:45<03:36,  1.64it/s]train.bin:  65%|██████▌   | 669/1024 [06:46<03:36,  1.64it/s]train.bin:  65%|██████▌   | 670/1024 [06:46<03:35,  1.64it/s]train.bin:  66%|██████▌   | 671/1024 [06:47<03:34,  1.64it/s]train.bin:  66%|██████▌   | 672/1024 [06:48<03:33,  1.65it/s]train.bin:  66%|██████▌   | 673/1024 [06:48<03:32,  1.65it/s]train.bin:  66%|██████▌   | 674/1024 [06:49<03:32,  1.65it/s]train.bin:  66%|██████▌   | 675/1024 [06:49<03:31,  1.65it/s]train.bin:  66%|██████▌   | 676/1024 [06:50<03:30,  1.65it/s]train.bin:  66%|██████▌   | 677/1024 [06:51<03:29,  1.65it/s]train.bin:  66%|██████▌   | 678/1024 [06:51<03:29,  1.66it/s]train.bin:  66%|██████▋   | 679/1024 [06:52<03:28,  1.65it/s]train.bin:  66%|██████▋   | 680/1024 [06:52<03:28,  1.65it/s]train.bin:  67%|██████▋   | 681/1024 [06:53<03:27,  1.65it/s]train.bin:  67%|██████▋   | 682/1024 [06:54<03:27,  1.65it/s]train.bin:  67%|██████▋   | 683/1024 [06:54<03:27,  1.65it/s]train.bin:  67%|██████▋   | 684/1024 [06:55<03:31,  1.61it/s]train.bin:  67%|██████▋   | 685/1024 [06:55<03:29,  1.62it/s]train.bin:  67%|██████▋   | 686/1024 [06:56<03:27,  1.63it/s]train.bin:  67%|██████▋   | 687/1024 [06:57<03:25,  1.64it/s]train.bin:  67%|██████▋   | 688/1024 [06:57<03:25,  1.64it/s]train.bin:  67%|██████▋   | 689/1024 [06:58<03:23,  1.64it/s]train.bin:  67%|██████▋   | 690/1024 [06:59<03:22,  1.65it/s]train.bin:  67%|██████▋   | 691/1024 [06:59<03:21,  1.65it/s]train.bin:  68%|██████▊   | 692/1024 [07:00<03:20,  1.65it/s]train.bin:  68%|██████▊   | 693/1024 [07:00<03:20,  1.65it/s]train.bin:  68%|██████▊   | 694/1024 [07:01<03:19,  1.65it/s]train.bin:  68%|██████▊   | 695/1024 [07:02<03:18,  1.65it/s]train.bin:  68%|██████▊   | 696/1024 [07:02<03:18,  1.65it/s]train.bin:  68%|██████▊   | 697/1024 [07:03<03:18,  1.64it/s]train.bin:  68%|██████▊   | 698/1024 [07:03<03:18,  1.64it/s]train.bin:  68%|██████▊   | 699/1024 [07:04<03:17,  1.65it/s]train.bin:  68%|██████▊   | 700/1024 [07:05<03:16,  1.65it/s]train.bin:  68%|██████▊   | 701/1024 [07:05<03:15,  1.65it/s]train.bin:  69%|██████▊   | 702/1024 [07:06<03:14,  1.65it/s]train.bin:  69%|██████▊   | 703/1024 [07:06<03:13,  1.66it/s]train.bin:  69%|██████▉   | 704/1024 [07:07<03:12,  1.66it/s]train.bin:  69%|██████▉   | 705/1024 [07:08<03:11,  1.66it/s]train.bin:  69%|██████▉   | 706/1024 [07:08<03:11,  1.66it/s]train.bin:  69%|██████▉   | 707/1024 [07:09<03:10,  1.66it/s]train.bin:  69%|██████▉   | 708/1024 [07:09<03:10,  1.66it/s]train.bin:  69%|██████▉   | 709/1024 [07:10<03:10,  1.66it/s]train.bin:  69%|██████▉   | 710/1024 [07:11<03:09,  1.65it/s]train.bin:  69%|██████▉   | 711/1024 [07:11<03:09,  1.65it/s]train.bin:  70%|██████▉   | 712/1024 [07:12<03:09,  1.65it/s]train.bin:  70%|██████▉   | 713/1024 [07:12<03:09,  1.64it/s]train.bin:  70%|██████▉   | 714/1024 [07:13<03:08,  1.65it/s]train.bin:  70%|██████▉   | 715/1024 [07:14<03:07,  1.65it/s]train.bin:  70%|██████▉   | 716/1024 [07:14<03:06,  1.65it/s]train.bin:  70%|███████   | 717/1024 [07:15<03:05,  1.65it/s]train.bin:  70%|███████   | 718/1024 [07:15<03:04,  1.66it/s]train.bin:  70%|███████   | 719/1024 [07:16<03:03,  1.66it/s]train.bin:  70%|███████   | 720/1024 [07:17<03:03,  1.66it/s]train.bin:  70%|███████   | 721/1024 [07:17<03:02,  1.66it/s]train.bin:  71%|███████   | 722/1024 [07:18<03:01,  1.66it/s]train.bin:  71%|███████   | 723/1024 [07:18<03:01,  1.66it/s]train.bin:  71%|███████   | 724/1024 [07:19<03:00,  1.66it/s]train.bin:  71%|███████   | 725/1024 [07:20<03:00,  1.66it/s]train.bin:  71%|███████   | 726/1024 [07:20<03:00,  1.65it/s]train.bin:  71%|███████   | 727/1024 [07:21<02:59,  1.66it/s]train.bin:  71%|███████   | 728/1024 [07:21<02:58,  1.65it/s]train.bin:  71%|███████   | 729/1024 [07:22<02:58,  1.66it/s]train.bin:  71%|███████▏  | 730/1024 [07:23<02:57,  1.66it/s]train.bin:  71%|███████▏  | 731/1024 [07:23<02:57,  1.65it/s]train.bin:  71%|███████▏  | 732/1024 [07:24<02:56,  1.66it/s]train.bin:  72%|███████▏  | 733/1024 [07:24<02:55,  1.66it/s]train.bin:  72%|███████▏  | 734/1024 [07:25<02:55,  1.66it/s]train.bin:  72%|███████▏  | 735/1024 [07:26<02:54,  1.65it/s]train.bin:  72%|███████▏  | 736/1024 [07:26<02:53,  1.66it/s]train.bin:  72%|███████▏  | 737/1024 [07:27<02:53,  1.65it/s]train.bin:  72%|███████▏  | 738/1024 [07:28<02:53,  1.65it/s]train.bin:  72%|███████▏  | 739/1024 [07:28<02:52,  1.65it/s]train.bin:  72%|███████▏  | 740/1024 [07:29<02:51,  1.65it/s]train.bin:  72%|███████▏  | 741/1024 [07:29<02:51,  1.65it/s]train.bin:  72%|███████▏  | 742/1024 [07:30<02:50,  1.65it/s]train.bin:  73%|███████▎  | 743/1024 [07:31<02:50,  1.65it/s]train.bin:  73%|███████▎  | 744/1024 [07:31<02:49,  1.65it/s]train.bin:  73%|███████▎  | 745/1024 [07:32<02:48,  1.66it/s]train.bin:  73%|███████▎  | 746/1024 [07:32<02:47,  1.66it/s]train.bin:  73%|███████▎  | 747/1024 [07:33<02:47,  1.66it/s]train.bin:  73%|███████▎  | 748/1024 [07:34<02:46,  1.66it/s]train.bin:  73%|███████▎  | 749/1024 [07:34<02:45,  1.66it/s]train.bin:  73%|███████▎  | 750/1024 [07:35<02:45,  1.66it/s]train.bin:  73%|███████▎  | 751/1024 [07:35<02:44,  1.66it/s]train.bin:  73%|███████▎  | 752/1024 [07:36<02:44,  1.65it/s]train.bin:  74%|███████▎  | 753/1024 [07:37<02:44,  1.65it/s]train.bin:  74%|███████▎  | 754/1024 [07:37<02:43,  1.65it/s]train.bin:  74%|███████▎  | 755/1024 [07:38<02:43,  1.64it/s]train.bin:  74%|███████▍  | 756/1024 [07:38<02:42,  1.65it/s]train.bin:  74%|███████▍  | 757/1024 [07:39<02:41,  1.65it/s]train.bin:  74%|███████▍  | 758/1024 [07:40<02:41,  1.65it/s]train.bin:  74%|███████▍  | 759/1024 [07:40<02:40,  1.65it/s]train.bin:  74%|███████▍  | 760/1024 [07:41<02:39,  1.65it/s]train.bin:  74%|███████▍  | 761/1024 [07:41<02:39,  1.65it/s]train.bin:  74%|███████▍  | 762/1024 [07:42<02:38,  1.65it/s]train.bin:  75%|███████▍  | 763/1024 [07:43<02:37,  1.65it/s]train.bin:  75%|███████▍  | 764/1024 [07:43<02:38,  1.64it/s]train.bin:  75%|███████▍  | 765/1024 [07:44<02:37,  1.64it/s]train.bin:  75%|███████▍  | 766/1024 [07:44<02:36,  1.65it/s]train.bin:  75%|███████▍  | 767/1024 [07:45<02:35,  1.65it/s]train.bin:  75%|███████▌  | 768/1024 [07:46<02:43,  1.56it/s]train.bin:  75%|███████▌  | 769/1024 [07:46<02:40,  1.59it/s]train.bin:  75%|███████▌  | 770/1024 [07:47<02:38,  1.60it/s]train.bin:  75%|███████▌  | 771/1024 [07:48<02:36,  1.62it/s]train.bin:  75%|███████▌  | 772/1024 [07:48<02:34,  1.63it/s]train.bin:  75%|███████▌  | 773/1024 [07:49<02:33,  1.64it/s]train.bin:  76%|███████▌  | 774/1024 [07:49<02:32,  1.64it/s]train.bin:  76%|███████▌  | 775/1024 [07:50<02:31,  1.64it/s]train.bin:  76%|███████▌  | 776/1024 [07:51<02:30,  1.65it/s]train.bin:  76%|███████▌  | 777/1024 [07:51<02:29,  1.65it/s]train.bin:  76%|███████▌  | 778/1024 [07:52<02:29,  1.65it/s]train.bin:  76%|███████▌  | 779/1024 [07:52<02:28,  1.65it/s]train.bin:  76%|███████▌  | 780/1024 [07:53<02:28,  1.65it/s]train.bin:  76%|███████▋  | 781/1024 [07:54<02:28,  1.64it/s]train.bin:  76%|███████▋  | 782/1024 [07:54<02:27,  1.64it/s]train.bin:  76%|███████▋  | 783/1024 [07:55<02:27,  1.64it/s]train.bin:  77%|███████▋  | 784/1024 [07:56<02:26,  1.64it/s]train.bin:  77%|███████▋  | 785/1024 [07:56<02:26,  1.63it/s]train.bin:  77%|███████▋  | 786/1024 [07:57<02:25,  1.64it/s]train.bin:  77%|███████▋  | 787/1024 [07:57<02:24,  1.64it/s]train.bin:  77%|███████▋  | 788/1024 [07:58<02:23,  1.64it/s]train.bin:  77%|███████▋  | 789/1024 [07:59<02:23,  1.64it/s]train.bin:  77%|███████▋  | 790/1024 [07:59<02:22,  1.64it/s]train.bin:  77%|███████▋  | 791/1024 [08:00<02:21,  1.64it/s]train.bin:  77%|███████▋  | 792/1024 [08:00<02:21,  1.64it/s]train.bin:  77%|███████▋  | 793/1024 [08:01<02:20,  1.64it/s]train.bin:  78%|███████▊  | 794/1024 [08:02<02:19,  1.64it/s]train.bin:  78%|███████▊  | 795/1024 [08:02<02:19,  1.64it/s]train.bin:  78%|███████▊  | 796/1024 [08:03<02:18,  1.64it/s]train.bin:  78%|███████▊  | 797/1024 [08:03<02:18,  1.64it/s]train.bin:  78%|███████▊  | 798/1024 [08:04<02:18,  1.63it/s]train.bin:  78%|███████▊  | 799/1024 [08:05<02:17,  1.63it/s]train.bin:  78%|███████▊  | 800/1024 [08:05<02:16,  1.64it/s]train.bin:  78%|███████▊  | 801/1024 [08:06<02:16,  1.64it/s]train.bin:  78%|███████▊  | 802/1024 [08:07<02:15,  1.64it/s]train.bin:  78%|███████▊  | 803/1024 [08:07<02:14,  1.64it/s]train.bin:  79%|███████▊  | 804/1024 [08:08<02:14,  1.64it/s]train.bin:  79%|███████▊  | 805/1024 [08:08<02:13,  1.64it/s]train.bin:  79%|███████▊  | 806/1024 [08:09<02:12,  1.64it/s]train.bin:  79%|███████▉  | 807/1024 [08:10<02:12,  1.64it/s]train.bin:  79%|███████▉  | 808/1024 [08:10<02:11,  1.64it/s]train.bin:  79%|███████▉  | 809/1024 [08:11<02:11,  1.64it/s]train.bin:  79%|███████▉  | 810/1024 [08:11<02:10,  1.64it/s]train.bin:  79%|███████▉  | 811/1024 [08:12<02:10,  1.63it/s]train.bin:  79%|███████▉  | 812/1024 [08:13<02:09,  1.63it/s]train.bin:  79%|███████▉  | 813/1024 [08:13<02:09,  1.63it/s]train.bin:  79%|███████▉  | 814/1024 [08:14<02:08,  1.64it/s]train.bin:  80%|███████▉  | 815/1024 [08:14<02:07,  1.64it/s]train.bin:  80%|███████▉  | 816/1024 [08:15<02:06,  1.64it/s]train.bin:  80%|███████▉  | 817/1024 [08:16<02:06,  1.64it/s]train.bin:  80%|███████▉  | 818/1024 [08:16<02:05,  1.64it/s]train.bin:  80%|███████▉  | 819/1024 [08:17<02:04,  1.64it/s]train.bin:  80%|████████  | 820/1024 [08:17<02:04,  1.64it/s]train.bin:  80%|████████  | 821/1024 [08:18<02:03,  1.64it/s]train.bin:  80%|████████  | 822/1024 [08:19<02:03,  1.64it/s]train.bin:  80%|████████  | 823/1024 [08:19<02:02,  1.64it/s]train.bin:  80%|████████  | 824/1024 [08:20<02:02,  1.64it/s]train.bin:  81%|████████  | 825/1024 [08:21<02:01,  1.64it/s]train.bin:  81%|████████  | 826/1024 [08:21<02:01,  1.63it/s]train.bin:  81%|████████  | 827/1024 [08:22<02:00,  1.63it/s]train.bin:  81%|████████  | 828/1024 [08:22<01:59,  1.64it/s]train.bin:  81%|████████  | 829/1024 [08:23<01:58,  1.64it/s]train.bin:  81%|████████  | 830/1024 [08:24<01:58,  1.64it/s]train.bin:  81%|████████  | 831/1024 [08:24<01:57,  1.65it/s]train.bin:  81%|████████▏ | 832/1024 [08:25<01:56,  1.65it/s]train.bin:  81%|████████▏ | 833/1024 [08:25<01:55,  1.65it/s]train.bin:  81%|████████▏ | 834/1024 [08:26<01:55,  1.65it/s]train.bin:  82%|████████▏ | 835/1024 [08:27<01:54,  1.64it/s]train.bin:  82%|████████▏ | 836/1024 [08:27<01:54,  1.64it/s]train.bin:  82%|████████▏ | 837/1024 [08:28<01:54,  1.64it/s]train.bin:  82%|████████▏ | 838/1024 [08:28<01:53,  1.64it/s]train.bin:  82%|████████▏ | 839/1024 [08:29<01:52,  1.64it/s]train.bin:  82%|████████▏ | 840/1024 [08:30<01:52,  1.64it/s]train.bin:  82%|████████▏ | 841/1024 [08:30<01:51,  1.65it/s]train.bin:  82%|████████▏ | 842/1024 [08:31<01:50,  1.65it/s]train.bin:  82%|████████▏ | 843/1024 [08:31<01:50,  1.64it/s]train.bin:  82%|████████▏ | 844/1024 [08:32<01:49,  1.65it/s]train.bin:  83%|████████▎ | 845/1024 [08:33<01:48,  1.65it/s]train.bin:  83%|████████▎ | 846/1024 [08:33<01:47,  1.66it/s]train.bin:  83%|████████▎ | 847/1024 [08:34<01:46,  1.66it/s]train.bin:  83%|████████▎ | 848/1024 [08:35<01:46,  1.66it/s]train.bin:  83%|████████▎ | 849/1024 [08:35<01:45,  1.66it/s]train.bin:  83%|████████▎ | 850/1024 [08:36<01:45,  1.66it/s]train.bin:  83%|████████▎ | 851/1024 [08:36<01:44,  1.65it/s]train.bin:  83%|████████▎ | 852/1024 [08:37<01:43,  1.66it/s]train.bin:  83%|████████▎ | 853/1024 [08:38<01:43,  1.65it/s]train.bin:  83%|████████▎ | 854/1024 [08:38<01:43,  1.65it/s]train.bin:  83%|████████▎ | 855/1024 [08:39<01:42,  1.65it/s]train.bin:  84%|████████▎ | 856/1024 [08:39<01:41,  1.65it/s]train.bin:  84%|████████▎ | 857/1024 [08:40<01:41,  1.65it/s]train.bin:  84%|████████▍ | 858/1024 [08:41<01:40,  1.65it/s]train.bin:  84%|████████▍ | 859/1024 [08:41<01:39,  1.65it/s]train.bin:  84%|████████▍ | 860/1024 [08:42<01:39,  1.66it/s]train.bin:  84%|████████▍ | 861/1024 [08:42<01:38,  1.66it/s]train.bin:  84%|████████▍ | 862/1024 [08:43<01:38,  1.65it/s]train.bin:  84%|████████▍ | 863/1024 [08:44<01:37,  1.65it/s]train.bin:  84%|████████▍ | 864/1024 [08:44<01:36,  1.65it/s]train.bin:  84%|████████▍ | 865/1024 [08:45<01:36,  1.65it/s]train.bin:  85%|████████▍ | 866/1024 [08:45<01:35,  1.65it/s]train.bin:  85%|████████▍ | 867/1024 [08:46<01:35,  1.65it/s]train.bin:  85%|████████▍ | 868/1024 [08:47<01:34,  1.65it/s]train.bin:  85%|████████▍ | 869/1024 [08:47<01:33,  1.65it/s]train.bin:  85%|████████▍ | 870/1024 [08:48<01:33,  1.65it/s]train.bin:  85%|████████▌ | 871/1024 [08:48<01:32,  1.65it/s]train.bin:  85%|████████▌ | 872/1024 [08:49<01:32,  1.65it/s]train.bin:  85%|████████▌ | 873/1024 [08:50<01:31,  1.65it/s]train.bin:  85%|████████▌ | 874/1024 [08:50<01:30,  1.66it/s]train.bin:  85%|████████▌ | 875/1024 [08:51<01:30,  1.66it/s]train.bin:  86%|████████▌ | 876/1024 [08:51<01:29,  1.66it/s]train.bin:  86%|████████▌ | 877/1024 [08:52<01:28,  1.65it/s]train.bin:  86%|████████▌ | 878/1024 [08:53<01:28,  1.66it/s]train.bin:  86%|████████▌ | 879/1024 [08:53<01:27,  1.65it/s]train.bin:  86%|████████▌ | 880/1024 [08:54<01:27,  1.65it/s]train.bin:  86%|████████▌ | 881/1024 [08:54<01:26,  1.65it/s]train.bin:  86%|████████▌ | 882/1024 [08:55<01:26,  1.65it/s]train.bin:  86%|████████▌ | 883/1024 [08:56<01:25,  1.64it/s]train.bin:  86%|████████▋ | 884/1024 [08:56<01:25,  1.64it/s]train.bin:  86%|████████▋ | 885/1024 [08:57<01:24,  1.64it/s]train.bin:  87%|████████▋ | 886/1024 [08:58<01:24,  1.64it/s]train.bin:  87%|████████▋ | 887/1024 [08:58<01:23,  1.64it/s]train.bin:  87%|████████▋ | 888/1024 [08:59<01:22,  1.64it/s]train.bin:  87%|████████▋ | 889/1024 [08:59<01:22,  1.64it/s]train.bin:  87%|████████▋ | 890/1024 [09:00<01:21,  1.64it/s]train.bin:  87%|████████▋ | 891/1024 [09:01<01:20,  1.64it/s]train.bin:  87%|████████▋ | 892/1024 [09:01<01:20,  1.65it/s]train.bin:  87%|████████▋ | 893/1024 [09:02<01:19,  1.65it/s]train.bin:  87%|████████▋ | 894/1024 [09:02<01:18,  1.65it/s]train.bin:  87%|████████▋ | 895/1024 [09:03<01:18,  1.65it/s]train.bin:  88%|████████▊ | 896/1024 [09:04<01:21,  1.57it/s]train.bin:  88%|████████▊ | 897/1024 [09:04<01:19,  1.59it/s]train.bin:  88%|████████▊ | 898/1024 [09:05<01:18,  1.61it/s]train.bin:  88%|████████▊ | 899/1024 [09:06<01:17,  1.62it/s]train.bin:  88%|████████▊ | 900/1024 [09:06<01:16,  1.63it/s]train.bin:  88%|████████▊ | 901/1024 [09:07<01:15,  1.64it/s]train.bin:  88%|████████▊ | 902/1024 [09:07<01:14,  1.64it/s]train.bin:  88%|████████▊ | 903/1024 [09:08<01:13,  1.65it/s]train.bin:  88%|████████▊ | 904/1024 [09:09<01:12,  1.65it/s]train.bin:  88%|████████▊ | 905/1024 [09:09<01:12,  1.65it/s]train.bin:  88%|████████▊ | 906/1024 [09:10<01:11,  1.65it/s]train.bin:  89%|████████▊ | 907/1024 [09:10<01:11,  1.65it/s]train.bin:  89%|████████▊ | 908/1024 [09:11<01:10,  1.65it/s]train.bin:  89%|████████▉ | 909/1024 [09:12<01:09,  1.65it/s]train.bin:  89%|████████▉ | 910/1024 [09:12<01:09,  1.64it/s]train.bin:  89%|████████▉ | 911/1024 [09:13<01:08,  1.65it/s]train.bin:  89%|████████▉ | 912/1024 [09:13<01:08,  1.64it/s]train.bin:  89%|████████▉ | 913/1024 [09:14<01:08,  1.61it/s]train.bin:  89%|████████▉ | 914/1024 [09:15<01:07,  1.62it/s]train.bin:  89%|████████▉ | 915/1024 [09:15<01:06,  1.63it/s]train.bin:  89%|████████▉ | 916/1024 [09:16<01:05,  1.64it/s]train.bin:  90%|████████▉ | 917/1024 [09:16<01:05,  1.64it/s]train.bin:  90%|████████▉ | 918/1024 [09:17<01:04,  1.64it/s]train.bin:  90%|████████▉ | 919/1024 [09:18<01:03,  1.65it/s]train.bin:  90%|████████▉ | 920/1024 [09:18<01:03,  1.65it/s]train.bin:  90%|████████▉ | 921/1024 [09:19<01:02,  1.65it/s]train.bin:  90%|█████████ | 922/1024 [09:20<01:01,  1.65it/s]train.bin:  90%|█████████ | 923/1024 [09:20<01:01,  1.65it/s]train.bin:  90%|█████████ | 924/1024 [09:21<01:00,  1.65it/s]train.bin:  90%|█████████ | 925/1024 [09:21<01:00,  1.65it/s]train.bin:  90%|█████████ | 926/1024 [09:22<00:59,  1.65it/s]train.bin:  91%|█████████ | 927/1024 [09:23<00:58,  1.65it/s]train.bin:  91%|█████████ | 928/1024 [09:23<00:58,  1.65it/s]train.bin:  91%|█████████ | 929/1024 [09:24<00:57,  1.65it/s]train.bin:  91%|█████████ | 930/1024 [09:24<00:56,  1.65it/s]train.bin:  91%|█████████ | 931/1024 [09:25<00:56,  1.65it/s]train.bin:  91%|█████████ | 932/1024 [09:26<00:55,  1.65it/s]train.bin:  91%|█████████ | 933/1024 [09:26<00:55,  1.65it/s]train.bin:  91%|█████████ | 934/1024 [09:27<00:54,  1.66it/s]train.bin:  91%|█████████▏| 935/1024 [09:27<00:53,  1.66it/s]train.bin:  91%|█████████▏| 936/1024 [09:28<00:53,  1.66it/s]train.bin:  92%|█████████▏| 937/1024 [09:29<00:52,  1.65it/s]train.bin:  92%|█████████▏| 938/1024 [09:29<00:52,  1.65it/s]train.bin:  92%|█████████▏| 939/1024 [09:30<00:51,  1.65it/s]train.bin:  92%|█████████▏| 940/1024 [09:30<00:50,  1.65it/s]train.bin:  92%|█████████▏| 941/1024 [09:31<00:50,  1.65it/s]train.bin:  92%|█████████▏| 942/1024 [09:32<00:49,  1.65it/s]train.bin:  92%|█████████▏| 943/1024 [09:32<00:49,  1.65it/s]train.bin:  92%|█████████▏| 944/1024 [09:33<00:48,  1.65it/s]train.bin:  92%|█████████▏| 945/1024 [09:33<00:47,  1.65it/s]train.bin:  92%|█████████▏| 946/1024 [09:34<00:47,  1.64it/s]train.bin:  92%|█████████▏| 947/1024 [09:35<00:46,  1.65it/s]train.bin:  93%|█████████▎| 948/1024 [09:35<00:46,  1.65it/s]train.bin:  93%|█████████▎| 949/1024 [09:36<00:45,  1.65it/s]train.bin:  93%|█████████▎| 950/1024 [09:36<00:44,  1.66it/s]train.bin:  93%|█████████▎| 951/1024 [09:37<00:44,  1.66it/s]train.bin:  93%|█████████▎| 952/1024 [09:38<00:43,  1.65it/s]train.bin:  93%|█████████▎| 953/1024 [09:38<00:43,  1.65it/s]train.bin:  93%|█████████▎| 954/1024 [09:39<00:42,  1.64it/s]train.bin:  93%|█████████▎| 955/1024 [09:40<00:41,  1.64it/s]train.bin:  93%|█████████▎| 956/1024 [09:40<00:41,  1.65it/s]train.bin:  93%|█████████▎| 957/1024 [09:41<00:40,  1.65it/s]train.bin:  94%|█████████▎| 958/1024 [09:41<00:39,  1.65it/s]train.bin:  94%|█████████▎| 959/1024 [09:42<00:39,  1.65it/s]train.bin:  94%|█████████▍| 960/1024 [09:43<00:38,  1.65it/s]train.bin:  94%|█████████▍| 961/1024 [09:43<00:38,  1.65it/s]train.bin:  94%|█████████▍| 962/1024 [09:44<00:37,  1.65it/s]train.bin:  94%|█████████▍| 963/1024 [09:44<00:37,  1.65it/s]train.bin:  94%|█████████▍| 964/1024 [09:45<00:36,  1.65it/s]train.bin:  94%|█████████▍| 965/1024 [09:46<00:35,  1.65it/s]train.bin:  94%|█████████▍| 966/1024 [09:46<00:35,  1.65it/s]train.bin:  94%|█████████▍| 967/1024 [09:47<00:34,  1.64it/s]train.bin:  95%|█████████▍| 968/1024 [09:47<00:34,  1.64it/s]train.bin:  95%|█████████▍| 969/1024 [09:48<00:33,  1.64it/s]train.bin:  95%|█████████▍| 970/1024 [09:49<00:32,  1.64it/s]train.bin:  95%|█████████▍| 971/1024 [09:49<00:32,  1.64it/s]train.bin:  95%|█████████▍| 972/1024 [09:50<00:31,  1.64it/s]train.bin:  95%|█████████▌| 973/1024 [09:50<00:31,  1.64it/s]train.bin:  95%|█████████▌| 974/1024 [09:51<00:30,  1.65it/s]train.bin:  95%|█████████▌| 975/1024 [09:52<00:29,  1.65it/s]train.bin:  95%|█████████▌| 976/1024 [09:52<00:29,  1.65it/s]train.bin:  95%|█████████▌| 977/1024 [09:53<00:28,  1.65it/s]train.bin:  96%|█████████▌| 978/1024 [09:53<00:27,  1.64it/s]train.bin:  96%|█████████▌| 979/1024 [09:54<00:27,  1.64it/s]train.bin:  96%|█████████▌| 980/1024 [09:55<00:26,  1.64it/s]train.bin:  96%|█████████▌| 981/1024 [09:55<00:26,  1.64it/s]train.bin:  96%|█████████▌| 982/1024 [09:56<00:25,  1.64it/s]train.bin:  96%|█████████▌| 983/1024 [09:57<00:25,  1.64it/s]train.bin:  96%|█████████▌| 984/1024 [09:57<00:24,  1.64it/s]train.bin:  96%|█████████▌| 985/1024 [09:58<00:23,  1.64it/s]train.bin:  96%|█████████▋| 986/1024 [09:58<00:23,  1.64it/s]train.bin:  96%|█████████▋| 987/1024 [09:59<00:22,  1.64it/s]train.bin:  96%|█████████▋| 988/1024 [10:00<00:22,  1.63it/s]train.bin:  97%|█████████▋| 989/1024 [10:00<00:21,  1.63it/s]train.bin:  97%|█████████▋| 990/1024 [10:01<00:20,  1.63it/s]train.bin:  97%|█████████▋| 991/1024 [10:01<00:20,  1.64it/s]train.bin:  97%|█████████▋| 992/1024 [10:02<00:19,  1.64it/s]train.bin:  97%|█████████▋| 993/1024 [10:03<00:18,  1.64it/s]train.bin:  97%|█████████▋| 994/1024 [10:03<00:18,  1.63it/s]train.bin:  97%|█████████▋| 995/1024 [10:04<00:17,  1.63it/s]train.bin:  97%|█████████▋| 996/1024 [10:05<00:17,  1.63it/s]train.bin:  97%|█████████▋| 997/1024 [10:05<00:16,  1.63it/s]train.bin:  97%|█████████▋| 998/1024 [10:06<00:15,  1.63it/s]train.bin:  98%|█████████▊| 999/1024 [10:06<00:15,  1.63it/s]train.bin:  98%|█████████▊| 1000/1024 [10:07<00:14,  1.63it/s]train.bin:  98%|█████████▊| 1001/1024 [10:08<00:14,  1.64it/s]train.bin:  98%|█████████▊| 1002/1024 [10:08<00:13,  1.64it/s]train.bin:  98%|█████████▊| 1003/1024 [10:09<00:12,  1.64it/s]train.bin:  98%|█████████▊| 1004/1024 [10:09<00:12,  1.64it/s]train.bin:  98%|█████████▊| 1005/1024 [10:10<00:11,  1.65it/s]train.bin:  98%|█████████▊| 1006/1024 [10:11<00:10,  1.65it/s]train.bin:  98%|█████████▊| 1007/1024 [10:11<00:10,  1.65it/s]train.bin:  98%|█████████▊| 1008/1024 [10:12<00:09,  1.65it/s]train.bin:  99%|█████████▊| 1009/1024 [10:12<00:09,  1.65it/s]train.bin:  99%|█████████▊| 1010/1024 [10:13<00:08,  1.65it/s]train.bin:  99%|█████████▊| 1011/1024 [10:14<00:07,  1.64it/s]train.bin:  99%|█████████▉| 1012/1024 [10:14<00:07,  1.64it/s]train.bin:  99%|█████████▉| 1013/1024 [10:15<00:06,  1.64it/s]train.bin:  99%|█████████▉| 1014/1024 [10:15<00:06,  1.64it/s]train.bin:  99%|█████████▉| 1015/1024 [10:16<00:05,  1.64it/s]train.bin:  99%|█████████▉| 1016/1024 [10:17<00:04,  1.64it/s]train.bin:  99%|█████████▉| 1017/1024 [10:17<00:04,  1.65it/s]train.bin:  99%|█████████▉| 1018/1024 [10:18<00:03,  1.64it/s]train.bin: 100%|█████████▉| 1019/1024 [10:19<00:03,  1.65it/s]train.bin: 100%|█████████▉| 1020/1024 [10:19<00:02,  1.65it/s]train.bin: 100%|█████████▉| 1021/1024 [10:20<00:01,  1.64it/s]train.bin: 100%|█████████▉| 1022/1024 [10:20<00:01,  1.63it/s]train.bin: 100%|█████████▉| 1023/1024 [10:21<00:00,  1.63it/s]train.bin: 100%|██████████| 1024/1024 [10:22<00:00,  1.63it/s]train.bin: 100%|██████████| 1024/1024 [10:22<00:00,  1.65it/s]
+tokenizing validation (num_proc=8):   0%|          | 0/21990 [00:00<?, ? examples/s]tokenizing validation (num_proc=8):   5%|▍         | 1000/21990 [00:00<00:04, 5175.16 examples/s]tokenizing validation (num_proc=8):  41%|████      | 9000/21990 [00:00<00:00, 36423.49 examples/s]tokenizing validation (num_proc=8):  90%|████████▉ | 19745/21990 [00:00<00:00, 61688.06 examples/s]tokenizing validation (num_proc=8): 100%|██████████| 21990/21990 [00:00<00:00, 39641.18 examples/s]
+val.bin:   0%|          | 0/1024 [00:00<?, ?it/s]val.bin:   1%|▏         | 13/1024 [00:00<00:08, 122.50it/s]val.bin:   3%|▎         | 26/1024 [00:00<00:08, 123.62it/s]val.bin:   4%|▍         | 39/1024 [00:00<00:08, 122.27it/s]val.bin:   5%|▌         | 52/1024 [00:00<00:07, 122.79it/s]val.bin:   6%|▋         | 65/1024 [00:00<00:07, 123.29it/s]val.bin:   8%|▊         | 78/1024 [00:00<00:07, 123.33it/s]val.bin:   9%|▉         | 91/1024 [00:00<00:07, 123.48it/s]val.bin:  10%|█         | 104/1024 [00:00<00:07, 123.22it/s]val.bin:  11%|█▏        | 117/1024 [00:00<00:07, 123.50it/s]val.bin:  13%|█▎        | 130/1024 [00:01<00:07, 123.11it/s]val.bin:  14%|█▍        | 143/1024 [00:01<00:07, 123.40it/s]val.bin:  15%|█▌        | 156/1024 [00:01<00:07, 123.48it/s]val.bin:  17%|█▋        | 169/1024 [00:01<00:06, 123.54it/s]val.bin:  18%|█▊        | 182/1024 [00:01<00:06, 123.46it/s]val.bin:  19%|█▉        | 195/1024 [00:01<00:06, 123.61it/s]val.bin:  20%|██        | 208/1024 [00:01<00:06, 123.72it/s]val.bin:  22%|██▏       | 221/1024 [00:01<00:06, 123.77it/s]val.bin:  23%|██▎       | 234/1024 [00:01<00:06, 123.78it/s]val.bin:  24%|██▍       | 247/1024 [00:02<00:06, 123.59it/s]val.bin:  25%|██▌       | 260/1024 [00:02<00:06, 123.03it/s]val.bin:  27%|██▋       | 273/1024 [00:02<00:06, 123.35it/s]val.bin:  28%|██▊       | 286/1024 [00:02<00:05, 123.60it/s]val.bin:  29%|██▉       | 299/1024 [00:02<00:05, 123.72it/s]val.bin:  30%|███       | 312/1024 [00:02<00:05, 123.73it/s]val.bin:  32%|███▏      | 325/1024 [00:02<00:05, 123.94it/s]val.bin:  33%|███▎      | 338/1024 [00:02<00:05, 123.83it/s]val.bin:  34%|███▍      | 351/1024 [00:02<00:05, 123.89it/s]val.bin:  36%|███▌      | 364/1024 [00:02<00:05, 123.90it/s]val.bin:  37%|███▋      | 377/1024 [00:03<00:05, 123.36it/s]val.bin:  38%|███▊      | 390/1024 [00:03<00:05, 123.52it/s]val.bin:  39%|███▉      | 403/1024 [00:03<00:05, 123.45it/s]val.bin:  41%|████      | 416/1024 [00:03<00:04, 123.37it/s]val.bin:  42%|████▏     | 429/1024 [00:03<00:04, 123.20it/s]val.bin:  43%|████▎     | 442/1024 [00:03<00:04, 123.44it/s]val.bin:  44%|████▍     | 455/1024 [00:03<00:04, 123.58it/s]val.bin:  46%|████▌     | 468/1024 [00:03<00:04, 123.70it/s]val.bin:  47%|████▋     | 481/1024 [00:03<00:04, 123.70it/s]val.bin:  48%|████▊     | 494/1024 [00:03<00:04, 124.67it/s]val.bin:  50%|████▉     | 507/1024 [00:04<00:04, 125.44it/s]val.bin:  51%|█████     | 520/1024 [00:04<00:03, 126.01it/s]val.bin:  52%|█████▏    | 533/1024 [00:04<00:03, 126.82it/s]val.bin:  53%|█████▎    | 546/1024 [00:04<00:03, 127.35it/s]val.bin:  55%|█████▍    | 559/1024 [00:04<00:03, 127.76it/s]val.bin:  56%|█████▌    | 572/1024 [00:04<00:03, 128.03it/s]val.bin:  57%|█████▋    | 585/1024 [00:04<00:03, 128.20it/s]val.bin:  58%|█████▊    | 598/1024 [00:04<00:03, 128.35it/s]val.bin:  60%|█████▉    | 611/1024 [00:04<00:03, 128.47it/s]val.bin:  61%|██████    | 624/1024 [00:05<00:03, 128.67it/s]val.bin:  62%|██████▏   | 637/1024 [00:05<00:03, 128.07it/s]val.bin:  63%|██████▎   | 650/1024 [00:05<00:02, 128.33it/s]val.bin:  65%|██████▍   | 663/1024 [00:05<00:02, 128.41it/s]val.bin:  66%|██████▌   | 676/1024 [00:05<00:02, 128.56it/s]val.bin:  67%|██████▋   | 689/1024 [00:05<00:02, 128.55it/s]val.bin:  69%|██████▊   | 702/1024 [00:05<00:02, 128.68it/s]val.bin:  70%|██████▉   | 715/1024 [00:05<00:02, 127.18it/s]val.bin:  71%|███████   | 728/1024 [00:05<00:02, 127.43it/s]val.bin:  72%|███████▏  | 741/1024 [00:05<00:02, 127.90it/s]val.bin:  74%|███████▎  | 754/1024 [00:06<00:02, 128.14it/s]val.bin:  75%|███████▍  | 767/1024 [00:06<00:02, 127.62it/s]val.bin:  76%|███████▌  | 780/1024 [00:06<00:01, 127.85it/s]val.bin:  77%|███████▋  | 793/1024 [00:06<00:01, 128.00it/s]val.bin:  79%|███████▊  | 806/1024 [00:06<00:01, 128.31it/s]val.bin:  80%|███████▉  | 819/1024 [00:06<00:01, 128.34it/s]val.bin:  81%|████████▏ | 832/1024 [00:06<00:01, 128.52it/s]val.bin:  83%|████████▎ | 845/1024 [00:06<00:01, 128.67it/s]val.bin:  84%|████████▍ | 858/1024 [00:06<00:01, 128.68it/s]val.bin:  85%|████████▌ | 871/1024 [00:06<00:01, 128.58it/s]val.bin:  86%|████████▋ | 884/1024 [00:07<00:01, 128.59it/s]val.bin:  88%|████████▊ | 897/1024 [00:07<00:00, 128.15it/s]val.bin:  89%|████████▉ | 910/1024 [00:07<00:00, 128.06it/s]val.bin:  90%|█████████ | 923/1024 [00:07<00:00, 128.09it/s]val.bin:  91%|█████████▏| 936/1024 [00:07<00:00, 128.12it/s]val.bin:  93%|█████████▎| 949/1024 [00:07<00:00, 128.10it/s]val.bin:  94%|█████████▍| 962/1024 [00:07<00:00, 128.30it/s]val.bin:  95%|█████████▌| 975/1024 [00:07<00:00, 128.47it/s]val.bin:  96%|█████████▋| 988/1024 [00:07<00:00, 128.56it/s]val.bin:  98%|█████████▊| 1001/1024 [00:07<00:00, 128.49it/s]val.bin:  99%|█████████▉| 1014/1024 [00:08<00:00, 128.37it/s]val.bin: 100%|██████████| 1024/1024 [00:08<00:00, 125.97it/s]
+{
+  "train": 473992236,
+  "val": 4765918
+}
+
+=== 01:44:20 | Train main_cfg on TinyShakespeare ===
+2026-10-16 01:44:23 | TensorBoard: uv run tensorboard --logdir runs/full/shakespeare/tb
+
+2026-10-16 01:45:12 | step   500 | train 1.9051 | val 2.0047 | lr 3.00e-04 | 211,244 tok/s
+2026-10-16 01:46:00 | step  1000 | train 1.5516 | val 1.7415 | lr 3.00e-04 | 213,062 tok/s
+2026-10-16 01:46:48 | step  1500 | train 1.4078 | val 1.6137 | lr 3.00e-04 | 213,029 tok/s
+2026-10-16 01:47:36 | step  2000 | train 1.3213 | val 1.5441 | lr 3.00e-04 | 213,122 tok/s
+2026-10-16 01:48:24 | step  2500 | train 1.2637 | val 1.5249 | lr 3.00e-04 | 213,084 tok/s
+2026-10-16 01:49:12 | step  3000 | train 1.2141 | val 1.5048 | lr 3.00e-04 | 213,193 tok/s
+2026-10-16 01:50:00 | step  3500 | train 1.1718 | val 1.4931 | lr 3.00e-04 | 213,135 tok/s
+2026-10-16 01:50:48 | step  4000 | train 1.1376 | val 1.4846 | lr 3.00e-04 | 213,131 tok/s
+2026-10-16 01:51:37 | step  4500 | train 1.1036 | val 1.4780 | lr 3.00e-04 | 213,152 tok/s
+2026-10-16 01:52:25 | step  5000 | train 1.0682 | val 1.4768 | lr 3.00e-04 | 213,240 tok/s
+2026-10-16 01:52:25 | 
+Summary: shakespeare
+metric                       value              
+------------------------------------------------
+steps                        5,000              
+tokens                       81,920,000         
+final train loss             1.0682             
+final val loss               1.4768             
+best val loss                1.4768 (step 5,000)
+parameters                   10,788,929         
+training time (s)            385                
+mean throughput (tok/s)      212,938            
+
+2026-10-16 01:52:26 | 
+Environment
+-----------------------------------
+date: 2026-10-16T01:44:23
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 01:52:26 | Saved runs/full/shakespeare/model.pt (21 MB, logits relative error vs best.pt 3.0e-03)
+
+=== 01:52:27 | Train stories_cfg on TinyStories ===
+2026-10-16 01:52:31 | TensorBoard: uv run tensorboard --logdir runs/full/stories/tb
+
+2026-10-16 01:55:31 | step   500 | train 2.4758 | val 2.4699 | lr 6.00e-04 | 104,173 tok/s
+2026-10-16 01:58:33 | step  1000 | train 1.9700 | val 1.9769 | lr 5.96e-04 | 104,526 tok/s
+2026-10-16 02:01:35 | step  1500 | train 1.8034 | val 1.8183 | lr 5.85e-04 | 104,540 tok/s
+2026-10-16 02:04:36 | step  2000 | train 1.7220 | val 1.7284 | lr 5.67e-04 | 104,535 tok/s
+2026-10-16 02:07:38 | step  2500 | train 1.6525 | val 1.6699 | lr 5.43e-04 | 104,602 tok/s
+2026-10-16 02:10:39 | step  3000 | train 1.5949 | val 1.6190 | lr 5.13e-04 | 104,703 tok/s
+2026-10-16 02:13:40 | step  3500 | train 1.5588 | val 1.5815 | lr 4.78e-04 | 104,689 tok/s
+2026-10-16 02:16:42 | step  4000 | train 1.5298 | val 1.5438 | lr 4.38e-04 | 104,620 tok/s
+2026-10-16 02:19:43 | step  4500 | train 1.4989 | val 1.5152 | lr 3.96e-04 | 104,613 tok/s
+2026-10-16 02:22:45 | step  5000 | train 1.4779 | val 1.4952 | lr 3.52e-04 | 104,532 tok/s
+2026-10-16 02:25:47 | step  5500 | train 1.4486 | val 1.4683 | lr 3.08e-04 | 104,509 tok/s
+2026-10-16 02:28:48 | step  6000 | train 1.4280 | val 1.4431 | lr 2.64e-04 | 104,583 tok/s
+2026-10-16 02:31:50 | step  6500 | train 1.4015 | val 1.4318 | lr 2.22e-04 | 104,468 tok/s
+2026-10-16 02:34:52 | step  7000 | train 1.3869 | val 1.4164 | lr 1.82e-04 | 104,495 tok/s
+2026-10-16 02:37:53 | step  7500 | train 1.3729 | val 1.3910 | lr 1.47e-04 | 104,564 tok/s
+2026-10-16 02:40:55 | step  8000 | train 1.3613 | val 1.3843 | lr 1.17e-04 | 104,539 tok/s
+2026-10-16 02:43:56 | step  8500 | train 1.3490 | val 1.3704 | lr 9.25e-05 | 104,494 tok/s
+2026-10-16 02:46:58 | step  9000 | train 1.3322 | val 1.3652 | lr 7.46e-05 | 104,502 tok/s
+2026-10-16 02:50:00 | step  9500 | train 1.3313 | val 1.3545 | lr 6.37e-05 | 104,552 tok/s
+2026-10-16 02:53:01 | step 10000 | train 1.3256 | val 1.3434 | lr 6.00e-05 | 104,555 tok/s
+2026-10-16 02:53:03 | 
+Summary: stories
+metric                       value               
+-------------------------------------------------
+steps                        10,000              
+tokens                       327,680,000         
+final train loss             1.3256              
+final val loss               1.3434              
+best val loss                1.3434 (step 10,000)
+parameters                   162,273,361         
+training time (s)            3,135               
+mean throughput (tok/s)      104,540             
+
+2026-10-16 02:53:06 | 
+Environment
+-----------------------------------
+date: 2026-10-16T01:52:31
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 02:53:09 | Saved runs/full/stories/model.pt (310 MB, logits relative error vs best.pt 6.0e-03)
+
+=== 02:53:10 | Generate from both runs ===
+--------------------------------------------------
+ROMEO:
+Now, I know cowardly with them; it was before.
+Stirr'd them alas, being his unquit to be determine,
+Away with himself thoughts of their fire: but milk
+I like empiration achief them, and by Saint
+Will
+--------------------------------------------------
+Once upon a time there was an enthusiastic young cop. He was always happy to help out in the town. He matched different fans and helped answers to pretend problem. One day, he was walking around town when he heard a loud scream from somewhere. It was so loud that he knew he had to find out who was screaming. He followed the sound of a big dog and it soon came to a house. Inside was a little child crying. The little cop ran over to the call and saw that there was a big cat rid of the puppy. He ran to the window and asked the child if they had seen a bone. The child shook their heads, they had not seen a rat this time. The little cop reached out to the little girl and held out a bone for the child to see. The child was so excited! With the help of the little girl, he was able to see inside the house with the bone in one piece.
+
+=== 02:53:19 | Plot runs ===
+2026-10-16 02:53:22 | Saved runs/full/shakespeare/loss.png
+2026-10-16 02:53:25 | Saved runs/full/stories/loss.png
+
+=== 02:53:26 | Benchmark training ===
+train journey:   0%|          | 0/6 [00:00<?, ?it/s]train journey:  17%|█▋        | 1/6 [04:21<21:47, 261.43s/it]train journey:  33%|███▎      | 2/6 [07:51<15:24, 231.02s/it]train journey:  50%|█████     | 3/6 [11:13<10:53, 217.99s/it]train journey:  67%|██████▋   | 4/6 [14:32<07:01, 210.54s/it]train journey:  83%|████████▎ | 5/6 [17:19<03:14, 194.60s/it]train journey: 100%|██████████| 6/6 [17:58<00:00, 141.87s/it]train journey: 100%|██████████| 6/6 [17:58<00:00, 179.77s/it]
+2026-10-16 03:11:26 | 
+Training throughput (tokens/sec)
+variant            T=128               T=192               T=256                T=384                T=512                T=768                T=1024         
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+baseline           10,027              12,619               13,427               14,526               14,761               14,808               13,389        
++batched attn      18,126 (+81%)       18,372 (+46%)        18,413 (+37%)        18,380 (+27%)        17,745 (+20%)        16,989 (+15%)        15,864 (+18%) 
++torch LN          18,961 (+5%)        19,067 (+4%)         19,065 (+4%)         19,084 (+4%)         18,415 (+4%)         17,471 (+3%)         16,369 (+3%)  
++fused AdamW       20,226 (+7%)        19,901 (+4%)         19,682 (+3%)         19,496 (+2%)         18,699 (+2%)         17,762 (+2%)         16,481 (+1%)  
++SDPA              21,019 (+4%)        21,591 (+8%)         21,338 (+8%)         21,922 (+12%)        21,762 (+16%)        21,920 (+23%)        21,615 (+31%) 
++mixed bf16        54,411 (+159%)      81,595 (+278%)      105,080 (+392%)      110,086 (+402%)      116,089 (+433%)      119,583 (+446%)      119,792 (+454%)
+total vs base             (+443%)             (+547%)              (+683%)              (+658%)              (+686%)              (+708%)              (+795%)
+
+2026-10-16 03:11:26 | 
+Peak memory (MB)
+variant            T=128              T=192              T=256              T=384               T=512               T=768               T=1024        
+------------------------------------------------------------------------------------------------------------------------------------------------------
+baseline           4,773              6,331              7,985              11,504              15,299              23,708              33,376        
++batched attn      4,785 (0%)         6,346 (0%)         7,969 (0%)         11,419 (-1%)        15,180 (-1%)        23,560 (-1%)        33,108 (-1%)  
++torch LN          4,478 (-6%)        5,891 (-7%)        7,363 (-8%)        10,520 (-8%)        13,976 (-8%)        21,761 (-8%)        30,709 (-7%)  
++fused AdamW       4,478 (0%)         5,891 (0%)         7,363 (0%)         10,520 (0%)         13,977 (0%)         21,761 (0%)         30,709 (0%)   
++SDPA              4,328 (-3%)        5,550 (-6%)        6,785 (-8%)         9,224 (-12%)       11,671 (-16%)       16,570 (-24%)       21,479 (-30%) 
++mixed bf16        4,066 (-6%)        4,704 (-15%)       5,517 (-19%)        7,211 (-22%)        8,901 (-24%)       12,273 (-26%)       15,673 (-27%) 
+total vs base            (-15%)             (-26%)             (-31%)              (-37%)              (-42%)              (-48%)              (-53%) 
+
+2026-10-16 03:11:26 | 
+Environment
+-----------------------------------
+date: 2026-10-16T02:53:28
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 03:11:29 | 
+Memory model fit: mem(T) = c + a T + b T²
+variant            c (MB)      a (MB/token)      b (MB/token²)      T² share at max T (%)          R²      points
+-----------------------------------------------------------------------------------------------------------------
+baseline            1,853            21.681           8.88e-03                         28      1.0000           7
++batched attn       1,912            21.360           8.89e-03                         28      1.0000           7
++torch LN           1,902            19.041           8.88e-03                         30      1.0000           7
++fused AdamW        1,902            19.041           8.88e-03                         30      1.0000           7
++SDPA               1,886            19.096           3.59e-05                          0      1.0000           7
++mixed bf16         2,374            12.374           6.17e-04                          4      0.9998           7
+
+2026-10-16 03:11:29 | 
+Environment
+-----------------------------------
+date: 2026-10-16T02:53:28
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 03:11:30 | Saved memory_fit.csv, memory_fit.md, and memory_fit.png in results/full/benchmark_train_stories_cfg_cuda
+
+=== 03:11:30 | Benchmark generation (journey, then GQA) ===
+generate journey:   0%|          | 0/7 [00:00<?, ?it/s]generate journey:  14%|█▍        | 1/7 [00:35<03:34, 35.69s/it]generate journey:  29%|██▊       | 2/7 [00:45<01:41, 20.22s/it]generate journey:  43%|████▎     | 3/7 [00:53<00:58, 14.68s/it]generate journey:  57%|█████▋    | 4/7 [01:00<00:34, 11.61s/it]generate journey:  71%|███████▏  | 5/7 [01:04<00:18,  9.05s/it]generate journey:  86%|████████▌ | 6/7 [01:08<00:07,  7.47s/it]generate journey: 100%|██████████| 7/7 [01:14<00:00,  6.77s/it]generate journey: 100%|██████████| 7/7 [01:14<00:00, 10.62s/it]
+2026-10-16 03:12:46 | 
+Decode throughput (tokens/sec)
+variant                   T=128            T=512      
+------------------------------------------------------
+baseline                   23               23        
++batched attn             126 (+445%)       78 (+234%)
++torch LN                 165 (+31%)        84 (+8%)  
++SDPA                     203 (+23%)        99 (+18%) 
++KV cache                 234 (+15%)       240 (+143%)
++bf16 (cast)              242 (+4%)        232 (-3%)  
++autocast bf16 (alt)      185 (-21%)       180 (-25%) 
+total vs base                 (+947%)          (+897%)
+
+2026-10-16 03:12:46 | 
+Time to first token (ms, lower is better)
+variant                   T=128             T=512       
+--------------------------------------------------------
+baseline                  47.2              47.6        
++batched attn              8.9 (-81%)       12.8 (-73%) 
++torch LN                  7.0 (-21%)       12.0 (-7%)  
++SDPA                      4.8 (-31%)       10.7 (-10%) 
++KV cache                  5.8 (+20%)       10.8 (+1%)  
++bf16 (cast)               5.0 (-14%)        5.6 (-48%) 
++autocast bf16 (alt)       6.2 (+7%)         7.6 (-30%) 
+total vs base                  (-89%)            (-88%) 
+
+2026-10-16 03:12:46 | 
+Memory after generation (MB)
+variant                   T=128            T=512      
+------------------------------------------------------
+baseline                  750              901        
++batched attn             708 (-6%)        858 (-5%)  
++torch LN                 708 (0%)         858 (0%)   
++SDPA                     705 (-1%)        855 (0%)   
++KV cache                 702 (0%)         777 (-9%)  
++bf16 (cast)              363 (-48%)       401 (-48%) 
++autocast bf16 (alt)      738 (+5%)        779 (0%)   
+total vs base                 (-52%)           (-55%) 
+
+2026-10-16 03:12:46 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:11:32
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+gqa sweep:   0%|          | 0/6 [00:00<?, ?it/s]gqa sweep:  17%|█▋        | 1/6 [00:04<00:24,  4.96s/it]gqa sweep:  33%|███▎      | 2/6 [00:09<00:18,  4.61s/it]gqa sweep:  50%|█████     | 3/6 [00:13<00:13,  4.43s/it]gqa sweep:  67%|██████▋   | 4/6 [00:17<00:08,  4.37s/it]gqa sweep:  83%|████████▎ | 5/6 [00:22<00:04,  4.33s/it]gqa sweep: 100%|██████████| 6/6 [00:26<00:00,  4.30s/it]gqa sweep: 100%|██████████| 6/6 [00:26<00:00,  4.39s/it]
+2026-10-16 03:13:15 | 
+Decode throughput (tokens/sec)
+variant            T=128            T=512      
+-----------------------------------------------
+n_kv=12 (MHA)      246 (0%)         239 (0%)   
+n_kv=6 (GQA)       244 (-1%)        235 (-2%)  
+n_kv=4 (GQA)       242 (-2%)        233 (-2%)  
+n_kv=3 (GQA)       242 (-2%)        236 (-1%)  
+n_kv=2 (GQA)       242 (-2%)        235 (-2%)  
+n_kv=1 (MQA)       243 (-1%)        234 (-2%)  
+
+2026-10-16 03:13:15 | 
+Time to first token (ms, lower is better)
+variant            T=128            T=512      
+-----------------------------------------------
+n_kv=12 (MHA)      4.9 (0%)         5.7 (0%)   
+n_kv=6 (GQA)       4.9 (+1%)        5.5 (-4%)  
+n_kv=4 (GQA)       4.8 (-1%)        5.5 (-4%)  
+n_kv=3 (GQA)       4.9 (0%)         5.5 (-4%)  
+n_kv=2 (GQA)       4.8 (-2%)        5.7 (-1%)  
+n_kv=1 (MQA)       4.9 (+1%)        5.5 (-4%)  
+
+2026-10-16 03:13:15 | 
+Memory after generation (MB)
+variant            T=128            T=512      
+-----------------------------------------------
+n_kv=12 (MHA)      364 (0%)         402 (0%)   
+n_kv=6 (GQA)       338 (-7%)        376 (-7%)  
+n_kv=4 (GQA)       327 (-10%)       364 (-9%)  
+n_kv=3 (GQA)       328 (-10%)       366 (-9%)  
+n_kv=2 (GQA)       326 (-11%)       364 (-10%) 
+n_kv=1 (MQA)       320 (-12%)       358 (-11%) 
+
+2026-10-16 03:13:15 | 
+KV cache in use (MB)
+variant            T=128            T=512       
+------------------------------------------------
+n_kv=12 (MHA)      6.7 (0%)         20.2 (0%)   
+n_kv=6 (GQA)       3.4 (-50%)       10.1 (-50%) 
+n_kv=4 (GQA)       2.2 (-67%)        6.7 (-67%) 
+n_kv=3 (GQA)       1.7 (-75%)        5.1 (-75%) 
+n_kv=2 (GQA)       1.1 (-83%)        3.4 (-83%) 
+n_kv=1 (MQA)       0.6 (-92%)        1.7 (-92%) 
+
+2026-10-16 03:13:15 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:12:49
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 03:13:16 | Profile train ===
+USDT:2026-10-16 03:13:25 44278:44278 SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-10-16 03:13:28 44278:44278 SyncActivityProfilerHandler.cpp:46] profiler_stop
+USDT:2026-10-16 03:13:46 44278:44278 SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-10-16 03:13:46 44278:44278 SyncActivityProfilerHandler.cpp:46] profiler_stop
+2026-10-16 03:13:48 | 
+Step time under the profiler (ms, lower is better)
+variant            T=512           
+-----------------------------------
+baseline           1,142.29        
++mixed bf16          145.43 (-87%) 
+total vs base               (-87%) 
+
+2026-10-16 03:13:48 | 
+aten op calls per step (lower is better)
+variant            T=512         
+---------------------------------
+baseline           36,058        
++mixed bf16         3,880 (-89%) 
+total vs base             (-89%) 
+
+2026-10-16 03:13:48 | 
+Share of step time (%)
+region         baseline T=512      +mixed bf16 T=512
+----------------------------------------------------
+embed             0.0                    0.2        
+layernorm         0.9                    2.6        
+attn.qkv          5.7                    3.1        
+attn.core         7.2                    2.0        
+attn.proj         1.3                    2.0        
+mlp               9.1                    7.7        
+lm_head           5.8                   13.8        
+loss              0.7                    4.8        
+backward         59.8                   57.6        
+optimizer         8.1                    2.4        
+other             1.3                    3.7        
+
+2026-10-16 03:13:48 | 
+Time per step (ms)
+region         baseline T=512      +mixed bf16 T=512
+----------------------------------------------------
+embed            0.45                   0.31        
+layernorm       10.82                   3.80        
+attn.qkv        65.42                   4.55        
+attn.core       81.68                   2.85        
+attn.proj       14.56                   2.95        
+mlp            104.28                  11.20        
+lm_head         66.58                  20.07        
+loss             7.89                   7.01        
+backward       682.92                  83.82        
+optimizer       92.60                   3.54        
+other           15.09                   5.33        
+
+2026-10-16 03:13:48 | 
+Top ops by self GPU time (baseline T=512)
+op                                self GPU ms/step      self CPU ms/step      calls/step
+----------------------------------------------------------------------------------------
+aten::mm                                   507.889                26.293         1,370.0
+aten::addmm                                179.988                 1.009            37.0
+aten::bmm                                  134.682                32.799           864.0
+aten::add_                                  43.515                 9.384         1,598.0
+aten::mul                                   30.480                 7.541           607.0
+aten::masked_fill_                          13.462                 2.625           288.0
+aten::copy_                                 12.845                 4.104           990.0
+aten::sum                                   10.506                 2.371           138.0
+aten::div                                    9.834                 6.734           708.0
+aten::_softmax_backward_data                 8.537                 1.914           144.0
+
+2026-10-16 03:13:48 | 
+Top ops by self GPU time (+mixed bf16 T=512)
+op                                    self GPU ms/step      self CPU ms/step      calls/step
+--------------------------------------------------------------------------------------------
+aten::mm                                        53.919                 3.693           110.0
+aten::addmm                                     28.648                 1.021            37.0
+aten::copy_                                     12.474                 2.267           248.0
+aten::_flash_attention_backward                  5.374                 0.452            12.0
+aten::native_layer_norm_backward                 5.204                 0.558            25.0
+aten::_log_softmax_backward_data                 3.941                 0.021             1.0
+aten::sum                                        3.336                 1.351            38.0
+aten::_fused_adamw_                              2.716                 0.066             1.0
+aten::_log_softmax                               2.657                 0.020             1.0
+aten::add                                        2.163                 0.402            25.0
+
+2026-10-16 03:13:48 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:13:18
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 03:13:49 | Profile prefill ===
+USDT:2026-10-16 03:13:54 44438:44438 SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-10-16 03:13:54 44438:44438 SyncActivityProfilerHandler.cpp:46] profiler_stop
+USDT:2026-10-16 03:13:59 44438:44438 SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-10-16 03:13:59 44438:44438 SyncActivityProfilerHandler.cpp:46] profiler_stop
+2026-10-16 03:14:00 | 
+Step time under the profiler (ms, lower is better)
+variant            T=512         
+---------------------------------
+baseline           106.11        
++bf16 (cast)        14.01 (-87%) 
+total vs base             (-87%) 
+
+2026-10-16 03:14:00 | 
+aten op calls per step (lower is better)
+variant            T=512         
+---------------------------------
+baseline           11,001        
++bf16 (cast)        1,182 (-89%) 
+total vs base             (-89%) 
+
+2026-10-16 03:14:00 | 
+Share of step time (%)
+region          baseline T=512      +bf16 (cast) T=512
+------------------------------------------------------
+embed              0.2                     1.6        
+layernorm          5.2                    14.5        
+attn.qkv          25.5                    10.3        
+attn.cache         0.0                     8.9        
+attn.core         48.7                    11.7        
+attn.proj          1.9                     9.2        
+mlp                5.6                    14.7        
+lm_head            2.5                     6.4        
+other             10.4                    22.7        
+
+2026-10-16 03:14:00 | 
+Time per step (ms)
+region          baseline T=512      +bf16 (cast) T=512
+------------------------------------------------------
+embed             0.23                    0.23        
+layernorm         5.50                    2.04        
+attn.qkv         27.04                    1.44        
+attn.cache        0.00                    1.25        
+attn.core        51.67                    1.64        
+attn.proj         1.97                    1.29        
+mlp               5.91                    2.06        
+lm_head           2.70                    0.90        
+other            11.09                    3.18        
+
+2026-10-16 03:14:00 | 
+Top ops by self GPU time (baseline T=512)
+op                      self GPU ms/step      self CPU ms/step      calls/step
+------------------------------------------------------------------------------
+aten::addmm                        8.311                 0.761            37.0
+aten::mm                           7.288                 7.698           432.0
+aten::bmm                          3.530                11.423           288.0
+aten::_softmax                     1.204                 1.328           144.0
+aten::bitwise_not                  0.925                 1.426           144.0
+aten::mul                          0.644                 2.237           169.0
+aten::masked_fill_                 0.496                 1.054           144.0
+aten::copy_                        0.450                 0.757           144.0
+aten::add                          0.315                 0.758            75.0
+aten::var                          0.278                 0.322            25.0
+
+2026-10-16 03:14:00 | 
+Top ops by self GPU time (+bf16 (cast) T=512)
+op                                  self GPU ms/step      self CPU ms/step      calls/step
+------------------------------------------------------------------------------------------
+aten::addmm                                    1.630                 0.793            37.0
+aten::_flash_attention_forward                 0.310                 0.227            12.0
+aten::mm                                       0.238                 0.258            12.0
+aten::native_layer_norm                        0.169                 0.322            25.0
+aten::copy_                                    0.141                 0.193            24.0
+aten::add                                      0.087                 0.304            25.0
+aten::clamp_min                                0.068                 0.131            12.0
+aten::gather                                   0.009                 0.025             2.0
+aten::arange                                   0.002                 0.023             2.0
+aten::embedding                                0.000                 0.007             2.0
+
+2026-10-16 03:14:00 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:13:51
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 03:14:01 | Profile decode ===
+USDT:2026-10-16 03:14:06 44513:44513 SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-10-16 03:14:07 44513:44513 SyncActivityProfilerHandler.cpp:46] profiler_stop
+USDT:2026-10-16 03:14:12 44513:44513 SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-10-16 03:14:12 44513:44513 SyncActivityProfilerHandler.cpp:46] profiler_stop
+2026-10-16 03:14:12 | 
+Step time under the profiler (ms, lower is better)
+variant            T=512         
+---------------------------------
+baseline           121.50        
++bf16 (cast)        13.24 (-89%) 
+total vs base             (-89%) 
+
+2026-10-16 03:14:12 | 
+aten op calls per step (lower is better)
+variant            T=512         
+---------------------------------
+baseline           10,569        
++bf16 (cast)        1,146 (-89%) 
+total vs base             (-89%) 
+
+2026-10-16 03:14:12 | 
+Share of step time (%)
+region          baseline T=512      +bf16 (cast) T=512
+------------------------------------------------------
+embed              0.3                     1.3        
+layernorm          5.7                    15.6        
+attn.qkv          26.9                    10.8        
+attn.cache         0.0                     9.3        
+attn.core         46.9                    12.5        
+attn.proj          2.0                     9.7        
+mlp                5.3                    16.4        
+lm_head            2.5                     1.0        
+other             10.5                    23.4        
+
+2026-10-16 03:14:12 | 
+Time per step (ms)
+region          baseline T=512      +bf16 (cast) T=512
+------------------------------------------------------
+embed             0.37                    0.17        
+layernorm         6.98                    2.07        
+attn.qkv         32.65                    1.43        
+attn.cache        0.00                    1.22        
+attn.core        56.96                    1.65        
+attn.proj         2.39                    1.29        
+mlp               6.39                    2.18        
+lm_head           3.02                    0.13        
+other            12.76                    3.10        
+
+2026-10-16 03:14:12 | 
+Top ops by self GPU time (baseline T=512)
+op                      self GPU ms/step      self CPU ms/step      calls/step
+------------------------------------------------------------------------------
+aten::addmm                        8.661                 0.931            37.0
+aten::mm                           7.322                 8.498           432.0
+aten::bmm                          3.566                12.622           288.0
+aten::_softmax                     1.366                 1.375           144.0
+aten::copy_                        1.135                 0.814           144.0
+aten::mul                          0.628                 2.286           169.0
+aten::masked_fill_                 0.490                 1.130           144.0
+aten::bitwise_not                  0.484                 1.429           144.0
+aten::add                          0.318                 0.885            75.0
+aten::var                          0.279                 0.465            25.0
+
+2026-10-16 03:14:12 | 
+Top ops by self GPU time (+bf16 (cast) T=512)
+op                                  self GPU ms/step      self CPU ms/step      calls/step
+------------------------------------------------------------------------------------------
+aten::addmm                                    0.363                 0.839            37.0
+aten::_flash_attention_forward                 0.203                 0.232            12.0
+aten::native_layer_norm                        0.133                 0.346            25.0
+aten::mm                                       0.096                 0.255            12.0
+aten::copy_                                    0.090                 0.200            24.0
+aten::add                                      0.056                 0.304            25.0
+aten::clamp_min                                0.034                 0.131            12.0
+aten::index_select                             0.009                 0.020             2.0
+aten::arange                                   0.002                 0.011             2.0
+aten::embedding                                0.000                 0.007             2.0
+
+2026-10-16 03:14:12 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:14:03
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 03:14:13 | Ablations: train ===
+2026-10-16 03:14:17 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/baseline_s0/tb
+
+2026-10-16 03:15:59 | step   250 | train 3.0906 | val 3.0992 | lr 3.00e-04 | 103,603 tok/s
+2026-10-16 03:17:42 | step   500 | train 2.4647 | val 2.4622 | lr 6.00e-04 | 104,150 tok/s
+2026-10-16 03:19:23 | step   750 | train 2.1335 | val 2.1437 | lr 5.87e-04 | 104,132 tok/s
+2026-10-16 03:21:06 | step  1000 | train 1.9673 | val 1.9789 | lr 5.48e-04 | 104,067 tok/s
+2026-10-16 03:22:47 | step  1250 | train 1.8605 | val 1.8729 | lr 4.89e-04 | 104,142 tok/s
+2026-10-16 03:24:29 | step  1500 | train 1.7819 | val 1.7955 | lr 4.13e-04 | 104,315 tok/s
+2026-10-16 03:26:11 | step  1750 | train 1.7229 | val 1.7430 | lr 3.30e-04 | 104,160 tok/s
+2026-10-16 03:27:53 | step  2000 | train 1.6720 | val 1.6801 | lr 2.47e-04 | 104,576 tok/s
+2026-10-16 03:29:35 | step  2250 | train 1.6288 | val 1.6406 | lr 1.71e-04 | 104,290 tok/s
+2026-10-16 03:31:17 | step  2500 | train 1.5979 | val 1.6057 | lr 1.12e-04 | 104,249 tok/s
+2026-10-16 03:32:58 | step  2750 | train 1.5786 | val 1.5894 | lr 7.32e-05 | 104,356 tok/s
+2026-10-16 03:34:40 | step  3000 | train 1.5589 | val 1.5675 | lr 6.00e-05 | 104,437 tok/s
+2026-10-16 03:34:42 | 
+Summary: baseline_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5589             
+final val loss               1.5675             
+best val loss                1.5675 (step 3,000)
+parameters                   162,273,361        
+training time (s)            943                
+mean throughput (tok/s)      104,206            
+
+2026-10-16 03:34:43 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:14:17
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 03:34:46 | Saved runs/full/ablations/runs/baseline_s0/model.pt (310 MB, logits relative error vs best.pt 2.2e-03)
+2026-10-16 03:34:51 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/kv4_s0/tb
+
+2026-10-16 03:36:26 | step   250 | train 3.1132 | val 3.1210 | lr 3.00e-04 | 112,134 tok/s
+2026-10-16 03:37:59 | step   500 | train 2.4924 | val 2.4892 | lr 6.00e-04 | 112,862 tok/s
+2026-10-16 03:39:33 | step   750 | train 2.1489 | val 2.1589 | lr 5.87e-04 | 112,912 tok/s
+2026-10-16 03:41:07 | step  1000 | train 1.9777 | val 1.9895 | lr 5.48e-04 | 112,790 tok/s
+2026-10-16 03:42:41 | step  1250 | train 1.8717 | val 1.8835 | lr 4.89e-04 | 112,723 tok/s
+2026-10-16 03:44:15 | step  1500 | train 1.7888 | val 1.8014 | lr 4.13e-04 | 112,942 tok/s
+2026-10-16 03:45:49 | step  1750 | train 1.7305 | val 1.7505 | lr 3.30e-04 | 112,805 tok/s
+2026-10-16 03:47:23 | step  2000 | train 1.6774 | val 1.6854 | lr 2.47e-04 | 112,953 tok/s
+2026-10-16 03:48:57 | step  2250 | train 1.6355 | val 1.6466 | lr 1.71e-04 | 112,762 tok/s
+2026-10-16 03:50:31 | step  2500 | train 1.6047 | val 1.6117 | lr 1.12e-04 | 112,647 tok/s
+2026-10-16 03:52:05 | step  2750 | train 1.5851 | val 1.5960 | lr 7.32e-05 | 112,623 tok/s
+2026-10-16 03:53:40 | step  3000 | train 1.5655 | val 1.5738 | lr 6.00e-05 | 112,716 tok/s
+2026-10-16 03:53:41 | 
+Summary: kv4_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5655             
+final val loss               1.5738             
+best val loss                1.5738 (step 3,000)
+parameters                   152,836,177        
+training time (s)            872                
+mean throughput (tok/s)      112,739            
+
+2026-10-16 03:53:43 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:34:51
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 03:53:46 | Saved runs/full/ablations/runs/kv4_s0/model.pt (292 MB, logits relative error vs best.pt 2.4e-03)
+2026-10-16 03:53:52 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/kv1_s0/tb
+
+2026-10-16 03:55:22 | step   250 | train 3.1522 | val 3.1593 | lr 3.00e-04 | 116,670 tok/s
+2026-10-16 03:56:53 | step   500 | train 2.5203 | val 2.5176 | lr 6.00e-04 | 117,656 tok/s
+2026-10-16 03:58:23 | step   750 | train 2.1721 | val 2.1819 | lr 5.87e-04 | 117,416 tok/s
+2026-10-16 03:59:53 | step  1000 | train 1.9888 | val 2.0005 | lr 5.48e-04 | 117,718 tok/s
+2026-10-16 04:01:23 | step  1250 | train 1.8778 | val 1.8884 | lr 4.89e-04 | 117,468 tok/s
+2026-10-16 04:02:53 | step  1500 | train 1.7957 | val 1.8081 | lr 4.13e-04 | 117,525 tok/s
+2026-10-16 04:04:24 | step  1750 | train 1.7356 | val 1.7548 | lr 3.30e-04 | 117,545 tok/s
+2026-10-16 04:05:54 | step  2000 | train 1.6839 | val 1.6907 | lr 2.47e-04 | 117,488 tok/s
+2026-10-16 04:07:24 | step  2250 | train 1.6402 | val 1.6513 | lr 1.71e-04 | 117,392 tok/s
+2026-10-16 04:08:54 | step  2500 | train 1.6099 | val 1.6171 | lr 1.12e-04 | 117,775 tok/s
+2026-10-16 04:10:25 | step  2750 | train 1.5912 | val 1.6016 | lr 7.32e-05 | 117,505 tok/s
+2026-10-16 04:11:55 | step  3000 | train 1.5716 | val 1.5797 | lr 6.00e-05 | 117,458 tok/s
+2026-10-16 04:11:57 | 
+Summary: kv1_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5716             
+final val loss               1.5797             
+best val loss                1.5797 (step 3,000)
+parameters                   149,297,233        
+training time (s)            837                
+mean throughput (tok/s)      117,467            
+
+2026-10-16 04:11:58 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:53:52
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 04:12:01 | Saved runs/full/ablations/runs/kv1_s0/model.pt (285 MB, logits relative error vs best.pt 3.5e-03)
+2026-10-16 04:12:06 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/learned_s0/tb
+
+2026-10-16 04:13:30 | step   250 | train 3.7455 | val 3.7495 | lr 3.00e-04 | 124,934 tok/s
+2026-10-16 04:14:54 | step   500 | train 2.9130 | val 2.9114 | lr 6.00e-04 | 125,487 tok/s
+2026-10-16 04:16:18 | step   750 | train 2.4127 | val 2.4232 | lr 5.87e-04 | 125,927 tok/s
+2026-10-16 04:17:42 | step  1000 | train 2.1522 | val 2.1617 | lr 5.48e-04 | 126,158 tok/s
+2026-10-16 04:19:06 | step  1250 | train 1.9996 | val 2.0100 | lr 4.89e-04 | 126,184 tok/s
+2026-10-16 04:20:30 | step  1500 | train 1.8973 | val 1.9089 | lr 4.13e-04 | 126,146 tok/s
+2026-10-16 04:21:53 | step  1750 | train 1.8224 | val 1.8401 | lr 3.30e-04 | 126,144 tok/s
+2026-10-16 04:23:17 | step  2000 | train 1.7636 | val 1.7678 | lr 2.47e-04 | 126,272 tok/s
+2026-10-16 04:24:41 | step  2250 | train 1.7149 | val 1.7235 | lr 1.71e-04 | 126,249 tok/s
+2026-10-16 04:26:05 | step  2500 | train 1.6797 | val 1.6845 | lr 1.12e-04 | 126,166 tok/s
+2026-10-16 04:27:28 | step  2750 | train 1.6580 | val 1.6653 | lr 7.32e-05 | 126,172 tok/s
+2026-10-16 04:28:52 | step  3000 | train 1.6362 | val 1.6412 | lr 6.00e-05 | 126,260 tok/s
+2026-10-16 04:28:54 | 
+Summary: learned_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.6362             
+final val loss               1.6412             
+best val loss                1.6412 (step 3,000)
+parameters                   162,666,577        
+training time (s)            780                
+mean throughput (tok/s)      126,007            
+
+2026-10-16 04:28:55 | 
+Environment
+-----------------------------------
+date: 2026-10-16T04:12:06
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 04:28:58 | Saved runs/full/ablations/runs/learned_s0/model.pt (310 MB, logits relative error vs best.pt 3.0e-03)
+2026-10-16 04:29:02 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/baseline_s1/tb
+
+2026-10-16 04:30:44 | step   250 | train 3.0886 | val 3.0991 | lr 3.00e-04 | 104,156 tok/s
+2026-10-16 04:32:26 | step   500 | train 2.4791 | val 2.4781 | lr 6.00e-04 | 104,622 tok/s
+2026-10-16 04:34:07 | step   750 | train 2.1298 | val 2.1391 | lr 5.87e-04 | 104,624 tok/s
+2026-10-16 04:35:49 | step  1000 | train 1.9642 | val 1.9686 | lr 5.48e-04 | 104,593 tok/s
+2026-10-16 04:37:30 | step  1250 | train 1.8577 | val 1.8708 | lr 4.89e-04 | 104,677 tok/s
+2026-10-16 04:39:11 | step  1500 | train 1.7916 | val 1.8011 | lr 4.13e-04 | 104,715 tok/s
+2026-10-16 04:40:53 | step  1750 | train 1.7284 | val 1.7290 | lr 3.30e-04 | 104,638 tok/s
+2026-10-16 04:42:34 | step  2000 | train 1.6699 | val 1.6818 | lr 2.47e-04 | 104,673 tok/s
+2026-10-16 04:44:16 | step  2250 | train 1.6321 | val 1.6510 | lr 1.71e-04 | 104,704 tok/s
+2026-10-16 04:45:57 | step  2500 | train 1.5976 | val 1.6113 | lr 1.12e-04 | 104,628 tok/s
+2026-10-16 04:47:38 | step  2750 | train 1.5800 | val 1.5868 | lr 7.32e-05 | 104,663 tok/s
+2026-10-16 04:49:20 | step  3000 | train 1.5573 | val 1.5766 | lr 6.00e-05 | 104,686 tok/s
+2026-10-16 04:49:22 | 
+Summary: baseline_s1
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5573             
+final val loss               1.5766             
+best val loss                1.5766 (step 3,000)
+parameters                   162,273,361        
+training time (s)            940                
+mean throughput (tok/s)      104,615            
+
+2026-10-16 04:49:23 | 
+Environment
+-----------------------------------
+date: 2026-10-16T04:29:02
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 04:49:27 | Saved runs/full/ablations/runs/baseline_s1/model.pt (310 MB, logits relative error vs best.pt 2.7e-03)
+2026-10-16 04:49:31 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/kv4_s1/tb
+
+2026-10-16 04:51:05 | step   250 | train 3.1223 | val 3.1320 | lr 3.00e-04 | 112,489 tok/s
+2026-10-16 04:52:39 | step   500 | train 2.4967 | val 2.4959 | lr 6.00e-04 | 113,111 tok/s
+2026-10-16 04:54:12 | step   750 | train 2.1399 | val 2.1487 | lr 5.87e-04 | 113,162 tok/s
+2026-10-16 04:55:46 | step  1000 | train 1.9742 | val 1.9788 | lr 5.48e-04 | 113,208 tok/s
+2026-10-16 04:57:20 | step  1250 | train 1.8654 | val 1.8790 | lr 4.89e-04 | 113,200 tok/s
+2026-10-16 04:58:53 | step  1500 | train 1.7960 | val 1.8051 | lr 4.13e-04 | 113,218 tok/s
+2026-10-16 05:00:27 | step  1750 | train 1.7314 | val 1.7315 | lr 3.30e-04 | 113,123 tok/s
+2026-10-16 05:02:00 | step  2000 | train 1.6749 | val 1.6863 | lr 2.47e-04 | 113,271 tok/s
+2026-10-16 05:03:34 | step  2250 | train 1.6374 | val 1.6554 | lr 1.71e-04 | 113,278 tok/s
+2026-10-16 05:05:07 | step  2500 | train 1.6026 | val 1.6162 | lr 1.12e-04 | 113,211 tok/s
+2026-10-16 05:06:41 | step  2750 | train 1.5847 | val 1.5911 | lr 7.32e-05 | 113,248 tok/s
+2026-10-16 05:08:14 | step  3000 | train 1.5617 | val 1.5807 | lr 6.00e-05 | 113,197 tok/s
+2026-10-16 05:08:16 | 
+Summary: kv4_s1
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5617             
+final val loss               1.5807             
+best val loss                1.5807 (step 3,000)
+parameters                   152,836,177        
+training time (s)            869                
+mean throughput (tok/s)      113,143            
+
+2026-10-16 05:08:17 | 
+Environment
+-----------------------------------
+date: 2026-10-16T04:49:31
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 05:08:21 | Saved runs/full/ablations/runs/kv4_s1/model.pt (292 MB, logits relative error vs best.pt 2.8e-03)
+2026-10-16 05:08:25 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/kv1_s1/tb
+
+2026-10-16 05:09:55 | step   250 | train 3.1337 | val 3.1443 | lr 3.00e-04 | 117,252 tok/s
+2026-10-16 05:11:25 | step   500 | train 2.5231 | val 2.5216 | lr 6.00e-04 | 117,967 tok/s
+2026-10-16 05:12:55 | step   750 | train 2.1590 | val 2.1674 | lr 5.87e-04 | 118,045 tok/s
+2026-10-16 05:14:24 | step  1000 | train 1.9839 | val 1.9879 | lr 5.48e-04 | 118,117 tok/s
+2026-10-16 05:15:54 | step  1250 | train 1.8732 | val 1.8859 | lr 4.89e-04 | 117,984 tok/s
+2026-10-16 05:17:24 | step  1500 | train 1.8005 | val 1.8085 | lr 4.13e-04 | 117,955 tok/s
+2026-10-16 05:18:54 | step  1750 | train 1.7383 | val 1.7383 | lr 3.30e-04 | 117,998 tok/s
+2026-10-16 05:20:24 | step  2000 | train 1.6808 | val 1.6919 | lr 2.47e-04 | 118,022 tok/s
+2026-10-16 05:21:54 | step  2250 | train 1.6440 | val 1.6617 | lr 1.71e-04 | 118,019 tok/s
+2026-10-16 05:23:23 | step  2500 | train 1.6096 | val 1.6226 | lr 1.12e-04 | 118,060 tok/s
+2026-10-16 05:24:53 | step  2750 | train 1.5920 | val 1.5973 | lr 7.32e-05 | 118,038 tok/s
+2026-10-16 05:26:23 | step  3000 | train 1.5695 | val 1.5880 | lr 6.00e-05 | 118,048 tok/s
+2026-10-16 05:26:24 | 
+Summary: kv1_s1
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5695             
+final val loss               1.5880             
+best val loss                1.5880 (step 3,000)
+parameters                   149,297,233        
+training time (s)            833                
+mean throughput (tok/s)      117,958            
+
+2026-10-16 05:26:26 | 
+Environment
+-----------------------------------
+date: 2026-10-16T05:08:25
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 05:26:29 | Saved runs/full/ablations/runs/kv1_s1/model.pt (285 MB, logits relative error vs best.pt 2.8e-03)
+2026-10-16 05:26:33 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/learned_s1/tb
+
+2026-10-16 05:27:58 | step   250 | train 3.7371 | val 3.7469 | lr 3.00e-04 | 124,852 tok/s
+2026-10-16 05:29:22 | step   500 | train 2.9329 | val 2.9333 | lr 6.00e-04 | 125,380 tok/s
+2026-10-16 05:30:46 | step   750 | train 2.4303 | val 2.4392 | lr 5.87e-04 | 125,625 tok/s
+2026-10-16 05:32:10 | step  1000 | train 2.1659 | val 2.1689 | lr 5.48e-04 | 125,804 tok/s
+2026-10-16 05:33:34 | step  1250 | train 2.0125 | val 2.0243 | lr 4.89e-04 | 125,860 tok/s
+2026-10-16 05:34:58 | step  1500 | train 1.9203 | val 1.9278 | lr 4.13e-04 | 126,004 tok/s
+2026-10-16 05:36:22 | step  1750 | train 1.8418 | val 1.8395 | lr 3.30e-04 | 126,042 tok/s
+2026-10-16 05:37:46 | step  2000 | train 1.7760 | val 1.7848 | lr 2.47e-04 | 126,065 tok/s
+2026-10-16 05:39:09 | step  2250 | train 1.7280 | val 1.7441 | lr 1.71e-04 | 126,086 tok/s
+2026-10-16 05:40:33 | step  2500 | train 1.6914 | val 1.7006 | lr 1.12e-04 | 125,983 tok/s
+2026-10-16 05:41:57 | step  2750 | train 1.6688 | val 1.6717 | lr 7.32e-05 | 126,088 tok/s
+2026-10-16 05:43:21 | step  3000 | train 1.6455 | val 1.6602 | lr 6.00e-05 | 125,969 tok/s
+2026-10-16 05:43:23 | 
+Summary: learned_s1
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.6455             
+final val loss               1.6602             
+best val loss                1.6602 (step 3,000)
+parameters                   162,666,577        
+training time (s)            781                
+mean throughput (tok/s)      125,812            
+
+2026-10-16 05:43:24 | 
+Environment
+-----------------------------------
+date: 2026-10-16T05:26:33
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 05:43:27 | Saved runs/full/ablations/runs/learned_s1/model.pt (310 MB, logits relative error vs best.pt 5.3e-03)
+2026-10-16 05:43:32 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/baseline_s2/tb
+
+2026-10-16 05:45:14 | step   250 | train 3.1182 | val 3.1124 | lr 3.00e-04 | 103,841 tok/s
+2026-10-16 05:46:56 | step   500 | train 2.4713 | val 2.4793 | lr 6.00e-04 | 104,414 tok/s
+2026-10-16 05:48:37 | step   750 | train 2.1258 | val 2.1349 | lr 5.87e-04 | 104,624 tok/s
+2026-10-16 05:50:19 | step  1000 | train 1.9739 | val 1.9796 | lr 5.48e-04 | 104,488 tok/s
+2026-10-16 05:52:00 | step  1250 | train 1.8665 | val 1.8696 | lr 4.89e-04 | 104,528 tok/s
+2026-10-16 05:53:42 | step  1500 | train 1.7870 | val 1.7900 | lr 4.13e-04 | 104,539 tok/s
+2026-10-16 05:55:23 | step  1750 | train 1.7209 | val 1.7358 | lr 3.30e-04 | 104,538 tok/s
+2026-10-16 05:57:05 | step  2000 | train 1.6656 | val 1.6834 | lr 2.47e-04 | 104,526 tok/s
+2026-10-16 05:58:47 | step  2250 | train 1.6162 | val 1.6339 | lr 1.71e-04 | 104,513 tok/s
+2026-10-16 06:00:28 | step  2500 | train 1.5934 | val 1.6046 | lr 1.12e-04 | 104,607 tok/s
+2026-10-16 06:02:10 | step  2750 | train 1.5743 | val 1.5878 | lr 7.32e-05 | 104,532 tok/s
+2026-10-16 06:03:51 | step  3000 | train 1.5608 | val 1.5641 | lr 6.00e-05 | 104,599 tok/s
+2026-10-16 06:03:53 | 
+Summary: baseline_s2
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5608             
+final val loss               1.5641             
+best val loss                1.5641 (step 3,000)
+parameters                   162,273,361        
+training time (s)            941                
+mean throughput (tok/s)      104,479            
+
+2026-10-16 06:03:54 | 
+Environment
+-----------------------------------
+date: 2026-10-16T05:43:32
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 06:03:58 | Saved runs/full/ablations/runs/baseline_s2/model.pt (310 MB, logits relative error vs best.pt 1.8e-03)
+2026-10-16 06:04:02 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/kv4_s2/tb
+
+2026-10-16 06:05:36 | step   250 | train 3.1492 | val 3.1422 | lr 3.00e-04 | 112,350 tok/s
+2026-10-16 06:07:10 | step   500 | train 2.4957 | val 2.5022 | lr 6.00e-04 | 112,936 tok/s
+2026-10-16 06:08:44 | step   750 | train 2.1382 | val 2.1467 | lr 5.87e-04 | 112,955 tok/s
+2026-10-16 06:10:17 | step  1000 | train 1.9852 | val 1.9906 | lr 5.48e-04 | 112,932 tok/s
+2026-10-16 06:11:51 | step  1250 | train 1.8774 | val 1.8803 | lr 4.89e-04 | 112,993 tok/s
+2026-10-16 06:13:25 | step  1500 | train 1.7972 | val 1.7998 | lr 4.13e-04 | 112,964 tok/s
+2026-10-16 06:14:59 | step  1750 | train 1.7299 | val 1.7442 | lr 3.30e-04 | 112,969 tok/s
+2026-10-16 06:16:32 | step  2000 | train 1.6760 | val 1.6932 | lr 2.47e-04 | 112,920 tok/s
+2026-10-16 06:18:06 | step  2250 | train 1.6260 | val 1.6437 | lr 1.71e-04 | 113,040 tok/s
+2026-10-16 06:19:40 | step  2500 | train 1.6021 | val 1.6133 | lr 1.12e-04 | 113,121 tok/s
+2026-10-16 06:21:13 | step  2750 | train 1.5842 | val 1.5977 | lr 7.32e-05 | 113,114 tok/s
+2026-10-16 06:22:47 | step  3000 | train 1.5712 | val 1.5741 | lr 6.00e-05 | 113,105 tok/s
+2026-10-16 06:22:49 | 
+Summary: kv4_s2
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5712             
+final val loss               1.5741             
+best val loss                1.5741 (step 3,000)
+parameters                   152,836,177        
+training time (s)            870                
+mean throughput (tok/s)      112,950            
+
+2026-10-16 06:22:50 | 
+Environment
+-----------------------------------
+date: 2026-10-16T06:04:02
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 06:22:53 | Saved runs/full/ablations/runs/kv4_s2/model.pt (292 MB, logits relative error vs best.pt 3.1e-03)
+2026-10-16 06:22:58 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/kv1_s2/tb
+
+2026-10-16 06:24:29 | step   250 | train 3.1784 | val 3.1733 | lr 3.00e-04 | 116,925 tok/s
+2026-10-16 06:25:59 | step   500 | train 2.5397 | val 2.5461 | lr 6.00e-04 | 117,618 tok/s
+2026-10-16 06:27:29 | step   750 | train 2.1618 | val 2.1705 | lr 5.87e-04 | 117,530 tok/s
+2026-10-16 06:28:59 | step  1000 | train 1.9984 | val 2.0040 | lr 5.48e-04 | 117,711 tok/s
+2026-10-16 06:30:29 | step  1250 | train 1.8842 | val 1.8871 | lr 4.89e-04 | 117,722 tok/s
+2026-10-16 06:31:59 | step  1500 | train 1.8048 | val 1.8071 | lr 4.13e-04 | 117,857 tok/s
+2026-10-16 06:33:29 | step  1750 | train 1.7372 | val 1.7512 | lr 3.30e-04 | 117,890 tok/s
+2026-10-16 06:34:59 | step  2000 | train 1.6809 | val 1.6983 | lr 2.47e-04 | 117,899 tok/s
+2026-10-16 06:36:29 | step  2250 | train 1.6326 | val 1.6500 | lr 1.71e-04 | 117,768 tok/s
+2026-10-16 06:37:59 | step  2500 | train 1.6095 | val 1.6204 | lr 1.12e-04 | 117,885 tok/s
+2026-10-16 06:39:28 | step  2750 | train 1.5922 | val 1.6047 | lr 7.32e-05 | 117,844 tok/s
+2026-10-16 06:40:58 | step  3000 | train 1.5783 | val 1.5805 | lr 6.00e-05 | 117,794 tok/s
+2026-10-16 06:41:00 | 
+Summary: kv1_s2
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5783             
+final val loss               1.5805             
+best val loss                1.5805 (step 3,000)
+parameters                   149,297,233        
+training time (s)            835                
+mean throughput (tok/s)      117,703            
+
+2026-10-16 06:41:02 | 
+Environment
+-----------------------------------
+date: 2026-10-16T06:22:58
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 06:41:05 | Saved runs/full/ablations/runs/kv1_s2/model.pt (285 MB, logits relative error vs best.pt 2.5e-03)
+2026-10-16 06:41:09 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/learned_s2/tb
+
+2026-10-16 06:42:34 | step   250 | train 3.7422 | val 3.7371 | lr 3.00e-04 | 124,860 tok/s
+2026-10-16 06:43:58 | step   500 | train 2.9122 | val 2.9187 | lr 6.00e-04 | 125,654 tok/s
+2026-10-16 06:45:22 | step   750 | train 2.4124 | val 2.4213 | lr 5.87e-04 | 125,934 tok/s
+2026-10-16 06:46:46 | step  1000 | train 2.1689 | val 2.1738 | lr 5.48e-04 | 126,077 tok/s
+2026-10-16 06:48:09 | step  1250 | train 2.0166 | val 2.0186 | lr 4.89e-04 | 126,056 tok/s
+2026-10-16 06:49:33 | step  1500 | train 1.9149 | val 1.9156 | lr 4.13e-04 | 126,131 tok/s
+2026-10-16 06:50:57 | step  1750 | train 1.8323 | val 1.8447 | lr 3.30e-04 | 126,107 tok/s
+2026-10-16 06:52:21 | step  2000 | train 1.7683 | val 1.7831 | lr 2.47e-04 | 126,144 tok/s
+2026-10-16 06:53:45 | step  2250 | train 1.7118 | val 1.7261 | lr 1.71e-04 | 126,171 tok/s
+2026-10-16 06:55:08 | step  2500 | train 1.6840 | val 1.6922 | lr 1.12e-04 | 126,219 tok/s
+2026-10-16 06:56:32 | step  2750 | train 1.6636 | val 1.6736 | lr 7.32e-05 | 126,024 tok/s
+2026-10-16 06:57:56 | step  3000 | train 1.6481 | val 1.6476 | lr 6.00e-05 | 126,129 tok/s
+2026-10-16 06:57:58 | 
+Summary: learned_s2
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.6481             
+final val loss               1.6476             
+best val loss                1.6476 (step 3,000)
+parameters                   162,666,577        
+training time (s)            780                
+mean throughput (tok/s)      125,958            
+
+2026-10-16 06:57:59 | 
+Environment
+-----------------------------------
+date: 2026-10-16T06:41:09
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 06:58:02 | Saved runs/full/ablations/runs/learned_s2/model.pt (310 MB, logits relative error vs best.pt 3.7e-03)
+2026-10-16 06:58:07 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/lr3e-4_s0/tb
+
+2026-10-16 06:59:49 | step   250 | train 3.4121 | val 3.4173 | lr 1.50e-04 | 103,889 tok/s
+2026-10-16 07:01:31 | step   500 | train 2.6996 | val 2.6972 | lr 3.00e-04 | 104,271 tok/s
+2026-10-16 07:03:13 | step   750 | train 2.3335 | val 2.3433 | lr 2.93e-04 | 104,100 tok/s
+2026-10-16 07:04:55 | step  1000 | train 2.1269 | val 2.1372 | lr 2.74e-04 | 104,158 tok/s
+2026-10-16 07:06:37 | step  1250 | train 1.9987 | val 2.0085 | lr 2.44e-04 | 104,177 tok/s
+2026-10-16 07:08:19 | step  1500 | train 1.9076 | val 1.9183 | lr 2.07e-04 | 104,198 tok/s
+2026-10-16 07:10:01 | step  1750 | train 1.8434 | val 1.8616 | lr 1.65e-04 | 104,259 tok/s
+2026-10-16 07:11:43 | step  2000 | train 1.7934 | val 1.7974 | lr 1.23e-04 | 104,238 tok/s
+2026-10-16 07:13:25 | step  2250 | train 1.7507 | val 1.7602 | lr 8.56e-05 | 104,212 tok/s
+2026-10-16 07:15:07 | step  2500 | train 1.7210 | val 1.7254 | lr 5.58e-05 | 104,293 tok/s
+2026-10-16 07:16:49 | step  2750 | train 1.7039 | val 1.7109 | lr 3.66e-05 | 104,217 tok/s
+2026-10-16 07:18:31 | step  3000 | train 1.6840 | val 1.6891 | lr 3.00e-05 | 104,257 tok/s
+2026-10-16 07:18:32 | 
+Summary: lr3e-4_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.6840             
+final val loss               1.6891             
+best val loss                1.6891 (step 3,000)
+parameters                   162,273,361        
+training time (s)            944                
+mean throughput (tok/s)      104,189            
+
+2026-10-16 07:18:34 | 
+Environment
+-----------------------------------
+date: 2026-10-16T06:58:07
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 07:18:37 | Saved runs/full/ablations/runs/lr3e-4_s0/model.pt (310 MB, logits relative error vs best.pt 2.4e-03)
+2026-10-16 07:18:42 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/lr1.2e-3_s0/tb
+
+2026-10-16 07:20:24 | step   250 | train 2.8662 | val 2.8757 | lr 6.00e-04 | 103,699 tok/s
+2026-10-16 07:22:06 | step   500 | train 2.2952 | val 2.2920 | lr 1.20e-03 | 104,295 tok/s
+2026-10-16 07:23:48 | step   750 | train 2.0417 | val 2.0527 | lr 1.17e-03 | 104,455 tok/s
+2026-10-16 07:25:29 | step  1000 | train 1.9075 | val 1.9182 | lr 1.10e-03 | 104,501 tok/s
+2026-10-16 07:27:11 | step  1250 | train 1.8082 | val 1.8213 | lr 9.77e-04 | 104,490 tok/s
+2026-10-16 07:28:53 | step  1500 | train 1.7288 | val 1.7426 | lr 8.27e-04 | 104,501 tok/s
+2026-10-16 07:30:34 | step  1750 | train 1.6691 | val 1.6892 | lr 6.60e-04 | 104,503 tok/s
+2026-10-16 07:32:16 | step  2000 | train 1.6161 | val 1.6250 | lr 4.93e-04 | 104,472 tok/s
+2026-10-16 07:33:58 | step  2250 | train 1.5700 | val 1.5836 | lr 3.43e-04 | 104,521 tok/s
+2026-10-16 07:35:40 | step  2500 | train 1.5361 | val 1.5443 | lr 2.23e-04 | 104,506 tok/s
+2026-10-16 07:37:21 | step  2750 | train 1.5149 | val 1.5273 | lr 1.46e-04 | 104,544 tok/s
+2026-10-16 07:39:03 | step  3000 | train 1.4934 | val 1.5032 | lr 1.20e-04 | 104,567 tok/s
+2026-10-16 07:39:05 | 
+Summary: lr1.2e-3_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.4934             
+final val loss               1.5032             
+best val loss                1.5032 (step 3,000)
+parameters                   162,273,361        
+training time (s)            941                
+mean throughput (tok/s)      104,421            
+
+2026-10-16 07:39:06 | 
+Environment
+-----------------------------------
+date: 2026-10-16T07:18:42
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 07:39:09 | Saved runs/full/ablations/runs/lr1.2e-3_s0/model.pt (310 MB, logits relative error vs best.pt 2.4e-03)
+2026-10-16 07:39:14 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/constant_s0/tb
+
+2026-10-16 07:40:56 | step   250 | train 2.4887 | val 2.4989 | lr 6.00e-04 | 103,758 tok/s
+2026-10-16 07:42:38 | step   500 | train 2.0860 | val 2.0838 | lr 6.00e-04 | 104,380 tok/s
+2026-10-16 07:44:20 | step   750 | train 1.9210 | val 1.9320 | lr 6.00e-04 | 104,423 tok/s
+2026-10-16 07:46:02 | step  1000 | train 1.8263 | val 1.8392 | lr 6.00e-04 | 104,356 tok/s
+2026-10-16 07:47:43 | step  1250 | train 1.7613 | val 1.7753 | lr 6.00e-04 | 104,407 tok/s
+2026-10-16 07:49:25 | step  1500 | train 1.7084 | val 1.7239 | lr 6.00e-04 | 104,484 tok/s
+2026-10-16 07:51:07 | step  1750 | train 1.6724 | val 1.6933 | lr 6.00e-04 | 104,429 tok/s
+2026-10-16 07:52:49 | step  2000 | train 1.6413 | val 1.6501 | lr 6.00e-04 | 104,473 tok/s
+2026-10-16 07:54:30 | step  2250 | train 1.6155 | val 1.6272 | lr 6.00e-04 | 104,426 tok/s
+2026-10-16 07:56:12 | step  2500 | train 1.5945 | val 1.6006 | lr 6.00e-04 | 104,451 tok/s
+2026-10-16 07:57:54 | step  2750 | train 1.5773 | val 1.5879 | lr 6.00e-04 | 104,442 tok/s
+2026-10-16 07:59:36 | step  3000 | train 1.5511 | val 1.5592 | lr 6.00e-04 | 104,502 tok/s
+2026-10-16 07:59:37 | 
+Summary: constant_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5511             
+final val loss               1.5592             
+best val loss                1.5592 (step 3,000)
+parameters                   162,273,361        
+training time (s)            942                
+mean throughput (tok/s)      104,377            
+
+2026-10-16 07:59:39 | 
+Environment
+-----------------------------------
+date: 2026-10-16T07:39:14
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 07:59:42 | Saved runs/full/ablations/runs/constant_s0/model.pt (310 MB, logits relative error vs best.pt 3.4e-03)
+
+=== 07:59:43 | Ablations: compare ===
+2026-10-16 07:59:45 | 
+Validation loss by model.kv_head_num (mean over runs; band in the plot is min-max)
+run / group               runs          tokens      final val       ± std      best val       ± std
+---------------------------------------------------------------------------------------------------
+model.kv_head_num=1          3      98,304,000         1.5827      0.0046        1.5827      0.0046
+model.kv_head_num=4          3      98,304,000         1.5762      0.0039        1.5762      0.0039
+model.kv_head_num=12         3      98,304,000         1.5694      0.0065        1.5694      0.0065
+
+2026-10-16 07:59:45 | Saved comparison.png, comparison.md, and comparison.csv in runs/full/ablations/gqa
+2026-10-16 07:59:48 | 
+Validation loss by model.pos_embed (mean over runs; band in the plot is min-max)
+run / group                  runs          tokens      final val       ± std      best val       ± std
+------------------------------------------------------------------------------------------------------
+model.pos_embed=learned         3      98,304,000         1.6497      0.0096        1.6497      0.0096
+model.pos_embed=rope            3      98,304,000         1.5694      0.0065        1.5694      0.0065
+
+2026-10-16 07:59:48 | Saved comparison.png, comparison.md, and comparison.csv in runs/full/ablations/pos_embed
+2026-10-16 07:59:51 | 
+Validation loss by learning_rate (mean over runs; band in the plot is min-max)
+run / group               runs          tokens      final val       ± std      best val       ± std
+---------------------------------------------------------------------------------------------------
+learning_rate=0.0003         1      98,304,000         1.6891           —        1.6891           —
+learning_rate=0.0006         3      98,304,000         1.5694      0.0065        1.5694      0.0065
+learning_rate=0.0012         1      98,304,000         1.5032           —        1.5032           —
+
+2026-10-16 07:59:51 | Saved comparison.png, comparison.md, and comparison.csv in runs/full/ablations/lr
+2026-10-16 07:59:54 | 
+Validation loss by lr_schedule (mean over runs; band in the plot is min-max)
+run / group               runs          tokens      final val       ± std      best val       ± std
+---------------------------------------------------------------------------------------------------
+lr_schedule=constant         1      98,304,000         1.5592           —        1.5592           —
+lr_schedule=cosine           3      98,304,000         1.5694      0.0065        1.5694      0.0065
+
+2026-10-16 07:59:54 | Saved comparison.png, comparison.md, and comparison.csv in runs/full/ablations/schedule
+
+=== 07:59:54 | Bundle outputs ===

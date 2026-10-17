@@ -1,0 +1,53 @@
+{
+  "data": {
+    "dir": "data/tinyshakespeare"
+  },
+  "model": {
+    "name": "gpt",
+    "vocab_size": 65,
+    "block_size": 256,
+    "n_embed": 384,
+    "n_blocks": 6,
+    "head_num": 6,
+    "kv_head_num": null,
+    "head_size": 64,
+    "batched_attention": true,
+    "scaled_dot_prod": true,
+    "pos_embed": "learned",
+    "rope_base": 10000.0,
+    "ln_torch": true,
+    "dropout": 0.2,
+    "n_kv_head": 6
+  },
+  "batch_size": 64,
+  "max_iters": 5000,
+  "lr_schedule": "constant",
+  "learning_rate": 0.0003,
+  "lr_warmup_iters": 100,
+  "grad_clip": Infinity,
+  "weight_decay": 0.01,
+  "decay_groups": false,
+  "beta1": 0.9,
+  "beta2": 0.999,
+  "adamw_fused": true,
+  "eval_interval": 500,
+  "eval_iters": 200,
+  "ckpt_interval": 500,
+  "device": "cuda",
+  "precision": "fp32",
+  "seed": 1337,
+  "preset": "main_cfg",
+  "run_name": "shakespeare",
+  "out_dir": "runs/full",
+  "resume": false,
+  "overwrite": false,
+  "log_level": 20,
+  "sample_prompts": [
+    "",
+    "ROMEO:"
+  ],
+  "sample_tokens": 200,
+  "sample_seed": 0,
+  "min_learning_rate": 2.9999999999999997e-05,
+  "run_dir": "runs/full/shakespeare"
+}

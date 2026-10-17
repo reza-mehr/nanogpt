@@ -1,0 +1,120 @@
+{
+  "preset": "stories_cfg",
+  "device": "cuda",
+  "vocab_size": 50257,
+  "batch_size": null,
+  "warmup": 2,
+  "out_dir": "results/full",
+  "from_csv": false,
+  "overwrite": false,
+  "log_level": 20,
+  "mode": "prefill",
+  "variants": [],
+  "block_sizes": [
+    512
+  ],
+  "wait": 1,
+  "active": 3,
+  "top_ops": 10,
+  "export_trace": true,
+  "batch": 1,
+  "journey": [
+    [
+      "baseline",
+      "",
+      {
+        "batched_attention": false,
+        "ln_torch": false,
+        "scaled_dot_prod": false
+      },
+      {
+        "use_cache": false,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+batched attn",
+      "baseline",
+      {
+        "batched_attention": true,
+        "ln_torch": false,
+        "scaled_dot_prod": false
+      },
+      {
+        "use_cache": false,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+torch LN",
+      "+batched attn",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": false
+      },
+      {
+        "use_cache": false,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+SDPA",
+      "+torch LN",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": true
+      },
+      {
+        "use_cache": false,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+KV cache",
+      "+SDPA",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": true
+      },
+      {
+        "use_cache": true,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+bf16 (cast)",
+      "+KV cache",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": true
+      },
+      {
+        "use_cache": true,
+        "precision": "bf16"
+      }
+    ],
+    [
+      "+autocast bf16 (alt)",
+      "+KV cache",
+      {
+        "batched_attention": true,
+        "ln_torch": true,
+        "scaled_dot_prod": true
+      },
+      {
+        "use_cache": true,
+        "precision": "mixed_bf16"
+      }
+    ]
+  ],
+  "kind": "profile_prefill",
+  "run_dir": "results/full/profile_prefill_stories_cfg_cuda",
+  "selected": [
+    "baseline",
+    "+bf16 (cast)"
+  ]
+}

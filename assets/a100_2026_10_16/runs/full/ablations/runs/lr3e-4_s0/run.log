@@ -1,0 +1,42 @@
+2026-10-16 06:58:07 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/lr3e-4_s0/tb
+
+2026-10-16 06:59:49 | step   250 | train 3.4121 | val 3.4173 | lr 1.50e-04 | 103,889 tok/s
+2026-10-16 07:01:31 | step   500 | train 2.6996 | val 2.6972 | lr 3.00e-04 | 104,271 tok/s
+2026-10-16 07:03:13 | step   750 | train 2.3335 | val 2.3433 | lr 2.93e-04 | 104,100 tok/s
+2026-10-16 07:04:55 | step  1000 | train 2.1269 | val 2.1372 | lr 2.74e-04 | 104,158 tok/s
+2026-10-16 07:06:37 | step  1250 | train 1.9987 | val 2.0085 | lr 2.44e-04 | 104,177 tok/s
+2026-10-16 07:08:19 | step  1500 | train 1.9076 | val 1.9183 | lr 2.07e-04 | 104,198 tok/s
+2026-10-16 07:10:01 | step  1750 | train 1.8434 | val 1.8616 | lr 1.65e-04 | 104,259 tok/s
+2026-10-16 07:11:43 | step  2000 | train 1.7934 | val 1.7974 | lr 1.23e-04 | 104,238 tok/s
+2026-10-16 07:13:25 | step  2250 | train 1.7507 | val 1.7602 | lr 8.56e-05 | 104,212 tok/s
+2026-10-16 07:15:07 | step  2500 | train 1.7210 | val 1.7254 | lr 5.58e-05 | 104,293 tok/s
+2026-10-16 07:16:49 | step  2750 | train 1.7039 | val 1.7109 | lr 3.66e-05 | 104,217 tok/s
+2026-10-16 07:18:31 | step  3000 | train 1.6840 | val 1.6891 | lr 3.00e-05 | 104,257 tok/s
+2026-10-16 07:18:32 | 
+Summary: lr3e-4_s0
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.6840             
+final val loss               1.6891             
+best val loss                1.6891 (step 3,000)
+parameters                   162,273,361        
+training time (s)            944                
+mean throughput (tok/s)      104,189            
+
+2026-10-16 07:18:34 | 
+Environment
+-----------------------------------
+date: 2026-10-16T06:58:07
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 07:18:37 | Saved runs/full/ablations/runs/lr3e-4_s0/model.pt (310 MB, logits relative error vs best.pt 2.4e-03)

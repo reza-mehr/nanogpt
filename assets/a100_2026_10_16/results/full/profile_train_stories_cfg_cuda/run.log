@@ -1,0 +1,92 @@
+2026-10-16 03:13:48 | 
+Step time under the profiler (ms, lower is better)
+variant            T=512           
+-----------------------------------
+baseline           1,142.29        
++mixed bf16          145.43 (-87%) 
+total vs base               (-87%) 
+
+2026-10-16 03:13:48 | 
+aten op calls per step (lower is better)
+variant            T=512         
+---------------------------------
+baseline           36,058        
++mixed bf16         3,880 (-89%) 
+total vs base             (-89%) 
+
+2026-10-16 03:13:48 | 
+Share of step time (%)
+region         baseline T=512      +mixed bf16 T=512
+----------------------------------------------------
+embed             0.0                    0.2        
+layernorm         0.9                    2.6        
+attn.qkv          5.7                    3.1        
+attn.core         7.2                    2.0        
+attn.proj         1.3                    2.0        
+mlp               9.1                    7.7        
+lm_head           5.8                   13.8        
+loss              0.7                    4.8        
+backward         59.8                   57.6        
+optimizer         8.1                    2.4        
+other             1.3                    3.7        
+
+2026-10-16 03:13:48 | 
+Time per step (ms)
+region         baseline T=512      +mixed bf16 T=512
+----------------------------------------------------
+embed            0.45                   0.31        
+layernorm       10.82                   3.80        
+attn.qkv        65.42                   4.55        
+attn.core       81.68                   2.85        
+attn.proj       14.56                   2.95        
+mlp            104.28                  11.20        
+lm_head         66.58                  20.07        
+loss             7.89                   7.01        
+backward       682.92                  83.82        
+optimizer       92.60                   3.54        
+other           15.09                   5.33        
+
+2026-10-16 03:13:48 | 
+Top ops by self GPU time (baseline T=512)
+op                                self GPU ms/step      self CPU ms/step      calls/step
+----------------------------------------------------------------------------------------
+aten::mm                                   507.889                26.293         1,370.0
+aten::addmm                                179.988                 1.009            37.0
+aten::bmm                                  134.682                32.799           864.0
+aten::add_                                  43.515                 9.384         1,598.0
+aten::mul                                   30.480                 7.541           607.0
+aten::masked_fill_                          13.462                 2.625           288.0
+aten::copy_                                 12.845                 4.104           990.0
+aten::sum                                   10.506                 2.371           138.0
+aten::div                                    9.834                 6.734           708.0
+aten::_softmax_backward_data                 8.537                 1.914           144.0
+
+2026-10-16 03:13:48 | 
+Top ops by self GPU time (+mixed bf16 T=512)
+op                                    self GPU ms/step      self CPU ms/step      calls/step
+--------------------------------------------------------------------------------------------
+aten::mm                                        53.919                 3.693           110.0
+aten::addmm                                     28.648                 1.021            37.0
+aten::copy_                                     12.474                 2.267           248.0
+aten::_flash_attention_backward                  5.374                 0.452            12.0
+aten::native_layer_norm_backward                 5.204                 0.558            25.0
+aten::_log_softmax_backward_data                 3.941                 0.021             1.0
+aten::sum                                        3.336                 1.351            38.0
+aten::_fused_adamw_                              2.716                 0.066             1.0
+aten::_log_softmax                               2.657                 0.020             1.0
+aten::add                                        2.163                 0.402            25.0
+
+2026-10-16 03:13:48 | 
+Environment
+-----------------------------------
+date: 2026-10-16T03:13:18
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+

@@ -1,0 +1,50 @@
+2026-10-16 01:52:31 | TensorBoard: uv run tensorboard --logdir runs/full/stories/tb
+
+2026-10-16 01:55:31 | step   500 | train 2.4758 | val 2.4699 | lr 6.00e-04 | 104,173 tok/s
+2026-10-16 01:58:33 | step  1000 | train 1.9700 | val 1.9769 | lr 5.96e-04 | 104,526 tok/s
+2026-10-16 02:01:35 | step  1500 | train 1.8034 | val 1.8183 | lr 5.85e-04 | 104,540 tok/s
+2026-10-16 02:04:36 | step  2000 | train 1.7220 | val 1.7284 | lr 5.67e-04 | 104,535 tok/s
+2026-10-16 02:07:38 | step  2500 | train 1.6525 | val 1.6699 | lr 5.43e-04 | 104,602 tok/s
+2026-10-16 02:10:39 | step  3000 | train 1.5949 | val 1.6190 | lr 5.13e-04 | 104,703 tok/s
+2026-10-16 02:13:40 | step  3500 | train 1.5588 | val 1.5815 | lr 4.78e-04 | 104,689 tok/s
+2026-10-16 02:16:42 | step  4000 | train 1.5298 | val 1.5438 | lr 4.38e-04 | 104,620 tok/s
+2026-10-16 02:19:43 | step  4500 | train 1.4989 | val 1.5152 | lr 3.96e-04 | 104,613 tok/s
+2026-10-16 02:22:45 | step  5000 | train 1.4779 | val 1.4952 | lr 3.52e-04 | 104,532 tok/s
+2026-10-16 02:25:47 | step  5500 | train 1.4486 | val 1.4683 | lr 3.08e-04 | 104,509 tok/s
+2026-10-16 02:28:48 | step  6000 | train 1.4280 | val 1.4431 | lr 2.64e-04 | 104,583 tok/s
+2026-10-16 02:31:50 | step  6500 | train 1.4015 | val 1.4318 | lr 2.22e-04 | 104,468 tok/s
+2026-10-16 02:34:52 | step  7000 | train 1.3869 | val 1.4164 | lr 1.82e-04 | 104,495 tok/s
+2026-10-16 02:37:53 | step  7500 | train 1.3729 | val 1.3910 | lr 1.47e-04 | 104,564 tok/s
+2026-10-16 02:40:55 | step  8000 | train 1.3613 | val 1.3843 | lr 1.17e-04 | 104,539 tok/s
+2026-10-16 02:43:56 | step  8500 | train 1.3490 | val 1.3704 | lr 9.25e-05 | 104,494 tok/s
+2026-10-16 02:46:58 | step  9000 | train 1.3322 | val 1.3652 | lr 7.46e-05 | 104,502 tok/s
+2026-10-16 02:50:00 | step  9500 | train 1.3313 | val 1.3545 | lr 6.37e-05 | 104,552 tok/s
+2026-10-16 02:53:01 | step 10000 | train 1.3256 | val 1.3434 | lr 6.00e-05 | 104,555 tok/s
+2026-10-16 02:53:03 | 
+Summary: stories
+metric                       value               
+-------------------------------------------------
+steps                        10,000              
+tokens                       327,680,000         
+final train loss             1.3256              
+final val loss               1.3434              
+best val loss                1.3434 (step 10,000)
+parameters                   162,273,361         
+training time (s)            3,135               
+mean throughput (tok/s)      104,540             
+
+2026-10-16 02:53:06 | 
+Environment
+-----------------------------------
+date: 2026-10-16T01:52:31
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 02:53:09 | Saved runs/full/stories/model.pt (310 MB, logits relative error vs best.pt 6.0e-03)

@@ -1,0 +1,76 @@
+### Decode throughput (tokens/sec)
+
+| variant       | T=128       | T=512       |
+| ------------- | ----------: | ----------: |
+| n_kv=12 (MHA) | 246 (0%)    | 239 (0%)    |
+| n_kv=6 (GQA)  | 244 (-1%)   | 235 (-2%)   |
+| n_kv=4 (GQA)  | 242 (-2%)   | 233 (-2%)   |
+| n_kv=3 (GQA)  | 242 (-2%)   | 236 (-1%)   |
+| n_kv=2 (GQA)  | 242 (-2%)   | 235 (-2%)   |
+| n_kv=1 (MQA)  | 243 (-1%)   | 234 (-2%)   |
+
+### Time to first token (ms, lower is better)
+
+| variant       | T=128       | T=512       |
+| ------------- | ----------: | ----------: |
+| n_kv=12 (MHA) | 4.9 (0%)    | 5.7 (0%)    |
+| n_kv=6 (GQA)  | 4.9 (+1%)   | 5.5 (-4%)   |
+| n_kv=4 (GQA)  | 4.8 (-1%)   | 5.5 (-4%)   |
+| n_kv=3 (GQA)  | 4.9 (0%)    | 5.5 (-4%)   |
+| n_kv=2 (GQA)  | 4.8 (-2%)   | 5.7 (-1%)   |
+| n_kv=1 (MQA)  | 4.9 (+1%)   | 5.5 (-4%)   |
+
+### Memory after generation (MB)
+
+| variant       | T=128       | T=512       |
+| ------------- | ----------: | ----------: |
+| n_kv=12 (MHA) | 364 (0%)    | 402 (0%)    |
+| n_kv=6 (GQA)  | 338 (-7%)   | 376 (-7%)   |
+| n_kv=4 (GQA)  | 327 (-10%)  | 364 (-9%)   |
+| n_kv=3 (GQA)  | 328 (-10%)  | 366 (-9%)   |
+| n_kv=2 (GQA)  | 326 (-11%)  | 364 (-10%)  |
+| n_kv=1 (MQA)  | 320 (-12%)  | 358 (-11%)  |
+
+### KV cache in use (MB)
+
+| variant       | T=128       | T=512        |
+| ------------- | ----------: | -----------: |
+| n_kv=12 (MHA) | 6.7 (0%)    | 20.2 (0%)    |
+| n_kv=6 (GQA)  | 3.4 (-50%)  | 10.1 (-50%)  |
+| n_kv=4 (GQA)  | 2.2 (-67%)  |  6.7 (-67%)  |
+| n_kv=3 (GQA)  | 1.7 (-75%)  |  5.1 (-75%)  |
+| n_kv=2 (GQA)  | 1.1 (-83%)  |  3.4 (-83%)  |
+| n_kv=1 (MQA)  | 0.6 (-92%)  |  1.7 (-92%)  |
+
+### Configuration
+
+- **preset:** stories_cfg
+- **device:** cuda
+- **vocab_size:** 50257
+- **batch_size:** None
+- **warmup:** 3
+- **out_dir:** results/full
+- **from_csv:** False
+- **overwrite:** False
+- **log_level:** 20
+- **suite:** gqa
+- **prompt_lens:** (128, 512)
+- **new_tokens:** 64
+- **precision:** bf16
+- **trials:** 3
+- **batch:** 1
+- **kind:** benchmark_generate_gqa
+- **run_dir:** results/full/benchmark_generate_gqa_stories_cfg_cuda
+
+### Environment
+
+- **date:** 2026-10-16T03:12:49
+- **git:** v0.1.0-1-g53a1038
+- **python:** 3.12.3
+- **torch:** 2.14.0+cu130
+- **os:** Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+- **cpu:** x86_64
+- **ram (GB):** 2016
+- **torch cpu threads:** 12
+- **device:** cuda
+- **gpu:** NVIDIA A100-SXM4-80GB, 79 GB

@@ -1,0 +1,25 @@
+{
+  "preset": "stories_cfg",
+  "device": "cuda",
+  "vocab_size": 50257,
+  "batch_size": 16,
+  "warmup": 5,
+  "out_dir": "results/full",
+  "from_csv": false,
+  "overwrite": false,
+  "log_level": 20,
+  "block_sizes": [
+    128,
+    192,
+    256,
+    384,
+    512,
+    768,
+    1024
+  ],
+  "iters": 20,
+  "trials": 3,
+  "batch": 16,
+  "kind": "benchmark_train",
+  "run_dir": "results/full/benchmark_train_stories_cfg_cuda"
+}

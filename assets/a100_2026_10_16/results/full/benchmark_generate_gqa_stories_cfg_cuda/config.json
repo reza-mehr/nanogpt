@@ -1,0 +1,22 @@
+{
+  "preset": "stories_cfg",
+  "device": "cuda",
+  "vocab_size": 50257,
+  "batch_size": null,
+  "warmup": 3,
+  "out_dir": "results/full",
+  "from_csv": false,
+  "overwrite": false,
+  "log_level": 20,
+  "suite": "gqa",
+  "prompt_lens": [
+    128,
+    512
+  ],
+  "new_tokens": 64,
+  "precision": "bf16",
+  "trials": 3,
+  "batch": 1,
+  "kind": "benchmark_generate_gqa",
+  "run_dir": "results/full/benchmark_generate_gqa_stories_cfg_cuda"
+}

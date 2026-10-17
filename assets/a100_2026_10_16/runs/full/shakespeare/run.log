@@ -1,0 +1,40 @@
+2026-10-16 01:44:23 | TensorBoard: uv run tensorboard --logdir runs/full/shakespeare/tb
+
+2026-10-16 01:45:12 | step   500 | train 1.9051 | val 2.0047 | lr 3.00e-04 | 211,244 tok/s
+2026-10-16 01:46:00 | step  1000 | train 1.5516 | val 1.7415 | lr 3.00e-04 | 213,062 tok/s
+2026-10-16 01:46:48 | step  1500 | train 1.4078 | val 1.6137 | lr 3.00e-04 | 213,029 tok/s
+2026-10-16 01:47:36 | step  2000 | train 1.3213 | val 1.5441 | lr 3.00e-04 | 213,122 tok/s
+2026-10-16 01:48:24 | step  2500 | train 1.2637 | val 1.5249 | lr 3.00e-04 | 213,084 tok/s
+2026-10-16 01:49:12 | step  3000 | train 1.2141 | val 1.5048 | lr 3.00e-04 | 213,193 tok/s
+2026-10-16 01:50:00 | step  3500 | train 1.1718 | val 1.4931 | lr 3.00e-04 | 213,135 tok/s
+2026-10-16 01:50:48 | step  4000 | train 1.1376 | val 1.4846 | lr 3.00e-04 | 213,131 tok/s
+2026-10-16 01:51:37 | step  4500 | train 1.1036 | val 1.4780 | lr 3.00e-04 | 213,152 tok/s
+2026-10-16 01:52:25 | step  5000 | train 1.0682 | val 1.4768 | lr 3.00e-04 | 213,240 tok/s
+2026-10-16 01:52:25 | 
+Summary: shakespeare
+metric                       value              
+------------------------------------------------
+steps                        5,000              
+tokens                       81,920,000         
+final train loss             1.0682             
+final val loss               1.4768             
+best val loss                1.4768 (step 5,000)
+parameters                   10,788,929         
+training time (s)            385                
+mean throughput (tok/s)      212,938            
+
+2026-10-16 01:52:26 | 
+Environment
+-----------------------------------
+date: 2026-10-16T01:44:23
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 01:52:26 | Saved runs/full/shakespeare/model.pt (21 MB, logits relative error vs best.pt 3.0e-03)

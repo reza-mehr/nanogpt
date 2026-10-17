@@ -1,0 +1,52 @@
+{
+  "data": {
+    "dir": "data/tinystories"
+  },
+  "model": {
+    "name": "gpt",
+    "vocab_size": 50257,
+    "block_size": 512,
+    "n_embed": 768,
+    "n_blocks": 12,
+    "head_num": 12,
+    "kv_head_num": 4,
+    "head_size": 64,
+    "batched_attention": true,
+    "scaled_dot_prod": true,
+    "pos_embed": "rope",
+    "rope_base": 10000.0,
+    "ln_torch": true,
+    "dropout": 0.0,
+    "n_kv_head": 4
+  },
+  "batch_size": 64,
+  "max_iters": 3000,
+  "lr_schedule": "cosine",
+  "learning_rate": 0.0006,
+  "lr_warmup_iters": 500,
+  "grad_clip": 1.0,
+  "weight_decay": 0.1,
+  "decay_groups": true,
+  "beta1": 0.9,
+  "beta2": 0.95,
+  "adamw_fused": true,
+  "eval_interval": 250,
+  "eval_iters": 100,
+  "ckpt_interval": 3000,
+  "device": "cuda",
+  "precision": "mixed_bf16",
+  "seed": 2,
+  "preset": "stories_cfg",
+  "run_name": "kv4_s2",
+  "out_dir": "runs/full/ablations/runs",
+  "resume": false,
+  "overwrite": false,
+  "log_level": 20,
+  "sample_prompts": [
+    "Once upon a time"
+  ],
+  "sample_tokens": 200,
+  "sample_seed": 0,
+  "min_learning_rate": 5.9999999999999995e-05,
+  "run_dir": "runs/full/ablations/runs/kv4_s2"
+}

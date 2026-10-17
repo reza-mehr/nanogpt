@@ -1,0 +1,42 @@
+2026-10-16 04:29:02 | TensorBoard: uv run tensorboard --logdir runs/full/ablations/runs/baseline_s1/tb
+
+2026-10-16 04:30:44 | step   250 | train 3.0886 | val 3.0991 | lr 3.00e-04 | 104,156 tok/s
+2026-10-16 04:32:26 | step   500 | train 2.4791 | val 2.4781 | lr 6.00e-04 | 104,622 tok/s
+2026-10-16 04:34:07 | step   750 | train 2.1298 | val 2.1391 | lr 5.87e-04 | 104,624 tok/s
+2026-10-16 04:35:49 | step  1000 | train 1.9642 | val 1.9686 | lr 5.48e-04 | 104,593 tok/s
+2026-10-16 04:37:30 | step  1250 | train 1.8577 | val 1.8708 | lr 4.89e-04 | 104,677 tok/s
+2026-10-16 04:39:11 | step  1500 | train 1.7916 | val 1.8011 | lr 4.13e-04 | 104,715 tok/s
+2026-10-16 04:40:53 | step  1750 | train 1.7284 | val 1.7290 | lr 3.30e-04 | 104,638 tok/s
+2026-10-16 04:42:34 | step  2000 | train 1.6699 | val 1.6818 | lr 2.47e-04 | 104,673 tok/s
+2026-10-16 04:44:16 | step  2250 | train 1.6321 | val 1.6510 | lr 1.71e-04 | 104,704 tok/s
+2026-10-16 04:45:57 | step  2500 | train 1.5976 | val 1.6113 | lr 1.12e-04 | 104,628 tok/s
+2026-10-16 04:47:38 | step  2750 | train 1.5800 | val 1.5868 | lr 7.32e-05 | 104,663 tok/s
+2026-10-16 04:49:20 | step  3000 | train 1.5573 | val 1.5766 | lr 6.00e-05 | 104,686 tok/s
+2026-10-16 04:49:22 | 
+Summary: baseline_s1
+metric                       value              
+------------------------------------------------
+steps                        3,000              
+tokens                       98,304,000         
+final train loss             1.5573             
+final val loss               1.5766             
+best val loss                1.5766 (step 3,000)
+parameters                   162,273,361        
+training time (s)            940                
+mean throughput (tok/s)      104,615            
+
+2026-10-16 04:49:23 | 
+Environment
+-----------------------------------
+date: 2026-10-16T04:29:02
+git: v0.1.0-1-g53a1038
+python: 3.12.3
+torch: 2.14.0+cu130
+os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 2016
+torch cpu threads: 12
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-10-16 04:49:27 | Saved runs/full/ablations/runs/baseline_s1/model.pt (310 MB, logits relative error vs best.pt 2.7e-03)
