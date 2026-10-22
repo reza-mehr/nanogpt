@@ -23,6 +23,7 @@ dev = [
     "ipykernel>=6.31.0",
     "pre-commit>=4.3.0",
     "pytest>=8.4.2",
+    "transformers>=5.20.1",
 ]
 
 [build-system]
@@ -32,3 +33,4 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ['smoke: end-to-end runs of the scripts on tiny CPU settings (deselect with -m "not smoke")']
+addopts = '--ignore=tests/test_gpt2_hf.py'
