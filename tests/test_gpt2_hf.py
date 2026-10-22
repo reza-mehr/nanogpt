@@ -6,21 +6,22 @@ The tests in this module require downloading the HF reference model weights and 
 #%% Imports:
 
 import copy
-
 import pytest
 import torch
 import tiktoken
 
 pytest.importorskip('transformers')
-from transformers import GPT2LMHeadModel     # noqa: E402
+from transformers import GPT2LMHeadModel    # noqa: E402
 
-from nanogpt.gpt2 import GPT2                # noqa: E402
+from nanogpt.config import gpt2_cfg         # noqa: E402
+from nanogpt.model import GPT2              # noqa: E402
 
 #%% Global variables:
 
 DEVICE = 'cpu'
 ATOL = 1e-3         # measured max abs diff: 1e-4
 RTOL = 1e-5         # measured max abs diff / max |logit|: 6.8e-7
+LOSS_RTOL = 3e-5    # measured |Δloss| / loss: 2.3e-6
 
 #%% Fixtures:
 
@@ -39,7 +40,7 @@ def models():
     '''Function to load the constructed model and the HF reference once per module.'''
     model_type = 'gpt2'
     model_hf = GPT2LMHeadModel.from_pretrained(model_type)  # Hugging Face model
-    model = GPT2.from_pretrained(model_type)                # loaded model
+    model = GPT2.from_pretrained(gpt2_cfg.model)            # loaded model
     model_hf.to(DEVICE).eval()
     model.to(DEVICE).eval()
     return model_hf, model
@@ -86,4 +87,4 @@ def test_loss_match_pretrained(models, tokens):
         loss_hf = model_hf(tokens, labels=tokens).loss  # internally shifts the tokens to get target (ignores last tokens)
         _, loss = model(idx, targets)
 
-    torch.testing.assert_close(loss, loss_hf)
+    torch.testing.assert_close(loss, loss_hf, atol=0, rtol=LOSS_RTOL)

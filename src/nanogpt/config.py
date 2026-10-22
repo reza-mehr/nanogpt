@@ -33,7 +33,7 @@ class DataConfig:
 
 @dataclass
 class ModelConfig:
-    name: Literal['gpt', 'bigram'] = 'gpt'              # Model architecture, looked up in the model registry
+    name: Literal['gpt', 'gpt2', 'bigram'] = 'gpt'      # Model architecture, looked up in the model registry
     vocab_size: tyro.conf.Suppress[int | None] = None   # number of unique tokens, set at runtime
     block_size: int = 256                               # maximum context length
     n_embed: int = 384                                  # embedding dimension
@@ -78,6 +78,21 @@ class ModelConfig:
             raise ValueError(f"'head_size' {self.head_size} must be even for RoPE!")
         if self.pos_embed == 'rope' and self.rope_base <= 1:
             raise ValueError(f"'rope_base' {self.rope_base} must be larger than one!")
+
+        # Open-AI GPT2 model config tests:
+        if self.name=='gpt2':
+            if not self.head_size == self.n_embed // self.head_num:
+                raise ValueError(f"Head size must equal 'n_embed // head_num' for Open-AI GPT2 models: {self.head_size} vs {self.n_embed // self.head_num}")
+
+            unsupported = []
+            if not (self.kv_head_num is None or self.kv_head_num == self.head_num): unsupported.append('GQA')
+            if not self.batched_attention: unsupported.append('Looped attention (batched_attention = False)')
+            if self.scaled_dot_prod: unsupported.append('Scaled dot-product attention (scaled_dot_prod = True)')
+            if self.pos_embed == 'rope': unsupported.append("Rotary positional embedding (pos_embed = 'rope')")
+            if not self.ln_torch: unsupported.append('Manual layer-norm (ln_torch = False)')
+            if self.dropout > 0.: unsupported.append('Dropout')
+            if unsupported:
+                raise ValueError(f"{', '.join(unsupported)} unavailable for Open-AI GPT2 models.")
 
     @property
     def n_kv_head(self):
@@ -161,12 +176,23 @@ stories_cfg = TrainConfig(data=DataConfig(dir='data/tinystories'),
                           lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95,
                           eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16')
 
+# Open-AI GPT2 configs (Hugging Face version):
+gpt2_cfg = TrainConfig(model=ModelConfig(name='gpt2', vocab_size=50257, block_size=1024, n_embed=768, n_blocks=12, head_num=12, head_size=64, batched_attention=True, scaled_dot_prod=False, pos_embed='learned', ln_torch=True, dropout=0.))
+gpt2_medium_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1024, n_blocks=24, head_num=16) )
+gpt2_large_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1280, n_blocks=36, head_num=20) )
+gpt2_xl_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1600, n_blocks=48, head_num=25) )
+
+
 # Register the preset configs, each carrying its own name for the default run folder:
 PRESETS: dict[str, TrainConfig] = {name: replace(cfg, preset=name) for name, cfg in {
     'main_cfg': main_cfg,
     'small_cfg': small_cfg,
     'bigram_cfg': bigram_cfg,
     'stories_cfg': stories_cfg,
+    'gpt2_cfg': gpt2_cfg,
+    'gpt2_medium_cfg': gpt2_medium_cfg,
+    'gpt2_large_cfg': gpt2_large_cfg,
+    'gpt2_xl_cfg': gpt2_xl_cfg,
 }.items()}
 
 #%% Function to parse arguments:

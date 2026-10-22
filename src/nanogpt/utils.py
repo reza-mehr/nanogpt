@@ -16,7 +16,7 @@ _REGIONS_DEVICE: str | None = None
 
 #%% Model utility functions:
 
-def sample_logits(logits: torch.Tensor, temperature=1.0, top_k=None):
+def sample_logits(logits: torch.Tensor, temperature=1.0, topk=None):
     '''
     Function to sample one new token per sequence from the logits.
 
@@ -27,8 +27,8 @@ def sample_logits(logits: torch.Tensor, temperature=1.0, top_k=None):
     temperature: float, optional
         Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding.
         The default is 1.0, in which case the distribution is unaltered.
-    top_k: int, optional
-        Keep only the top_k most likely tokens; top_k=1 gives greedy decoding.
+    topk: int, optional
+        Keep only the top_k most likely tokens; topk=1 gives greedy decoding.
         The default is None, in which case all tokens are kept.
 
     Returns
@@ -39,25 +39,25 @@ def sample_logits(logits: torch.Tensor, temperature=1.0, top_k=None):
     Raises
     ------
     ValueError
-        If temperature < 0 or top_k < 1.
+        If temperature < 0 or topk < 1.
 
     '''
     # Validate inputs:
     if temperature < 0:
         raise ValueError(f"'temperature' must be >= 0, got {temperature}")
-    if top_k is not None and top_k < 1:
-        raise ValueError(f"'top_k' must be >= 1 or None, got {top_k}")
+    if topk is not None and topk < 1:
+        raise ValueError(f"'topk' must be >= 1 or None, got {topk}")
 
     # Greedy decoding:
-    if temperature == 0 or top_k == 1:
+    if temperature == 0 or topk == 1:
         return torch.argmax(logits, dim=-1, keepdim=True)               # (B, 1)
 
     # Scale the logits by temperature (not in place, so the caller's tensor is untouched):
     logits = logits / temperature
 
     # Assign '-inf' to all logits outside the top_k:
-    if top_k is not None and top_k < logits.size(-1):
-        kth_largest = torch.topk(logits, top_k, dim=-1).values[:, -1:]  # (B, 1)
+    if topk is not None and topk < logits.size(-1):
+        kth_largest = torch.topk(logits, topk, dim=-1).values[:, -1:]  # (B, 1)
         logits = torch.where(logits >= kth_largest, logits, float('-inf'))
 
     # Probability distribution over tokens:

@@ -5,37 +5,24 @@ The structure and parameter names match the HF version to enable direct loading 
 '''
 #%% Imports:
 
-from dataclasses import dataclass
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-#%% Configs:
-
-@dataclass
-class GPTConfig:
-    block_size: int = 1024
-    vocab_size: int = 50257
-    n_blocks: int = 12
-    head_num: int = 12
-    n_embed: int = 768
-
-# GPT2 model sizes:
-model_configs = {'gpt2': dict(n_blocks=12, head_num=12, n_embed=768),                  # 124M parameters
-                 'gpt2-medium': dict(n_blocks=24, head_num=16, n_embed=1024),          # 350M parameters
-                 'gpt2-large': dict(n_blocks=36, head_num=20, n_embed=1280),           # 774M parameters
-                 'gpt2-xl': dict(n_blocks=48, head_num=25, n_embed=1600),              # 1558M parameters
-                 }
+from nanogpt.registry import MODELS
+from nanogpt.config import ModelConfig
+from nanogpt.kv_cache import KVCache
+from nanogpt.utils import sample_logits
 
 #%% Model component classes:
 
 class CausalSelfAttention(nn.Module):
     '''Class to implement the causal self-attention.'''
-    def __init__(self, cfg: GPTConfig) -> None:
+    def __init__(self, cfg: ModelConfig) -> None:
         '''
         Parameters
         ----------
-        cfg: GPTConfig
+        cfg: ModelConfig
             Model configurations.
 
         Attributes
@@ -94,11 +81,11 @@ class CausalSelfAttention(nn.Module):
 
 class MLP(nn.Module):
     '''Class to implement the feed-forward projection component.'''
-    def __init__(self, cfg: GPTConfig) -> None:
+    def __init__(self, cfg: ModelConfig) -> None:
         '''
         Parameters
         ----------
-        cfg: GPTConfig
+        cfg: ModelConfig
             Model configurations.
 
         '''
@@ -131,11 +118,11 @@ class MLP(nn.Module):
 
 class Block(nn.Module):
     '''Class to implement a single transformer block.'''
-    def __init__(self, cfg: GPTConfig) -> None:
+    def __init__(self, cfg: ModelConfig) -> None:
         '''
         Parameters
         ----------
-        cfg: GPTConfig
+        cfg: ModelConfig
             Model configurations.
 
         '''
@@ -168,13 +155,14 @@ class Block(nn.Module):
 
 #%% GPT2 class:
 
+@MODELS.register('gpt2')
 class GPT2(nn.Module):
     '''Class to implement the Hugging Face version of the GPT2 model.'''
-    def __init__(self, cfg: GPTConfig) -> None:
+    def __init__(self, cfg: ModelConfig) -> None:
         '''
         Parameters
         ----------
-        cfg: GPTConfig
+        cfg: ModelConfig
             Model configurations.
 
         Attributes
@@ -248,18 +236,21 @@ class GPT2(nn.Module):
 
 
     @torch.inference_mode()
-    def generate(self, idx, new_tokens, topk=50):
+    def generate(self, idx: torch.Tensor, new_tokens: int, temperature: float = 1.0, topk: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
         '''
         Function to generate next tokens given a encoded prompt.
 
         Parameters
         ----------
         idx (B, T): tensor
-            Encoded prompt tokens.
+            Token indices.
         new_tokens: int
-            Number of new tokens to generate.
-        topk: int
-            Keep only the top_k most likely tokens. The default is '50'.
+            Number of token indices to generate.
+        temperature: float, optional
+            Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding. The default is 1.0, in which case the distribution is unaltered.
+        topk: int, optional
+            Keep only the top_k most likely tokens; topk=1 gives greedy decoding. The default is None, in which case all tokens are kept.
+        use_cache, cache: are required for API consistency and are not used in this method.
 
         Returns
         -------
@@ -282,12 +273,10 @@ class GPT2(nn.Module):
 
         # Loop over new tokens:
         for _ in range(new_tokens):
-            logits, _ = self(idx)                                       # (B, T, vocab_size)
-            probs = F.softmax(logits[:, -1, :], dim=-1)                 # (B, vocab_size)
-            topk_probs, topk_inds = torch.topk(probs, k=topk, dim=-1)   # (B, topk)
-            idx_new = torch.multinomial(topk_probs, 1)                  # (B, 1)
-            idx_new = topk_inds.gather(dim=-1, index=idx_new)           # map back to all vocabulary ids
-            idx = torch.cat((idx, idx_new), dim=-1)
+            logits, _ = self(idx)                               # (B, T) -> (B, T, vocab_size)
+            idx_next = sample_logits(logits[:, -1, :],
+                                     temperature, topk)         # sample new tokens: (B, vocab_size) -> (B, 1)
+            idx = torch.cat((idx, idx_next), dim=1)             # (B, T+1)
 
         if train_mode: self.train()
 
@@ -295,14 +284,14 @@ class GPT2(nn.Module):
 
 
     @classmethod
-    def from_pretrained(cls, model_type):
+    def from_pretrained(cls, cfg: ModelConfig):
         '''
         Function to load a pre-trained model weights from HF.
 
         Parameters
         ----------
-        model_type: string
-            GPT2 model type to load from 'gpt2, gpt2-medium, gpt2-large, gpt2-xl'.
+        cfg: ModelConfig
+            Model configurations.
 
         Returns
         -------
@@ -311,23 +300,25 @@ class GPT2(nn.Module):
 
         Raises
         ------
-        ValueError
-            If the requested model does not exist.
+        If the pretrained model weights are unavailable for the requested (n_embed, n_blocks, head_num) values.
 
         '''
-        # Error handling:
-        if model_type not in model_configs: raise ValueError(f"Unknown model-type '{model_type}' requested!")
+        # Model names based on (n_embed, n_blocks, head_num):
+        model_types = {(768, 12, 12): 'gpt2', (1024, 24, 16): 'gpt2-medium',
+                       (1280, 36, 20): 'gpt2-large', (1600, 48, 25): 'gpt2-xl'}
+        key = (cfg.n_embed, cfg.n_blocks, cfg.head_num)
+        if key not in model_types:
+            raise ValueError(f"Parameters 'n_embed={key[0]}, n_blocks={key[1]}, head_num={key[2]}' do not correspond to any pre-trained weights!")
 
         # Load the pre-trained model:
         from transformers import GPT2LMHeadModel
-        model_hf = GPT2LMHeadModel.from_pretrained(model_type)
+        model_hf = GPT2LMHeadModel.from_pretrained(model_types[key])
         sd_hf = {key: val for key, val in model_hf.state_dict().items()
                  if not ( key.endswith('.attn.masked_bias') or key.endswith('.attn.bias') )}
 
         # Construct the implemented instance:
-        cfg = GPTConfig( **model_configs[model_type] )
         model = cls(cfg)
-        sd = {key: val for key, val in model.state_dict().items()}
+        sd = model.state_dict()
 
         assert set(sd_hf)==set(sd), f"mismatched state dictionary keys ({set(sd_hf) ^ set(sd)})"
 

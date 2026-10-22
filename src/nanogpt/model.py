@@ -30,6 +30,7 @@ from torch.nn import functional as F
 
 from nanogpt.config import ModelConfig
 from nanogpt.registry import MODELS
+from nanogpt.gpt2 import GPT2           # noqa: F401
 from nanogpt.utils import sample_logits
 from nanogpt.kv_cache import KVCache
 from nanogpt.utils import build_rope_cos_sin, apply_rope, expand_kv, region
@@ -580,7 +581,7 @@ class GPT(nn.Module):
 
 
     @torch.inference_mode()
-    def generate(self, idx: torch.Tensor, new_tokens: int, temperature: float = 1.0, top_k: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
+    def generate(self, idx: torch.Tensor, new_tokens: int, temperature: float = 1.0, topk: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
         Training mode is disabled and restored and gradients are not computed in this method.
@@ -593,8 +594,8 @@ class GPT(nn.Module):
             Number of token indices to generate.
         temperature: float, optional
             Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding. The default is 1.0, in which case the distribution is unaltered.
-        top_k: int, optional
-            Keep only the top_k most likely tokens; top_k=1 gives greedy decoding. The default is None, in which case all tokens are kept.
+        topk: int, optional
+            Keep only the top_k most likely tokens; topk=1 gives greedy decoding. The default is None, in which case all tokens are kept.
         use_cache: bool, optional
             If True, use key-value caching. The default is True.
         cache: KVCache, optional
@@ -612,15 +613,15 @@ class GPT(nn.Module):
 
         try:
             # Generate the new tokens:
-            if use_cache: idx_new = self._generate_cached(idx, new_tokens, temperature, top_k, cache)
-            else: idx_new = self._generate(idx, new_tokens, temperature, top_k)
+            if use_cache: idx_new = self._generate_cached(idx, new_tokens, temperature, topk, cache)
+            else: idx_new = self._generate(idx, new_tokens, temperature, topk)
         finally:
             if train_mode: self.train()                             # revert to original training mode
 
         return idx_new
 
 
-    def _generate(self, idx: torch.Tensor, new_tokens: int, temperature: float, top_k: int | None):
+    def _generate(self, idx: torch.Tensor, new_tokens: int, temperature: float, topk: int | None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
 
@@ -632,8 +633,8 @@ class GPT(nn.Module):
             Number of token indices to generate.
         temperature: float
             Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding.
-        top_k: int
-            Keep only the top_k most likely tokens; top_k=1 gives greedy decoding.
+        topk: int
+            Keep only the top_k most likely tokens; topk=1 gives greedy decoding.
 
         Returns
         -------
@@ -650,13 +651,13 @@ class GPT(nn.Module):
             logits, _ = self(idx_cond)                          # forward pass: (B, T, vocab_size)
             with region('sample'):
                 idx_next = sample_logits(logits[:, -1, :],
-                                         temperature, top_k)    # sample new tokens: (B, vocab_size) -> (B, 1)
+                                         temperature, topk)     # sample new tokens: (B, vocab_size) -> (B, 1)
                 idx = torch.cat((idx, idx_next), dim=1)         # (B, T+1)
 
         return idx
 
 
-    def _generate_cached(self, idx: torch.Tensor, new_tokens: int, temperature: float, top_k: int | None, cache: KVCache | None = None):
+    def _generate_cached(self, idx: torch.Tensor, new_tokens: int, temperature: float, topk: int | None, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
 
@@ -668,8 +669,8 @@ class GPT(nn.Module):
             Number of token indices to generate.
         temperature: float
             Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding.
-        top_k: int
-            Keep only the top_k most likely tokens; top_k=1 gives greedy decoding.
+        topk: int
+            Keep only the top_k most likely tokens; topk=1 gives greedy decoding.
         cache: KVCache, optional
             Key-value cache. The default is None in which case, a new cache will be constructed.
             Ensure that the cache parameters match the model and input batch size.
@@ -703,7 +704,7 @@ class GPT(nn.Module):
         for i in range(new_tokens):
             with region('sample'):
                 idx_next = sample_logits(logits[:, -1, :],
-                                         temperature, top_k)    # sample new tokens: (B, vocab_size) -> (B, 1)
+                                         temperature, topk)    # sample new tokens: (B, vocab_size) -> (B, 1)
                 idx = torch.cat([idx, idx_next], dim=1)
             if i < new_tokens - 1:
                 logits, _ = self(idx_next, cache=cache)         # decode: one token
@@ -772,7 +773,7 @@ class BigramLanguageModel(nn.Module):
 
 
     @torch.inference_mode()
-    def generate(self, idx: torch.Tensor, new_tokens: int, temperature: float = 1.0, top_k: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
+    def generate(self, idx: torch.Tensor, new_tokens: int, temperature: float = 1.0, topk: int | None = None, use_cache: bool = True, cache: KVCache | None = None):
         '''
         Function to generate a batch of token indices given an input batch of token indices.
 
@@ -784,8 +785,8 @@ class BigramLanguageModel(nn.Module):
             Number of token indices to generate.
         temperature: float, optional
             Divides the logits before softmax. Values < 1 sharpen the distribution, values > 1 flatten it, and 0 gives greedy (argmax) decoding. The default is 1.0, in which case the distribution is unaltered.
-        top_k: int, optional
-            Keep only the top_k most likely tokens; top_k=1 gives greedy decoding. The default is None, in which case all tokens are kept.
+        topk: int, optional
+            Keep only the top_k most likely tokens; topk=1 gives greedy decoding. The default is None, in which case all tokens are kept.
         use_cache, cache: are required for API consistency and are not used in this method.
 
         Returns
@@ -802,7 +803,7 @@ class BigramLanguageModel(nn.Module):
         for _ in range(new_tokens):
             logits, _ = self(idx)                               # (B, T) -> (B, T, vocab_size)
             idx_next = sample_logits(logits[:, -1, :],
-                                     temperature, top_k)        # sample new tokens: (B, vocab_size) -> (B, 1)
+                                     temperature, topk)         # sample new tokens: (B, vocab_size) -> (B, 1)
             idx = torch.cat((idx, idx_next), dim=1)             # (B, T+1)
 
         if train_mode: self.train()                             # revert to original training mode
