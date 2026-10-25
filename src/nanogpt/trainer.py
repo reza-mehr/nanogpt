@@ -99,13 +99,15 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     # Initialization:
     with torch.device(cfg.device):
         model = build_model(cfg.model)
-    logger.info(f"Built '{cfg.model.name}' model with {get_param_count(model)/1e6:.2f}M parameters.")
-
     optim = build_optimizer(model, cfg)
     latest = cfg.run_dir / 'latest.pt'          # path to the latest checkpoints
     results_path = cfg.run_dir / 'results.csv'
     start_step = 1
     best_val = float('inf')
+
+    logger.info(f"Built '{cfg.model.name}' model with {get_param_count(model)/1e6:.2f}M parameters.")
+    if cfg.model.vocab_size_padded > cfg.model.vocab_size:
+        logger.info(f"Raised 'vocab_size' to a multiple of {cfg.model.pad_vocab_to_multiple}: {cfg.model.vocab_size} -> {cfg.model.vocab_size_padded}")
 
     # Load the latest checkpoint if requested, and drop metrics logged after it:
     if resuming:

@@ -19,11 +19,10 @@ from nanogpt.utils import autocast_ctx, prepare_for_inference, get_param_count
 # Model architecture parameters:
 B, T, VOCAB, N_EMBED, HEAD_SIZE = 4, 11, 18, 16, 8
 
-def tiny_model(name, kv_head_num=None, pos_embed='learned'):
+def tiny_model(name, kv_head_num=None, pos_embed='learned', vocab_multiple=1):
     '''Function to construct a tiny model to run tests on.'''
     head_num = 2 if name=='gpt2' else 4         # N_EMBED = head_num * HEAD_SIZE for 'gpt2' model
-    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=N_EMBED, head_num=head_num,
-                      kv_head_num=kv_head_num, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed,
+    cfg = ModelConfig(name=name, vocab_size=VOCAB, pad_vocab_to_multiple=vocab_multiple, block_size=T, n_embed=N_EMBED, head_num=head_num, kv_head_num=kv_head_num, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed,
                       dropout=0.)       # dropout=0 to permit overfitting in 'test_overfit'
     torch.manual_seed(0)
     return build_model(cfg)
@@ -36,42 +35,48 @@ def kv_head_num(request):
 def pos_embed(request):
     return request.param
 
+@pytest.fixture(params=[1, 16])
+def vocab_multiple(request):
+    return request.param
+
 #%% Weight tying tests:
 
-def test_weight_tie_gpt2():
+def test_weight_tie_gpt2(vocab_multiple):
     '''Function to test that the weights at embedding and final projection layers are tied.'''
-    model = tiny_model('gpt2')
+    model = tiny_model('gpt2', vocab_multiple=vocab_multiple)
     assert model.transformer.wte.weight.shape == model.lm_head.weight.shape
-    assert model.transformer.wte.weight.data_ptr == model.lm_head.weight.data_ptr
+    assert model.transformer.wte.weight.data_ptr() == model.lm_head.weight.data_ptr()
 
 #%% Shape tests:
 
 @pytest.mark.parametrize('name', ['bigram', 'gpt'])
-def test_forward_shapes(name, kv_head_num, pos_embed):
+def test_forward_shapes(name, kv_head_num, pos_embed, vocab_multiple):
     '''Function to test the forward function output shapes.'''
 
-    model = tiny_model(name, kv_head_num, pos_embed)
+    model = tiny_model(name, kv_head_num, pos_embed, vocab_multiple)
+    vocab_size_padded = model.cfg.vocab_size_padded
     idx = torch.randint(0, VOCAB, (B, T))
 
-    logits, loss = model(idx, targets=None)         # no targets, no loss
-    assert logits.shape == (B, T, VOCAB)
+    logits, loss = model(idx, targets=None)             # no targets, no loss
+    assert logits.shape == (B, T, vocab_size_padded)    # logits must included padded vocabulary
     assert loss is None
 
-    logits, loss = model(idx, targets=idx)          # with targets
+    logits, loss = model(idx, targets=idx)              # with targets
     assert loss.dim() == 0
     assert torch.isfinite(loss)
 
 
 @pytest.mark.parametrize('name', ['bigram', 'gpt'])
-def test_generate_shapes(name):
+def test_generate_shapes(name, vocab_multiple):
     '''Function to test the generate function output shape.'''
 
-    model = tiny_model(name)
+    model = tiny_model(name, vocab_multiple=vocab_multiple)
     idx = torch.zeros((1, 1), dtype=torch.long)
 
     new_tokens = 10
     out = model.generate(idx, new_tokens, use_cache=False)
     assert out.shape == (1, 1+new_tokens)
+    assert (out < VOCAB).all()          # generated token ids must be confined to 'VOCAB' regardless of padding
 
 #%% Initialization test:
 

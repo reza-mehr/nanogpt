@@ -35,6 +35,7 @@ class DataConfig:
 class ModelConfig:
     name: Literal['gpt', 'gpt2', 'bigram'] = 'gpt'      # Model architecture, looked up in the model registry
     vocab_size: tyro.conf.Suppress[int | None] = None   # number of unique tokens, set at runtime
+    pad_vocab_to_multiple: int = 1                      # pad vocab size to a multiple of 2^n, use 128
     block_size: int = 256                               # maximum context length
     n_embed: int = 384                                  # embedding dimension
     n_blocks: int = 6                                   # number of transformer blocks
@@ -93,9 +94,20 @@ class ModelConfig:
             if unsupported:
                 raise ValueError(f"{', '.join(unsupported)} unavailable for Open-AI GPT2 models.")
 
+        # Error handling for vocab size padding:
+        m = self.pad_vocab_to_multiple
+        if not (m >0 and (m & (m-1)) ==0 ):
+            raise ValueError(f"'pad_vocab_to_multiple={m}' must be a positive integer and power of 2.")
+
     @property
     def n_kv_head(self):
         return self.head_num if self.kv_head_num is None else self.kv_head_num
+
+    @property
+    def vocab_size_padded(self):
+        '''Function to raise 'vocab_size' to a multiple of power of two.'''
+        v, m = self.vocab_size, self.pad_vocab_to_multiple
+        return v if m == 1 else (-(-v // m) * m)
 
 
 @dataclass

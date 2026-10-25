@@ -108,3 +108,35 @@ def test_run_name_rejects_non_training_prefixes(run_name):
     '''Function to test that training runs cannot take the folder prefixes that mark benchmarks and profiles.'''
     with pytest.raises(ValueError, match='must not start with'):
         TrainConfig(run_name=run_name)
+
+#%% Test vocab size padding:
+
+def test_reject_incorrect_pad_vocab_to_multiple():
+    '''Function to ensure that the inpermissible values of 'pad_vocab_to_multiple' raise a ValueError.'''
+    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
+        ModelConfig(vocab_size=61, pad_vocab_to_multiple=0)
+    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
+        ModelConfig(vocab_size=61, pad_vocab_to_multiple=3)
+    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
+        ModelConfig(vocab_size=61, pad_vocab_to_multiple=-3)
+
+def test_no_vocab_size_pad_default():
+    '''Function to ensure that the 'vocab_size_padded' is the same as 'vocab_size' when 'pad_vocab_to_multiple=1'.'''
+    cfg = ModelConfig(vocab_size=61)
+    assert cfg.vocab_size_padded == cfg.vocab_size
+    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=1)
+    assert cfg.vocab_size_padded == cfg.vocab_size
+
+def test_no_vocab_size_pad_if_already_multiple():
+    '''Function to test that the 'vocab_size' is not raised if it is already a multiple of 'pad_vocab_to_multiple'.'''
+    cfg = ModelConfig(vocab_size=64, pad_vocab_to_multiple=8)
+    assert cfg.vocab_size_padded == cfg.vocab_size
+    cfg = ModelConfig(vocab_size=64, pad_vocab_to_multiple=64)
+    assert cfg.vocab_size_padded == cfg.vocab_size
+
+def test_vocab_size_pad():
+    '''Function to test that the 'vocab_size' is raised to a multiple of 'pad_vocab_to_multiple'.'''
+    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=8)
+    assert cfg.vocab_size_padded == 64
+    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=128)
+    assert cfg.vocab_size_padded == 128

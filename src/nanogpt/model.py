@@ -507,14 +507,14 @@ class GPT(nn.Module):
         super().__init__()
         self.cfg = cfg
 
-        self.token_embedding_table = nn.Embedding(cfg.vocab_size, cfg.n_embed)
+        self.token_embedding_table = nn.Embedding(cfg.vocab_size_padded, cfg.n_embed)
         if cfg.pos_embed=='learned':            # construct positional embedding table
             self.position_embedding_table = nn.Embedding(cfg.block_size, cfg.n_embed)
         else:
             self.position_embedding_table = None
         self.blocks = nn.ModuleList( [ Block(cfg, bind) for bind in range(cfg.n_blocks) ] )
         self.ln = nn.LayerNorm(cfg.n_embed) if cfg.ln_torch else LayerNorm(cfg.n_embed)
-        self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size)
+        self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size_padded)
 
 
     def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None, cache: KVCache | None = None):
@@ -532,7 +532,7 @@ class GPT(nn.Module):
 
         Returns
         -------
-        logits (B, T, vocab_size): tensor
+        logits (B, T, vocab_size_padded): tensor
             Logits corresponding to the token space.
         loss: tensor
             Loss value. None if 'targets' is None.
@@ -566,7 +566,7 @@ class GPT(nn.Module):
         with region('layernorm'):
             x = self.ln(x)                              # (B, T, n_embed)
         with region('lm_head'):
-            logits = self.lm_head(x)                    # (B, T, n_embed) -> (B, T, vocab_size)
+            logits = self.lm_head(x)                    # (B, T, n_embed) -> (B, T, vocab_size_padded)
         if targets is None: return logits, None
 
         # Compute the loss:
@@ -644,13 +644,14 @@ class GPT(nn.Module):
         '''
         # Attributes:
         block_size = self.cfg.block_size
+        vocab_size = self.cfg.vocab_size
 
         # Loop over new tokens to be generated:
         for _ in range(new_tokens):
             idx_cond = idx[:, -block_size:]                     # limit to context size (last 'block_size' tokens)
-            logits, _ = self(idx_cond)                          # forward pass: (B, T, vocab_size)
+            logits, _ = self(idx_cond)                          # forward pass: (B, T, vocab_size_padded)
             with region('sample'):
-                idx_next = sample_logits(logits[:, -1, :],
+                idx_next = sample_logits(logits[:, -1, :vocab_size],
                                          temperature, topk)     # sample new tokens: (B, vocab_size) -> (B, 1)
                 idx = torch.cat((idx, idx_next), dim=1)         # (B, T+1)
 
@@ -703,7 +704,7 @@ class GPT(nn.Module):
         # Loop over new tokens to be generated:
         for i in range(new_tokens):
             with region('sample'):
-                idx_next = sample_logits(logits[:, -1, :],
+                idx_next = sample_logits(logits[:, -1, :cfg.vocab_size],
                                          temperature, topk)    # sample new tokens: (B, vocab_size) -> (B, 1)
                 idx = torch.cat([idx, idx_next], dim=1)
             if i < new_tokens - 1:
@@ -735,8 +736,8 @@ class BigramLanguageModel(nn.Module):
         super().__init__()
         self.cfg = cfg
 
-        n_embed = cfg.vocab_size            # to produce distribution over tokens in Bigram model
-        self.token_embedding_table = nn.Embedding(cfg.vocab_size, n_embed)
+        n_embed = cfg.vocab_size_padded     # to produce distribution over tokens in Bigram model
+        self.token_embedding_table = nn.Embedding(cfg.vocab_size, n_embed)  # maps token indices to padded embedding space
 
 
     def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None):
@@ -752,22 +753,22 @@ class BigramLanguageModel(nn.Module):
 
         Returns
         -------
-        logits (B, T, vocab_size): tensor
+        logits (B, T, vocab_size_padded): tensor
             Logits corresponding to the input.
         loss: tensor
             Loss value. None if 'targets' is None.
 
         '''
         # Forward pass:
-        logits = self.token_embedding_table(idx)    # (B, T) -> (B, T, vocab_size)
+        logits = self.token_embedding_table(idx)    # (B, T) -> (B, T, vocab_size_padded)
         if targets is None: return logits, None
 
         # Loss computation:
-        B, T, vocab_size = logits.shape
-        logits = logits.view(B * T, vocab_size)
+        B, T, vocab_size_padded = logits.shape
+        logits = logits.view(B * T, vocab_size_padded)
         targets = targets.view(B * T)
         loss = F.cross_entropy(logits, targets)
-        logits = logits.view(B, T, vocab_size)
+        logits = logits.view(B, T, vocab_size_padded)
 
         return logits, loss
 
@@ -795,14 +796,17 @@ class BigramLanguageModel(nn.Module):
             Token indices.
 
         '''
+        # Attributes:
+        vocab_size = self.cfg.vocab_size
+
         # Disable training mode for inference:
         train_mode = self.training
         self.eval()
 
         # Loop over new tokens to be generated:
         for _ in range(new_tokens):
-            logits, _ = self(idx)                               # (B, T) -> (B, T, vocab_size)
-            idx_next = sample_logits(logits[:, -1, :],
+            logits, _ = self(idx)                               # (B, T) -> (B, T, vocab_size_padded)
+            idx_next = sample_logits(logits[:, -1, :vocab_size],
                                      temperature, topk)         # sample new tokens: (B, vocab_size) -> (B, 1)
             idx = torch.cat((idx, idx_next), dim=1)             # (B, T+1)
 

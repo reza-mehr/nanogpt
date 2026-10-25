@@ -185,12 +185,12 @@ class GPT2(nn.Module):
         self.cfg = cfg
 
         self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(cfg.vocab_size, cfg.n_embed),
+            wte = nn.Embedding(cfg.vocab_size_padded, cfg.n_embed),
             wpe = nn.Embedding(cfg.block_size, cfg.n_embed),
             h = nn.ModuleList([ Block(cfg) for _ in range(cfg.n_blocks) ]),
             ln_f = nn.LayerNorm(cfg.n_embed)
         ))
-        self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size, bias=False)
+        self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size_padded, bias=False)
 
         # Tie the weights between the embedding and final projection layers:
         self.transformer.wte.weight = self.lm_head.weight
@@ -224,7 +224,7 @@ class GPT2(nn.Module):
 
         Returns
         -------
-        logits (B, T, vocab_size): tensor
+        logits (B, T, vocab_size_padded): tensor
             Logits corresponding to the token space.
         loss: tensor
             Loss value. None if 'targets' is None.
@@ -251,7 +251,7 @@ class GPT2(nn.Module):
         for block in transformer.h:
             x = block(x)                                            # (B, T, n_embed)
         x = transformer.ln_f(x)                                     # (B, T, n_embed)
-        logits = self.lm_head(x)                                    # (B, T, vocab_size)
+        logits = self.lm_head(x)                                    # (B, T, vocab_size_padded)
 
         if targets is None: return logits, loss
 
@@ -292,18 +292,21 @@ class GPT2(nn.Module):
             If the input sequence length plus new requested token number is larger than the context size.
 
         '''
+        # Attributes:
+        block_size = self.cfg.block_size
+        vocab_size = self.cfg.vocab_size
+
         # Initialization:
         train_mode = self.training
         self.eval()
         B, T = idx.shape
-        block_size = self.cfg.block_size
 
         assert T + new_tokens - 1 <= block_size, f"requested new tokens exceed block size"
 
         # Loop over new tokens:
         for _ in range(new_tokens):
-            logits, _ = self(idx)                               # (B, T) -> (B, T, vocab_size)
-            idx_next = sample_logits(logits[:, -1, :],
+            logits, _ = self(idx)                               # (B, T) -> (B, T, vocab_size_padded)
+            idx_next = sample_logits(logits[:, -1, :vocab_size],
                                      temperature, topk)         # sample new tokens: (B, vocab_size) -> (B, 1)
             idx = torch.cat((idx, idx_next), dim=1)             # (B, T+1)
 
@@ -329,9 +332,14 @@ class GPT2(nn.Module):
 
         Raises
         ------
-        If the pretrained model weights are unavailable for the requested (n_embed, n_blocks, head_num) values.
+        ValueError
+            If cfg.pad_vocab_to_multiple is larger than 1.
+        ValueError
+            If the pretrained model weights are unavailable for the requested (n_embed, n_blocks, head_num) values.
 
         '''
+        if not cfg.vocab_size_padded == cfg.vocab_size: raise ValueError("Cannot load pre-trained weights for padded 'vocab_size' dimension.")
+
         # Model names based on (n_embed, n_blocks, head_num):
         model_types = {(768, 12, 12): 'gpt2', (1024, 24, 16): 'gpt2-medium',
                        (1280, 36, 20): 'gpt2-large', (1600, 48, 25): 'gpt2-xl'}
