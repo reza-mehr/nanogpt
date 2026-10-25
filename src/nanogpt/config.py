@@ -87,7 +87,6 @@ class ModelConfig:
             unsupported = []
             if not (self.kv_head_num is None or self.kv_head_num == self.head_num): unsupported.append('GQA')
             if not self.batched_attention: unsupported.append('Looped attention (batched_attention = False)')
-            if self.scaled_dot_prod: unsupported.append('Scaled dot-product attention (scaled_dot_prod = True)')
             if self.pos_embed == 'rope': unsupported.append("Rotary positional embedding (pos_embed = 'rope')")
             if not self.ln_torch: unsupported.append('Manual layer-norm (ln_torch = False)')
             if self.dropout > 0.: unsupported.append('Dropout')
@@ -178,7 +177,7 @@ stories_cfg = TrainConfig(data=DataConfig(dir='data/tinystories'),
                           eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16')
 
 # Open-AI GPT2 configs (Hugging Face version):
-gpt2_cfg = TrainConfig(model=ModelConfig(name='gpt2', vocab_size=50257, block_size=1024, n_embed=768, n_blocks=12, head_num=12, head_size=64, batched_attention=True, scaled_dot_prod=False, pos_embed='learned', ln_torch=True, dropout=0.))
+gpt2_cfg = TrainConfig(model=ModelConfig(name='gpt2', vocab_size=50257, block_size=1024, n_embed=768, n_blocks=12, head_num=12, head_size=64, batched_attention=True, scaled_dot_prod=True, pos_embed='learned', ln_torch=True, dropout=0.))
 gpt2_medium_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1024, n_blocks=24, head_num=16) )
 gpt2_large_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1280, n_blocks=36, head_num=20) )
 gpt2_xl_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1600, n_blocks=48, head_num=25) )

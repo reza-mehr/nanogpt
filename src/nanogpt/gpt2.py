@@ -35,9 +35,12 @@ class CausalSelfAttention(nn.Module):
 
         self.c_attn = nn.Linear(cfg.n_embed, 3 * cfg.n_embed)   # query, key, and value for all heads in batched format
         self.c_proj = nn.Linear(cfg.n_embed, cfg.n_embed)       # output projection
-        self.register_buffer('bias',
-                             torch.tril( torch.ones((cfg.block_size, cfg.block_size)) ),
-                             persistent=False)
+        if not cfg.scaled_dot_prod:
+            self.register_buffer('bias',
+                                torch.tril( torch.ones((cfg.block_size, cfg.block_size)) ),
+                                persistent=False)
+        else:
+            self.bias = None
 
     def forward(self, x):
         '''
@@ -54,8 +57,11 @@ class CausalSelfAttention(nn.Module):
             Output tensor.
 
         '''
+        # Attributes:
+        cfg = self.cfg
+
         # Initialization:
-        nh = self.cfg.head_num
+        nh = cfg.head_num
         B, T, C = x.shape
         hs = C // nh
 
@@ -67,10 +73,13 @@ class CausalSelfAttention(nn.Module):
         v = v.view(B, T, nh, hs).transpose(2,1)                             # (B, nh, T, hs)
 
         # Compute the attention scores:
-        attn = ( q @ k.transpose(-1, -2) ) * hs ** (-0.5)                   # (B, nh, T, T)
-        attn = attn.masked_fill(self.bias[:T, :T]==0, float('-inf'))        # apply causal mask
-        attn = F.softmax(attn, dim=-1)                                      # normalize the rows : (B, nh, T, T)
-        y = attn @ v                                                        # compute the weighted sums: (B, nh, T, hs)
+        if cfg.scaled_dot_prod:
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+        else:
+            attn = ( q @ k.transpose(-1, -2) ) * hs ** (-0.5)               # (B, nh, T, T)
+            attn = attn.masked_fill(self.bias[:T, :T]==0, float('-inf'))    # apply causal mask
+            attn = F.softmax(attn, dim=-1)                                  # normalize the rows : (B, nh, T, T)
+            y = attn @ v                                                    # compute the weighted sums: (B, nh, T, hs)
 
         # Reassemble the heads and project:
         y = y.transpose(2, 1).contiguous().view(B, T, C)                    # (B, T, C)

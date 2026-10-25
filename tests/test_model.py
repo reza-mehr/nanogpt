@@ -22,8 +22,9 @@ B, T, VOCAB, N_EMBED, HEAD_SIZE = 4, 11, 18, 16, 8
 def tiny_model(name, kv_head_num=None, pos_embed='learned'):
     '''Function to construct a tiny model to run tests on.'''
     head_num = 2 if name=='gpt2' else 4         # N_EMBED = head_num * HEAD_SIZE for 'gpt2' model
-    scaled_dot_prod = False if name=='gpt2' else True
-    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=N_EMBED, head_num=head_num, kv_head_num=kv_head_num, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed, scaled_dot_prod=scaled_dot_prod, dropout=0.)       # dropout=0 to permit overfitting in 'test_overfit'
+    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=N_EMBED, head_num=head_num,
+                      kv_head_num=kv_head_num, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed,
+                      dropout=0.)       # dropout=0 to permit overfitting in 'test_overfit'
     torch.manual_seed(0)
     return build_model(cfg)
 
