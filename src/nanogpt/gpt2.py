@@ -94,6 +94,8 @@ class MLP(nn.Module):
         self.c_fc = nn.Linear(cfg.n_embed, 4 * cfg.n_embed)
         self.gelu = nn.GELU(approximate='tanh')
         self.c_proj = nn.Linear(4 * cfg.n_embed, cfg.n_embed)
+        self.c_proj.NANOGPT_SCALE_INIT = 1
+
 
     def forward(self, x):
         '''
@@ -180,6 +182,24 @@ class GPT2(nn.Module):
             ln_f = nn.LayerNorm(cfg.n_embed)
         ))
         self.lm_head = nn.Linear(cfg.n_embed, cfg.vocab_size, bias=False)
+
+        # Tie the weights between the embedding and final projection layers:
+        self.transformer.wte.weight = self.lm_head.weight
+
+        # Initialize the weights:
+        self.apply(self._initialize_weights)
+
+
+    def _initialize_weights(self, module):
+        '''Function to initialize linear and embedding layers with N(0, 0.02), GPT2 style.'''
+        if isinstance(module, nn.Linear):
+            std = 0.02
+            if hasattr(module, 'NANOGPT_SCALE_INIT'):
+                std *= (2 * self.cfg.n_blocks) ** -0.5
+            torch.nn.init.normal_(module.weight, mean=0., std=std)
+            if module.bias is not None: torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0., std=0.02)
 
 
     def forward(self, idx, targets=None):

@@ -1,4 +1,9 @@
 
+'''
+This file contains model tests that ensure expected shapes, uniform initialization, optimization behavior, and causality of the language model.
+
+'''
+
 #%% Imports:
 
 import pytest
@@ -9,11 +14,6 @@ from nanogpt.config import ModelConfig
 from nanogpt.model import build_model
 from nanogpt.utils import autocast_ctx, prepare_for_inference, get_param_count
 
-'''
-This file contains model tests that ensure expected shapes, uniform initialization, optimization behavior, and causality of the language model.
-
-'''
-
 #%% Configuration setup for tests:
 
 # Model architecture parameters:
@@ -21,7 +21,9 @@ B, T, VOCAB, N_EMBED, HEAD_SIZE = 4, 11, 18, 16, 8
 
 def tiny_model(name, kv_head_num=None, pos_embed='learned'):
     '''Function to construct a tiny model to run tests on.'''
-    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=N_EMBED, head_num=4, kv_head_num=kv_head_num, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed, dropout=0.)       # set dropout to 0 to permit overfitting in one of the tests below
+    head_num = 2 if name=='gpt2' else 4         # N_EMBED = head_num * HEAD_SIZE for 'gpt2' model
+    scaled_dot_prod = False if name=='gpt2' else True
+    cfg = ModelConfig(name=name, vocab_size=VOCAB, block_size=T, n_embed=N_EMBED, head_num=head_num, kv_head_num=kv_head_num, head_size=HEAD_SIZE, n_blocks=2, pos_embed=pos_embed, scaled_dot_prod=scaled_dot_prod, dropout=0.)       # dropout=0 to permit overfitting in 'test_overfit'
     torch.manual_seed(0)
     return build_model(cfg)
 
@@ -32,6 +34,14 @@ def kv_head_num(request):
 @pytest.fixture(params=['learned', 'rope'])
 def pos_embed(request):
     return request.param
+
+#%% Weight tieing tests:
+
+def test_weight_tie_gpt2():
+    '''Function to test that the weights at embedding and final projection layers are tied.'''
+    model = tiny_model('gpt2')
+    assert model.transformer.wte.weight.shape == model.lm_head.weight.shape
+    assert model.transformer.wte.weight.data_ptr == model.lm_head.weight.data_ptr
 
 #%% Shape tests:
 
@@ -64,7 +74,7 @@ def test_generate_shapes(name):
 
 #%% Initialization test:
 
-@pytest.mark.parametrize('name', ['bigram', 'gpt'])
+@pytest.mark.parametrize('name', ['bigram', 'gpt', 'gpt2'])
 def test_uniform_loss(name):
     '''Function to test that the initial model predictions are near uniform.'''
 
