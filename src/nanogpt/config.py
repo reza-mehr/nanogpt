@@ -125,6 +125,7 @@ class TrainConfig:
     device: str = DEVICE                                    # device to run the training on
     precision: Literal['fp32', 'mixed_bf16'] = 'fp32'
     # compute precision for forward passes; bf16 uses autocast, with weights kept in fp32
+    compile_model: bool = False                             # if True, compile model operations for efficiency
 
     seed: int = 1337                                        # random seed
     preset: tyro.conf.Suppress[str] = 'custom'              # preset name, set in PRESETS, used in the default run name

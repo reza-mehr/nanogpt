@@ -100,6 +100,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     with torch.device(cfg.device):
         model = build_model(cfg.model)
     logger.info(f"Built '{cfg.model.name}' model with {get_param_count(model)/1e6:.2f}M parameters.")
+
     optim = build_optimizer(model, cfg)
     latest = cfg.run_dir / 'latest.pt'          # path to the latest checkpoints
     results_path = cfg.run_dir / 'results.csv'
@@ -109,13 +110,16 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     # Load the latest checkpoint if requested, and drop metrics logged after it:
     if resuming:
         start_step, best_val = load_checkpoint(latest, model, optim, cfg.device)
+        truncate_rows_csv(results_path, key='step', max_value=start_step)
+        logger.info(f"Resumed from step {start_step}, best val loss {best_val:.4f}")
         start_step += 1
-        truncate_rows_csv(results_path, key='step', max_value=start_step - 1)
-        logger.info(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
     else:
         # Record the configuration and the environment at the start of a fresh run:
         save_json(config_record(cfg), cfg.run_dir / 'config.json')
         save_json(collect_env(cfg.device), cfg.run_dir / 'env.json')
+
+    # Compile the model for efficiency if requested:
+    model_compiled = torch.compile(model) if cfg.compile_model else model
 
     # TensorBoard writer, created after resuming so it hides only the events logged after the checkpoint:
     writer = SummaryWriter(log_dir=cfg.run_dir / 'tb', purge_step=start_step)
@@ -128,7 +132,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     try:
         for step in range(start_step, cfg.max_iters+1):
             # Run a training step:
-            lr, grad_norm = train_step(cfg, model, optim, step, train_data, writer)
+            lr, grad_norm = train_step(cfg, model_compiled, optim, step, train_data, writer)
 
             # Evaluate, record metrics, and save checkpoints:
             if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
@@ -180,7 +184,7 @@ def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, 
         _, loss = model(xb, yb)
 
     # Optimization step:
-    lr = set_learning_rate(optim, step, cfg)                            # set the learning rate according to the schedule
+    lr = set_learning_rate(optim, step, cfg)        # set the learning rate according to the schedule
     optim.zero_grad(set_to_none=True)
     loss.backward()
     grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)   # clip large gradients to limit noisy batches' impact

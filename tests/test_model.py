@@ -35,7 +35,7 @@ def kv_head_num(request):
 def pos_embed(request):
     return request.param
 
-#%% Weight tieing tests:
+#%% Weight tying tests:
 
 def test_weight_tie_gpt2():
     '''Function to test that the weights at embedding and final projection layers are tied.'''
@@ -212,6 +212,20 @@ def test_bf16_cast_leaves_original_untouched():
     assert all(p.dtype == torch.bfloat16 for p in cast.parameters())
     for k, v in model.state_dict().items():
         assert v.dtype == before[k].dtype and torch.equal(v, before[k])
+
+
+#%% Compile test:
+
+def test_compiled_model():
+    '''Function to test that the original and compiled forward passes return consistent logits.'''
+    device = 'cpu'
+    model = tiny_model('gpt2').to(device)
+    model_compiled = torch.compile(model, mode='default').to(device)
+    idx = torch.randint(0, VOCAB, (B, T), device=device)
+
+    logits, _ = model(idx)
+    logits_compiled, _ = model_compiled(idx)
+    torch.testing.assert_close(logits, logits_compiled, atol=1e-6, rtol=0)      # max diff measured at 1e-07
 
 
 #%% Generation test:
