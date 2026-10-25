@@ -1,3 +1,8 @@
+
+'''
+This file contains the code to download the Tiny Shakespeare dataset, tokenize it, and write flat uint16 token train and validation binaries.
+
+'''
 #%% Imports:
 
 import json
@@ -8,12 +13,7 @@ from pathlib import Path
 import numpy as np
 import tyro
 
-from nanogpt.tokenizers import CharTokenizer
-
-'''
-This file contains the code to download the Tiny Shakespeare dataset, tokenize it with CharTokenizer, and write flat uint16 token train and validation files.
-
-'''
+from nanogpt.tokenizers import TOKENIZERS, Tokenizer
 
 #%% Global variables:
 
@@ -23,9 +23,18 @@ URL = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshake
 @dataclass
 class PrepConfig:
     input_file: str = 'data/tinyshakespeare/input.txt'  # text file containing the dataset, downloaded if unavailable
-    out_dir: str = 'data/tinyshakespeare'               # path to write train.bin, val.bin, and meta.json files
+    out_dir: None | str = None                          # path to write train.bin, val.bin, and meta.json files
+    tokenizer: str = 'char'                             # tokenizer to use
     train_frac: float = 0.9                             # fraction of tokens used for training, the rest is validation
 
+    def __post_init__(self):
+        '''Function to test configurations.'''
+        TOKENIZERS.get(self.tokenizer)                  # will raise error for an unknown tokenizer
+
+    @property
+    def outpath(self):
+        '''Path to write train.bin, val.bin, and meta.json files.'''
+        return f'data/tinyshakespeare_{self.tokenizer}' if self.out_dir is None else self.out_dir
 
 #%% Functions:
 
@@ -37,7 +46,7 @@ def download_tiny_shakespeare(p: PrepConfig) -> None:
         urllib.request.urlretrieve(URL, path)
 
 
-def tokenize_and_split(p: PrepConfig) -> tuple[list[int], list[int], CharTokenizer]:
+def tokenize_and_split(p: PrepConfig) -> tuple[list[int], list[int], Tokenizer]:
     '''
     Function to read the text, tokenize it, and split it into train/val token lists.
 
@@ -52,13 +61,13 @@ def tokenize_and_split(p: PrepConfig) -> tuple[list[int], list[int], CharTokeniz
         Training token indices.
     val_data: list[int]
         Validation token indices.
-    tok: CharTokenizer
+    tok: Tokenizer
         Tokenizer built from the text, containing the encoder and decoder.
 
     '''
     download_tiny_shakespeare(p)
     text = Path(p.input_file).read_text()
-    tok = CharTokenizer(text)
+    tok = TOKENIZERS.get(p.tokenizer)(text)
     tokens = tok.encode(text)
     n = int(p.train_frac * len(tokens))
     return tokens[:n], tokens[n:], tok
@@ -67,15 +76,18 @@ def tokenize_and_split(p: PrepConfig) -> tuple[list[int], list[int], CharTokeniz
 def main(p: PrepConfig) -> None:
     '''Main function to prepare the Tiny Shakespeare dataset for training.'''
 
+    # Construct the output path:
+    out = Path(p.outpath)
+    out.mkdir(parents=True, exist_ok=True)
+    if (out / 'meta.json').exists(): raise FileExistsError(f"Tokenized binaries already exist: {out}")
+
     # Tokenize and split:
     train_data, val_data, tok = tokenize_and_split(p)
 
     # uint16 holds ids up to 65,535:
     assert tok.vocab_size < 2**16, 'vocabulary too large for uint16'
 
-    # Initialization:
-    out = Path(p.out_dir)
-    out.mkdir(parents=True, exist_ok=True)
+    # Metadata:
     meta = tok.to_meta() | {'dtype': '<u2', 'n_tokens': {}}
 
     # Loop over splits and save the token ids as a flat little-endian uint16 file:

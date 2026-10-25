@@ -18,12 +18,14 @@ from nanogpt.config import TrainConfig
 class TokenSplit:
     '''Class to implement split interface to a tokenized split on disk (flat array of token ids), read via memmap.'''
 
-    def __init__(self, path: str, dtype: str = '<u2', in_memory: bool | None = None):
+    def __init__(self, path: str, n_tokens: int, dtype: str = '<u2', in_memory: bool | None = None):
         '''
         Parameters
         ----------
         path: string
             Path to the binary split file.
+        n_tokens: int
+            Number of tokens in the split.
         dtype: str, optional
             Data type for the binary split. The default is '<u2' indicating 2 bytes per token id in little endian convention.
         in_memory: bool, optional
@@ -39,7 +41,10 @@ class TokenSplit:
         '''
         self.path = Path(path)
         self.dtype = np.dtype(dtype)
-        self.n_tokens = self.path.stat().st_size // self.dtype.itemsize
+
+        n_tokens_file = self.path.stat().st_size // self.dtype.itemsize
+        if not n_tokens == n_tokens_file: raise ValueError(f"expected {n_tokens} tokens, got {n_tokens_file}: {path}")
+        self.n_tokens = n_tokens
 
         # Keep small files in RAM, memmap large ones:
         if in_memory is None:
@@ -74,7 +79,9 @@ def load_splits(data_dir) -> tuple[TokenSplit, TokenSplit, dict]:
     data_dir = Path(data_dir)
     meta = json.loads((data_dir / 'meta.json').read_text())
     dtype = meta.get('dtype', '<u2')
-    return TokenSplit(data_dir / 'train.bin', dtype), TokenSplit(data_dir / 'val.bin', dtype), meta
+    train_data = TokenSplit(data_dir / 'train.bin', meta['n_tokens']['train'], dtype)
+    val_data = TokenSplit(data_dir / 'val.bin', meta['n_tokens']['val'], dtype)
+    return train_data, val_data, meta
 
 
 def get_batch(split: TokenSplit, cfg: TrainConfig):
@@ -102,13 +109,13 @@ def get_batch(split: TokenSplit, cfg: TrainConfig):
     # Load a random chunk of token indices for the batch:
     T = cfg.model.block_size
     ix = torch.randint(len(data) - T, (cfg.batch_size,)).numpy()
-    idx = ix[:, None] + np.arange(T + 1)                 # (B, T+1) positions to read
+    idx = ix[:, None] + np.arange(T + 1)                # (B, T+1) positions to read
 
     # Construct the input and target (input shifted by one token):
     chunk = torch.from_numpy(data[idx].astype(np.int64)) # one gather, one copy
     x, y = chunk[:, :-1].contiguous(), chunk[:, 1:].contiguous()
 
-    if cfg.device == 'cuda':                               # async copy from pinned memory
+    if cfg.device == 'cuda':                            # async copy from pinned memory
         return (x.pin_memory().to('cuda', non_blocking=True),
                 y.pin_memory().to('cuda', non_blocking=True))
     return x.to(cfg.device), y.to(cfg.device)

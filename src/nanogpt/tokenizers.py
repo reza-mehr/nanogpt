@@ -151,8 +151,13 @@ class CharTokenizer(Tokenizer):
 class GPT2Tokenizer(Tokenizer):
     '''Class to implement GPT-2 byte-pair encoding (BPE) tokenizer (tiktoken).'''
 
-    def __init__(self):
+    def __init__(self, text=None):
         '''
+        Parameters
+        ----------
+        text: None
+            Unused parameter to unify tokenizer interfaces.
+
         Attributes
         ----------
         enc: tiktoken.get_encoding instance

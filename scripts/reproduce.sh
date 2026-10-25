@@ -22,7 +22,7 @@ ABLATIONS="${2:-run}"                           # 'run' or 'skip-ablations'
 STAMP="$(date +%Y-%m-%d_%H-%M-%S)"
 RUNS="runs/${MODE}"                             # parent folder for the training runs
 RESULTS="results/${MODE}"                       # parent folder for benchmarks and profiles
-SHAKES_DIR='data/tinyshakespeare'
+SHAKES_DIR='data/tinyshakespeare_char'
 STORIES_VOCAB=50257                             # synthetic vocabulary for benchmarks; match the TinyStories tokenizer
 
 if [[ "${MODE}" == 'smoke' ]]; then
@@ -81,13 +81,13 @@ else
     uv run pytest -m 'not smoke'                            # unit tests only; the smoke tests ran on the laptop
 fi
 
-#%% Data (skipped when the splits already exist; each mode has its own TinyStories folder):
+#%% Data (skipped when meta.json exists, which the prepare scripts write last; each mode has its own TinyStories folder):
 
 step 'Prepare TinyShakespeare'
-[[ -f "${SHAKES_DIR}/train.bin" ]] || uv run scripts/prepare_tinyshakespeare.py
+[[ -f "${SHAKES_DIR}/meta.json" ]] || uv run scripts/prepare_tinyshakespeare.py --tokenizer char --out-dir "${SHAKES_DIR}"
 
 step 'Prepare TinyStories'
-[[ -f "${STORIES_DIR}/train.bin" ]] || uv run scripts/prepare_tinystories.py --out-dir "${STORIES_DIR}" "${STORIES_PREP_ARGS[@]}"
+[[ -f "${STORIES_DIR}/meta.json" ]] || uv run scripts/prepare_tinystories.py --out-dir "${STORIES_DIR}" "${STORIES_PREP_ARGS[@]}"
 
 #%% Training and generation:
 

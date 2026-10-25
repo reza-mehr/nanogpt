@@ -30,9 +30,9 @@ def tokens():
     '''Function to tokenize a prompt for the tests in the module.'''
     tok = tiktoken.get_encoding('gpt2')
     prompt = "Hello, I'm a language model,"
-    idx = tok.encode(prompt)                            # (T,)
+    idx = tok.encode(prompt)                                # (T,)
     idx = torch.tensor(idx, dtype=torch.long, device=DEVICE)
-    return idx.unsqueeze(0)                             # (1, T)
+    return idx.unsqueeze(0)                                 # (1, T)
 
 
 @pytest.fixture(scope='module')

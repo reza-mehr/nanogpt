@@ -34,7 +34,7 @@ def data(tmp_path):
     tokens = rng.integers(0, VOCAB, 2000).astype('<u2')
     tokens[:1800].tofile(tmp_path / 'train.bin')
     tokens[1800:].tofile(tmp_path / 'val.bin')
-    return TokenSplit(tmp_path / 'train.bin'), TokenSplit(tmp_path / 'val.bin')
+    return TokenSplit(tmp_path / 'train.bin', 1800), TokenSplit(tmp_path / 'val.bin', 200)
 
 
 def tiny_cfg(tmp_path, run_name: str) -> TrainConfig:

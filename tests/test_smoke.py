@@ -70,7 +70,7 @@ def _token_splits(tmp_path: Path, vocab_size: int, n_tokens: int = 4000) -> tupl
     for name in ('train', 'val'):
         path = tmp_path / f'{name}.bin'
         rng.integers(0, vocab_size, n_tokens, dtype=np.uint16).astype('<u2').tofile(path)
-        splits.append(TokenSplit(str(path)))
+        splits.append(TokenSplit(str(path), n_tokens))
     return splits[0], splits[1]
 
 #%% Training:

@@ -99,6 +99,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     # Initialization:
     with torch.device(cfg.device):
         model = build_model(cfg.model)
+    logger.info(f"Built '{cfg.model.name}' model with {get_param_count(model)/1e6:.2f}M parameters.")
     optim = build_optimizer(model, cfg)
     latest = cfg.run_dir / 'latest.pt'          # path to the latest checkpoints
     results_path = cfg.run_dir / 'results.csv'

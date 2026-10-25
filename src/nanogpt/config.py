@@ -28,7 +28,7 @@ NON_TRAINING_PREFIXES = ('benchmark', 'profile')
 
 @dataclass
 class DataConfig:
-    dir: str = 'data/tinyshakespeare'           # parent folder for the binary dataset split (check scripts/prepare_*.py)
+    dir: str = 'data/tinyshakespeare_char'  # parent folder for the binary dataset split (check scripts/prepare_*.py)
 
 
 @dataclass
