@@ -140,3 +140,29 @@ def test_vocab_size_pad():
     assert cfg.vocab_size_padded == 64
     cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=128)
     assert cfg.vocab_size_padded == 128
+
+#%% Test batch tokens:
+
+def test_batch_tokens():
+    '''Function to test various assignment scenarios for 'batch_tokens'.'''
+
+    # Default 'batch_tokens' value:
+    cfg = TrainConfig(model=ModelConfig(block_size=8), batch_size=2)
+    assert cfg.batch_tokens is None
+    assert cfg.grad_accum_iters == 1
+
+    # Impermissible 'batch_tokens' values:
+    with pytest.raises(ValueError, match='batch_tokens'):
+        TrainConfig(model=ModelConfig(block_size=8), batch_size=2, batch_tokens=-16)
+
+    # 'batch_tokens' not a multiple of B*T:
+    with pytest.raises(ValueError, match='batch_tokens'):
+        TrainConfig(model=ModelConfig(block_size=8), batch_size=2, batch_tokens=17)
+
+    # Given 'batch_tokens' value:
+    cfg = TrainConfig(model=ModelConfig(block_size=8), batch_size=2, batch_tokens=16)
+    assert cfg.grad_accum_iters == 1
+
+    # With gradient accumulation:
+    cfg = TrainConfig(model=ModelConfig(block_size=8), batch_size=2, batch_tokens=32)
+    assert cfg.grad_accum_iters == 2

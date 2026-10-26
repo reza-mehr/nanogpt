@@ -354,6 +354,7 @@ def make_step(cfg: TrainConfig):
     model_cfg = cfg.model
     vocab_size, T = model_cfg.vocab_size, model_cfg.block_size
     device, batch_size, precision = cfg.device, cfg.batch_size, cfg.precision
+    assert cfg.grad_accum_iters == 1, "benchmarking unavailable with gradient accumulation"
 
     model = build_model(model_cfg).to(device).train()
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4, fused=cfg.adamw_fused)

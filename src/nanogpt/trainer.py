@@ -108,6 +108,9 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     logger.info(f"Built '{cfg.model.name}' model with {get_param_count(model)/1e6:.2f}M parameters.")
     if cfg.model.vocab_size_padded > cfg.model.vocab_size:
         logger.info(f"Raised 'vocab_size' to a multiple of {cfg.model.pad_vocab_to_multiple}: {cfg.model.vocab_size} -> {cfg.model.vocab_size_padded}")
+    if cfg.grad_accum_iters > 1:
+        B, T, ga_st = cfg.batch_size, cfg.model.block_size, cfg.grad_accum_iters
+        logger.info(f"Performing {ga_st} gradient accumulation sub-steps with (B, T)=({B}, {T}) to realize {B*T*ga_st} tokens per batch.")
 
     # Load the latest checkpoint if requested, and drop metrics logged after it:
     if resuming:
@@ -153,7 +156,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     return model, state.best_val
 
 
-def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, train_data: TokenSplit, writer: SummaryWriter):
+def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, train_data: TokenSplit, writer: None | SummaryWriter = None):
     '''
     Function to run a single optimization step and log its training loss, learning rate, and gradient norm.
 
@@ -169,8 +172,8 @@ def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, 
         Current optimization step.
     train_data: TokenSplit
         Train data.
-    writer: SummaryWriter
-        Tensorboard summary writer utility.
+    writer: SummaryWriter, optional
+        Tensorboard summary writer utility. The default is None.
 
     Returns
     -------
@@ -180,22 +183,34 @@ def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, 
         Gradient norm before clipping.
 
     '''
-    # Forward pass:
-    xb, yb = get_batch(train_data, cfg)
-    with autocast_ctx(cfg.device, cfg.precision):
-        _, loss = model(xb, yb)
+    # Learning rate according to the schedule:
+    lr = set_learning_rate(optim, step, cfg)
+
+    # Initialization:
+    optim.zero_grad(set_to_none=True)
+    loss_total = 0.                                 # becomes a tensor on the loss's device after the first sub-step
+
+    # Loop over grad accumulation sub_steps:
+    for _ in range(cfg.grad_accum_iters):
+        # Forward pass:
+        xb, yb = get_batch(train_data, cfg)
+        with autocast_ctx(cfg.device, cfg.precision):
+            _, loss = model(xb, yb)
+
+        # Loss computation:
+        loss = loss / cfg.grad_accum_iters          # divide by number of sub-steps for correct reduction to mean
+        loss_total += loss.detach()
+        loss.backward()
 
     # Optimization step:
-    lr = set_learning_rate(optim, step, cfg)        # set the learning rate according to the schedule
-    optim.zero_grad(set_to_none=True)
-    loss.backward()
     grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)   # clip large gradients to limit noisy batches' impact
     optim.step()
 
     # Log training loss, learning rate, and gradient norm:
-    writer.add_scalar('train/loss', loss.item(), step)
-    writer.add_scalar('train/lr', lr, step)
-    writer.add_scalar('train/grad_norm', grad_norm.item(), step)
+    if writer is not None:
+        writer.add_scalar('train/loss', loss_total.item(), step)
+        writer.add_scalar('train/lr', lr, step)
+        writer.add_scalar('train/grad_norm', grad_norm.item(), step)
 
     return lr, grad_norm.item()
 
@@ -231,7 +246,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     '''
     # Initialization:
     latest, best = cfg.run_dir / 'latest.pt', cfg.run_dir / 'best.pt'   # checkpoint paths
-    tokens_per_step = cfg.batch_size * cfg.model.block_size
+    tokens_per_step = cfg.batch_size * cfg.model.block_size * cfg.grad_accum_iters
 
     # Throughput over the training interval since the last evaluation:
     train_s = time.perf_counter() - state.mark_time
@@ -243,7 +258,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     state.writer.add_scalar('eval/train_loss', train_loss, step)
     state.writer.add_scalar('eval/val_loss', val_loss, step)
     state.writer.add_scalar('eval/tok_per_sec', tok_per_sec, step)
-    state.logger.info(f'step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | {tok_per_sec:,.0f} tok/s')
+    state.logger.info(f'step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s')
 
     # Append one row to the results file (flushed immediately, so it survives a crash):
     append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr,

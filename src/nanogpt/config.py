@@ -116,6 +116,8 @@ class TrainConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
 
     batch_size: int = 64                                    # sequences per training step
+    batch_tokens: None | int = None
+    # total number of tokens in each batch, gradient accumulation is used when batch_tokens > block_size * batch_size
     max_iters: int = 5000                                   # total number of optimization steps
     lr_schedule: Literal['cosine', 'constant'] = 'constant'
     # learning rate schedule, constant or linear warmup followed by cosine decay
@@ -157,6 +159,9 @@ class TrainConfig:
         if self.run_name.startswith(NON_TRAINING_PREFIXES):
             raise ValueError(f"Run name '{self.run_name}' must not start with {NON_TRAINING_PREFIXES}; "
                              f"those prefixes mark benchmark and profile folders.")
+        B, T, BT = self.batch_size, self.model.block_size, self.batch_tokens
+        if BT is not None and ( BT < B * T or BT % (B * T) > 0 ):
+            raise ValueError(f"'batch_tokens' must be a multiple of B*T: {BT} % ({B} * {T}) = {BT % (B*T)}")
 
     @property
     def run_dir(self) -> Path:
@@ -167,6 +172,12 @@ class TrainConfig:
     def min_learning_rate(self) -> float:
         return self.learning_rate * 0.1                     # 10 percent of the learning rate
 
+    @property
+    def grad_accum_iters(self) -> int:
+        '''Number of gradient accumulation steps to realize 'batch_tokens' with B * T tokens.'''
+        if self.batch_tokens is None: return 1
+        B, T, BT = self.batch_size, self.model.block_size, self.batch_tokens
+        return BT // (B*T)
 
 #%% Preset configs:
 
@@ -189,10 +200,12 @@ stories_cfg = TrainConfig(data=DataConfig(dir='data/tinystories'),
                           eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16')
 
 # Open-AI GPT2 configs (Hugging Face version):
-gpt2_cfg = TrainConfig(model=ModelConfig(name='gpt2', vocab_size=50257, block_size=1024, n_embed=768, n_blocks=12, head_num=12, head_size=64, batched_attention=True, scaled_dot_prod=True, pos_embed='learned', ln_torch=True, dropout=0.))
-gpt2_medium_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1024, n_blocks=24, head_num=16) )
-gpt2_large_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1280, n_blocks=36, head_num=20) )
-gpt2_xl_cfg = TrainConfig( model = replace(gpt2_cfg.model, n_embed=1600, n_blocks=48, head_num=25) )
+gpt2_cfg = TrainConfig(model=ModelConfig(name='gpt2', vocab_size=50257, block_size=1024, n_embed=768, n_blocks=12, head_num=12, head_size=64, batched_attention=True, scaled_dot_prod=True, pos_embed='learned', ln_torch=True, dropout=0.),
+                       max_iters=10000, lr_schedule='cosine', learning_rate=6e-4, lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95, eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16')
+
+gpt2_medium_cfg = replace(gpt2_cfg, model = replace(gpt2_cfg.model, n_embed=1024, n_blocks=24, head_num=16) )
+gpt2_large_cfg = replace(gpt2_cfg, model = replace(gpt2_cfg.model, n_embed=1280, n_blocks=36, head_num=20) )
+gpt2_xl_cfg = replace(gpt2_cfg, model = replace(gpt2_cfg.model, n_embed=1600, n_blocks=48, head_num=25) )
 
 
 # Register the preset configs, each carrying its own name for the default run folder:
