@@ -118,6 +118,9 @@ class TrainConfig:
     batch_size: int = 64                                    # sequences per training step
     batch_tokens: None | int = None
     # total number of tokens in each batch, gradient accumulation is used when batch_tokens > block_size * batch_size
+    batch_mode: Literal['random', 'sequential'] = 'random'
+    # mode to draw training batches from data: random windows, or sequential chunks split across ranks
+
     max_iters: int = 5000                                   # total number of optimization steps
     lr_schedule: Literal['cosine', 'constant'] = 'constant'
     # learning rate schedule, constant or linear warmup followed by cosine decay
@@ -135,7 +138,7 @@ class TrainConfig:
     eval_iters: int = 200                                   # batches averaged per evaluation
     ckpt_interval: int = 500                                # steps between saves of latest.pt
 
-    device: str = DEVICE                                    # device to run the training on
+    device: str = DEVICE                                    # device type to run the training on
     precision: Literal['fp32', 'mixed_bf16'] = 'fp32'
     # compute precision for forward passes; bf16 uses autocast, with weights kept in fp32
     compile_model: bool = False                             # if True, compile model operations for efficiency
@@ -172,12 +175,11 @@ class TrainConfig:
     def min_learning_rate(self) -> float:
         return self.learning_rate * 0.1                     # 10 percent of the learning rate
 
-    @property
-    def grad_accum_iters(self) -> int:
+    def get_grad_accum_iters(self, world_size: int=1) -> int:
         '''Number of gradient accumulation steps to realize 'batch_tokens' with B * T tokens.'''
         if self.batch_tokens is None: return 1
         B, T, BT = self.batch_size, self.model.block_size, self.batch_tokens
-        return BT // (B*T)
+        return BT // (B * T * world_size)
 
 #%% Preset configs:
 
@@ -201,7 +203,8 @@ stories_cfg = TrainConfig(data=DataConfig(dir='data/tinystories'),
 
 # Open-AI GPT2 configs (Hugging Face version):
 gpt2_cfg = TrainConfig(model=ModelConfig(name='gpt2', vocab_size=50257, block_size=1024, n_embed=768, n_blocks=12, head_num=12, head_size=64, batched_attention=True, scaled_dot_prod=True, pos_embed='learned', ln_torch=True, dropout=0.),
-                       max_iters=10000, lr_schedule='cosine', learning_rate=6e-4, lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95, eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16')
+                       max_iters=10000, lr_schedule='cosine', learning_rate=6e-4, lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95, eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16',
+                       batch_mode='sequential')
 
 gpt2_medium_cfg = replace(gpt2_cfg, model = replace(gpt2_cfg.model, n_embed=1024, n_blocks=24, head_num=16) )
 gpt2_large_cfg = replace(gpt2_cfg, model = replace(gpt2_cfg.model, n_embed=1280, n_blocks=36, head_num=20) )

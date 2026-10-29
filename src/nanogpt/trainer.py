@@ -27,11 +27,13 @@ import torch
 from torch import nn
 from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.distributed as dist
 
 from nanogpt.config import TrainConfig, config_record
-from nanogpt.checkpoint import git_info, load_checkpoint, save_checkpoint
+from nanogpt.checkpoint import git_info, get_device_rng_state, load_checkpoint, save_checkpoint
 from nanogpt.checkpoint import check_inference_checkpoint, save_inference_checkpoint
-from nanogpt.data import TokenSplit, get_batch
+from nanogpt.data import TokenSplit, get_batch, get_batch_rand
 from nanogpt.generation import generate_text
 from nanogpt.model import build_model
 from nanogpt.optimizer import build_optimizer, set_learning_rate
@@ -39,6 +41,7 @@ from nanogpt.reporting import Col, append_row_csv, collect_env, load_json, load_
 from nanogpt.reporting import setup_logger, table_section, truncate_rows_csv, write_report
 from nanogpt.tokenizers import build_tokenizer
 from nanogpt.utils import autocast_ctx, get_param_count
+from nanogpt.distributed import DDPInfo
 
 #%% Global variables:
 
@@ -50,8 +53,8 @@ SUMMARY_COLS = [Col('metric', 'metric'), Col('value', 'value')]
 @dataclass
 class RunState:
     '''Class to hold the logging tools and bookkeeping shared by the training loop functions.'''
-    logger: Logger
-    writer: SummaryWriter
+    logger: Logger | None           # logger for the main process
+    writer: SummaryWriter | None    # Tensorboard writer for the main process
     git: dict                       # commit, tag, dirty flag, diff, and untracked files to save to checkpoint
     tokenizer_meta: dict            # tokenizer metadata to save to checkpoint and to rebuild the tokenizer
     best_val: float                 # best smoothed validation loss so far
@@ -85,78 +88,134 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
         Best smoothed loss value over validation data.
 
     '''
-    # Fix the random seed for reproducibility:
-    torch.manual_seed(cfg.seed)
+    # Set up distributed data parallelism if requested:
+    ddp = DDPInfo.setup(cfg.device)
+
+    # Fix the random seed for reproducibility, per rank so the processes draw independent random batches:
+    torch.manual_seed(cfg.seed + ddp.rank)
 
     # Prepare the run folder; a fresh run must not mix its records with an earlier run of the same name:
     resuming = cfg.resume and (cfg.run_dir / 'latest.pt').exists()
-    if not resuming:
-        prepare_run_dir(cfg.run_dir, cfg.overwrite)
-
-    # Logger:
-    logger = setup_logger(cfg.run_dir, cfg.log_level)
+    if ddp.is_main and not resuming: prepare_run_dir(cfg.run_dir, cfg.overwrite)
 
     # Initialization:
-    with torch.device(cfg.device):
+    with torch.device(ddp.device):
         model = build_model(cfg.model)
     optim = build_optimizer(model, cfg)
-    latest = cfg.run_dir / 'latest.pt'          # path to the latest checkpoints
-    results_path = cfg.run_dir / 'results.csv'
-    start_step = 1
+    latest = cfg.run_dir / 'latest.pt'              # path to the latest checkpoints
+    start_step = 1                                  # first step to run, steps are 1-based
     best_val = float('inf')
 
-    logger.info(f"Built '{cfg.model.name}' model with {get_param_count(model)/1e6:.2f}M parameters.")
-    if cfg.model.vocab_size_padded > cfg.model.vocab_size:
-        logger.info(f"Raised 'vocab_size' to a multiple of {cfg.model.pad_vocab_to_multiple}: {cfg.model.vocab_size} -> {cfg.model.vocab_size_padded}")
-    if cfg.grad_accum_iters > 1:
-        B, T, ga_st = cfg.batch_size, cfg.model.block_size, cfg.grad_accum_iters
-        logger.info(f"Performing {ga_st} gradient accumulation sub-steps with (B, T)=({B}, {T}) to realize {B*T*ga_st} tokens per batch.")
-
-    # Load the latest checkpoint if requested, and drop metrics logged after it:
+    # Load the latest checkpoint if requested:
     if resuming:
-        start_step, best_val = load_checkpoint(latest, model, optim, cfg.device)
-        truncate_rows_csv(results_path, key='step', max_value=start_step)
-        logger.info(f"Resumed from step {start_step}, best val loss {best_val:.4f}")
+        start_step, best_val = load_checkpoint(latest, model, optim, ddp)
         start_step += 1
-    else:
-        # Record the configuration and the environment at the start of a fresh run:
-        save_json(config_record(cfg), cfg.run_dir / 'config.json')
-        save_json(collect_env(cfg.device), cfg.run_dir / 'env.json')
+
+    # Logging and status reports to run on the main process only:
+    state, writer = setup_io(cfg, model, ddp, tokenizer_meta, resuming, start_step, best_val)
 
     # Compile the model for efficiency if requested:
     model_compiled = torch.compile(model) if cfg.compile_model else model
-
-    # TensorBoard writer, created after resuming so it hides only the events logged after the checkpoint:
-    writer = SummaryWriter(log_dir=cfg.run_dir / 'tb', purge_step=start_step)
-    logger.info(f'TensorBoard: uv run tensorboard --logdir {cfg.run_dir / "tb"}\n')
-
-    state = RunState(logger=logger, writer=writer, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val,
-                     mark_time=time.perf_counter(), mark_step=start_step - 1)
+    if ddp.is_active:
+        device_ids = [ddp.local_rank] if cfg.device == 'cuda' else None
+        model_compiled = DDP(model_compiled, device_ids=device_ids)
 
     # Training loop:
     try:
         for step in range(start_step, cfg.max_iters+1):
             # Run a training step:
-            lr, grad_norm = train_step(cfg, model_compiled, optim, step, train_data, writer)
+            lr, grad_norm = train_step(cfg, model_compiled, train_data, optim, step, ddp, writer)
 
             # Evaluate, record metrics, and save checkpoints:
             if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
-                evaluate_and_save(cfg, model, optim, step, train_data, val_data, lr, grad_norm, state)
+                evaluate_and_save(cfg, model, optim, step, train_data, val_data, lr, grad_norm, state, ddp)
 
             # Emulate a crash for testing checkpoints:
             if stop_after is not None and step == stop_after: return model, state.best_val
 
     finally:
-        writer.close()                    # flush event files, even on crash or early return
+        ddp.teardown()                              # tear-down DDP process group
+        if writer is not None: writer.close()       # flush event files, even on crash or early return
 
     # Records of the completed run:
-    write_run_report(cfg, model, state)
-    write_inference_model(cfg, state)
+    if ddp.is_main:
+        write_run_report(cfg, model, state)
+        write_inference_model(cfg, state)
 
     return model, state.best_val
 
 
-def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, train_data: TokenSplit, writer: None | SummaryWriter = None):
+def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: dict, resuming: bool, start_step: int, best_val: float = float('inf')):
+    '''
+    Function to construct the run-state object for the processes.
+
+    Parameters
+    ----------
+    cfg: TrainConfig
+            Configurations to use.
+    model: nn.Module
+        Constructed model.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+    tokenizer_meta: dict
+        Containing tokenizer metadata to include in the checkpoint.
+    resuming: bool
+        True if the run is resumed from a checkpoint.
+    start_step: int
+        Start step. Checkpoint step + 1 when 'resuming' is True.
+    best_val: float, optional
+        Best validation loss. The default is float('inf') when 'resuming' is False.
+
+    Returns
+    -------
+    state: RunState
+        Object storing run state for a process.
+    writer: SummaryWriter
+        Tensorboard summary writer utility.
+
+    '''
+    # Processes other than main do not write IO but still track their basic state:
+    if not ddp.is_main:
+        state = RunState(logger=None, writer=None, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val, mark_time=time.perf_counter(), mark_step=start_step - 1)
+        return state, None
+
+    # Logger:
+    logger = setup_logger(cfg.run_dir, cfg.log_level)
+
+    # Status update:
+    logger.info(f"Built '{cfg.model.name}' model with {get_param_count(model)/1e6:.2f}M parameters.")
+
+    vocab, mult, vocab_padded = cfg.model.vocab_size, cfg.model.vocab_size_padded, cfg.model.pad_vocab_to_multiple
+    if vocab_padded > vocab:
+        logger.info(f"Raised 'vocab_size' to a multiple of {mult}: {vocab} -> {vocab_padded}")
+
+    grad_accum_iters = cfg.get_grad_accum_iters(ddp.world_size)
+    if grad_accum_iters > 1:
+        B, T, toks = cfg.batch_size, cfg.model.block_size, cfg.batch_tokens
+        logger.info(f"Performing {grad_accum_iters} gradient accumulation iterations with {ddp.world_size} devices and (B, T)=({B}, {T}) to realize {toks} tokens per batch.")
+
+    # Drop the metrics logged after the latest checkpoint if resuming:
+    if resuming:
+        results_path = cfg.run_dir / 'results.csv'
+        truncate_rows_csv(results_path, key='step', max_value=start_step - 1)
+        logger.info(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
+    else:
+        # Record the configuration and the environment at the start of a fresh run:
+        save_json(config_record(cfg), cfg.run_dir / 'config.json')
+        save_json(collect_env(cfg.device, ddp.world_size), cfg.run_dir / 'env.json')
+
+    # TensorBoard writer, created after resuming so it hides only the events logged after the checkpoint:
+    writer = SummaryWriter(log_dir=cfg.run_dir / 'tb', purge_step=start_step)
+    logger.info(f'TensorBoard: uv run tensorboard --logdir {cfg.run_dir / "tb"}\n')
+
+    # Construct the run-state object for the main process:
+    state = RunState(logger=logger, writer=writer, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val,
+                        mark_time=time.perf_counter(), mark_step=start_step - 1)
+
+    return state, writer
+
+
+def train_step(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, optim: Optimizer, step: int, ddp: DDPInfo, writer: None | SummaryWriter = None):
     '''
     Function to run a single optimization step and log its training loss, learning rate, and gradient norm.
 
@@ -166,12 +225,14 @@ def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, 
         Configurations to use.
     model: nn.Module
         Model to train.
+    train_data: TokenSplit
+        Train data.
     optim: Optimizer
         Optimizer.
     step: int
         Current optimization step.
-    train_data: TokenSplit
-        Train data.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
     writer: SummaryWriter, optional
         Tensorboard summary writer utility. The default is None.
 
@@ -189,21 +250,26 @@ def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, 
     # Initialization:
     optim.zero_grad(set_to_none=True)
     loss_total = 0.                                 # becomes a tensor on the loss's device after the first sub-step
+    grad_accum_iters = cfg.get_grad_accum_iters(ddp.world_size)
 
     # Loop over grad accumulation sub_steps:
-    for _ in range(cfg.grad_accum_iters):
+    for substep in range(grad_accum_iters):
         # Forward pass:
-        xb, yb = get_batch(train_data, cfg)
+        xb, yb = get_batch(train_data, cfg, ddp, step, substep)
         with autocast_ctx(cfg.device, cfg.precision):
             _, loss = model(xb, yb)
 
         # Loss computation:
-        loss = loss / cfg.grad_accum_iters          # divide by number of sub-steps for correct reduction to mean
+        loss = loss / grad_accum_iters              # divide by number of sub-steps for correct reduction to mean
         loss_total += loss.detach()
+        if ddp.is_active: model.require_backward_grad_sync = (substep == grad_accum_iters-1)
         loss.backward()
+    if ddp.is_active:
+        dist.all_reduce(loss_total, op=dist.ReduceOp.SUM)
+        loss_total /= ddp.world_size
 
-    # Optimization step:
-    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)   # clip large gradients to limit noisy batches' impact
+    # Optimization step (clip large gradients to limit noisy batches' impact):
+    grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
     optim.step()
 
     # Log training loss, learning rate, and gradient norm:
@@ -217,7 +283,7 @@ def train_step(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, 
 
 #%% Evaluation utilities:
 
-def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, train_data: TokenSplit, val_data: TokenSplit, lr: float, grad_norm: float, state: RunState):
+def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, train_data: TokenSplit, val_data: TokenSplit, lr: float, grad_norm: float, state: RunState, ddp: DDPInfo):
     '''
     Function to estimate the smoothed losses, record them (log, TensorBoard, results.csv), and save checkpoints.
 
@@ -242,23 +308,39 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
         Gradient norm of the current step, before clipping.
     state: RunState
         Logging tools and bookkeeping; 'best_val' and the interval marks are updated in place.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
 
     '''
+    # Compute the smoothed losses over train and validation sets:
+    losses = estimate_loss(cfg, model, train_data, val_data, ddp)
+
+    # Collect random number generator states to the main device to be stored in the checkpoint:
+    if step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
+        if ddp.is_active:
+            rng_state = [None] * ddp.world_size if ddp.is_main else None
+            dist.gather_object(get_device_rng_state(ddp), rng_state, dst=0)
+        else:
+            rng_state = [get_device_rng_state(ddp)]
+
+    if not ddp.is_main: return              # logging, checkpointing, and status reports only on main process
+
     # Initialization:
     latest, best = cfg.run_dir / 'latest.pt', cfg.run_dir / 'best.pt'   # checkpoint paths
-    tokens_per_step = cfg.batch_size * cfg.model.block_size * cfg.grad_accum_iters
+    tokens_per_step = cfg.batch_size * cfg.model.block_size * cfg.get_grad_accum_iters(ddp.world_size) * ddp.world_size
 
     # Throughput over the training interval since the last evaluation:
     train_s = time.perf_counter() - state.mark_time
     tok_per_sec = (step - state.mark_step) * tokens_per_step / train_s
 
-    # Smoothed losses:
-    losses = estimate_loss(cfg, model, train_data, val_data)
+    # Tensorboard logs:
     train_loss, val_loss = losses['train'].item(), losses['val'].item()
     state.writer.add_scalar('eval/train_loss', train_loss, step)
     state.writer.add_scalar('eval/val_loss', val_loss, step)
     state.writer.add_scalar('eval/tok_per_sec', tok_per_sec, step)
-    state.logger.info(f'step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s')
+
+    # Status update:
+    state.logger.info(f'{train_s:.3f} sec | step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s')
 
     # Append one row to the results file (flushed immediately, so it survives a crash):
     append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr,
@@ -268,7 +350,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     if step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
         best_checkpoint = (val_loss < state.best_val)
         if best_checkpoint: state.best_val = val_loss
-        save_checkpoint(latest, model, optim, step, state.tokenizer_meta, state.best_val, cfg, state.git)
+        save_checkpoint(latest, model, optim, step, state.tokenizer_meta, state.best_val, cfg, state.git, rng_state)
         if best_checkpoint:                         # latest checkpoint is the best checkpoint
             tmp = best.with_suffix('.tmp')
             shutil.copyfile(latest, tmp)
@@ -279,7 +361,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
 
 
 @torch.no_grad()
-def estimate_loss(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, val_data: TokenSplit):
+def estimate_loss(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, val_data: TokenSplit, ddp: DDPInfo):
     '''
     Function to estimate the smoothed loss over 'eval_iters'.
 
@@ -293,6 +375,8 @@ def estimate_loss(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, va
         Train data.
     val_data: TokenSplit
         Validation data.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
 
     Returns
     -------
@@ -303,16 +387,21 @@ def estimate_loss(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, va
     # Initialization:
     losses_smoothed = {}
     model.eval()
+    iters = max( [1, cfg.eval_iters // ddp.world_size] )
 
     # Loop over train and validation data:
     for split, data in zip(['train', 'val'], [train_data, val_data]):
-        losses = torch.zeros(cfg.eval_iters)
-        for k in range(cfg.eval_iters):         # loop over 'eval_iters'
-            xb, yb = get_batch(data, cfg)
+        losses = torch.zeros(iters, device=ddp.device)
+        for k in range(iters):          # loop over smoothed iterations
+            xb, yb = get_batch_rand(data, cfg)
             with autocast_ctx(cfg.device, cfg.precision):
                 _, loss = model(xb, yb)
             losses[k] = loss
-        losses_smoothed[split] = losses.mean()
+        loss_mean = losses.mean()
+        if ddp.is_active:
+            dist.all_reduce(loss_mean, op=dist.ReduceOp.SUM)
+            loss_mean /= ddp.world_size
+        losses_smoothed[split] = loss_mean
     model.train()
 
     return losses_smoothed

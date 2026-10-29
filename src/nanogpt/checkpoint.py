@@ -17,6 +17,7 @@ from torch import nn
 from torch.optim import Optimizer
 
 from nanogpt.config import TrainConfig, ModelConfig
+from nanogpt.distributed import DDPInfo
 from nanogpt.model import build_model
 from nanogpt.tokenizers import Tokenizer, build_tokenizer
 
@@ -48,8 +49,73 @@ def git_info() -> dict:
     return {'commit': commit, 'tag': tag, 'dirty': bool(diff or untracked), 'diff': diff, 'untracked': untracked}
 
 
+def get_device_rng_state(ddp: DDPInfo):
+    '''
+    Function to collect the random number generator (RNG) state for a device.
+
+    Parameters
+    ----------
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+
+    Returns
+    -------
+    rng_state: dict
+        RNG state for the current device.
+
+    '''
+    rng_state = {
+        'python': random.getstate(),
+        'torch': torch.get_rng_state(),
+        'mps': torch.mps.get_rng_state() if torch.backends.mps.is_available() else None,
+        'cuda': torch.cuda.get_rng_state(ddp.device) if torch.cuda.is_available() else None,
+    }
+    return rng_state
+
+
+def set_device_rng_state(rng_state: dict, ddp: DDPInfo):
+    '''
+    Function to set the RNG state for the current device.
+
+    Parameters
+    ----------
+    rng_state: dict
+        RNG state for the current device.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+
+    '''
+    random.setstate(rng_state['python'])
+    torch.set_rng_state(rng_state['torch'].cpu())
+    if rng_state['mps'] is not None and torch.backends.mps.is_available():
+        torch.mps.set_rng_state(rng_state['mps'].cpu())
+    if rng_state['cuda'] is not None and torch.cuda.is_available():
+        torch.cuda.set_rng_state(rng_state["cuda"].cpu(), ddp.device)
+
+
+def reseed_rng(seed: int, step: int, ddp: DDPInfo):
+    '''
+    Function to reseed the RNGs from (seed, step, rank) when the saved per-rank states cannot be restored.
+    RNG states are opaque, so they are reseeded rather than shifted. Including the step keeps a resumed run from
+    replaying the random stream of the start of the run.
+
+    Parameters
+    ----------
+    seed: int
+        Seed of the run.
+    step: int
+        Step at which the checkpoint was saved.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+
+    '''
+    new_seed = seed + step * ddp.world_size + ddp.rank      # unique per (step, rank) for a given seed
+    random.seed(new_seed)
+    torch.manual_seed(new_seed)                             # seeds the CPU and all accelerator generators
+
+
 def save_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, step: int,
-                    tokenizer_meta: dict, best_val: float, cfg: TrainConfig, git: dict) -> None:
+                    tokenizer_meta: dict, best_val: float, cfg: TrainConfig, git: dict, rng_state: list) -> None:
     '''
     Function to save a checkpoint containing the model weights, optimizer and RNG states, tokenizer metadata, code version, configs, and best loss value.
 
@@ -71,6 +137,8 @@ def save_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, step: in
         Full training configuration, including the model configuration.
     git: dict
         Commit, tag, dirty flag, diff, and untracked files, captured once at the start of the run.
+    rng_state: list of dicts
+        RNG state across all processes.
 
     '''
     ckpt = {
@@ -80,20 +148,15 @@ def save_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, step: in
         'tokenizer': tokenizer_meta,
         'best_val': best_val,
         'cfg': asdict(cfg),
-        'rng': {
-            'python': random.getstate(),
-            'torch': torch.get_rng_state(),
-            'mps': torch.mps.get_rng_state() if torch.backends.mps.is_available() else None,
-            'cuda': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
-        },
         'git': git,
+        'rng': rng_state,
     }
     tmp = path.with_suffix('.tmp')
     torch.save(ckpt, tmp)
     os.replace(tmp, path)          # atomic: never leaves a half-written checkpoint
 
 
-def load_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, device: str) -> tuple[int, float]:
+def load_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, ddp: DDPInfo) -> tuple[int, float]:
     '''
     Function to load a checkpoint to fully restore training state.
 
@@ -105,8 +168,8 @@ def load_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, device: 
         Model to load the checkpoint into.
     optimizer: torch.optim
         Optimizer to load the checkpoint into.
-    device: string
-        Device to load the restored model and optimizer into. Could be 'cpu, cuda, mps'.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
 
     Returns
     -------
@@ -117,20 +180,18 @@ def load_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, device: 
 
     '''
     # Load the checkpoint:
-    ckpt = torch.load(path, map_location=device, weights_only=False)
+    ckpt = torch.load(path, map_location=ddp.device, weights_only=False)
 
     # Restore model and optimizer states:
     model.load_state_dict(ckpt['model'])
     optimizer.load_state_dict(ckpt['optimizer'])
 
     # Restore random number generator (RNG) states:
-    rng = ckpt['rng']
-    random.setstate(rng['python'])
-    torch.set_rng_state(rng['torch'].cpu())
-    if rng['mps'] is not None and torch.backends.mps.is_available():
-        torch.mps.set_rng_state(rng['mps'].cpu())
-    if rng['cuda'] is not None and torch.cuda.is_available():
-        torch.cuda.set_rng_state_all([s.cpu() for s in rng["cuda"]])
+    rng_state = ckpt['rng']
+    if len(rng_state) == ddp.world_size:        # exact restore for the same world size
+        set_device_rng_state(rng_state[ddp.rank], ddp)
+    else:                                       # reseed so the ranks still draw independent streams
+        reseed_rng(ckpt['cfg']['seed'], ckpt['step'], ddp)
 
     return ckpt["step"], ckpt["best_val"]
 

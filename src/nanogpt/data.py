@@ -12,6 +12,7 @@ import numpy as np
 import json
 
 from nanogpt.config import TrainConfig
+from nanogpt.distributed import DDPInfo
 
 #%% Data loader:
 
@@ -84,7 +85,84 @@ def load_splits(data_dir) -> tuple[TokenSplit, TokenSplit, dict]:
     return train_data, val_data, meta
 
 
-def get_batch(split: TokenSplit, cfg: TrainConfig):
+def get_batch(split: TokenSplit, cfg: TrainConfig, ddp: DDPInfo | None = None, step: int | None = None, substep: int | None = None):
+    '''
+    Function to generate cfg.batch_size batches.
+
+    Parameters
+    ----------
+    split: TokenSplit
+        Data to generate a batch from.
+    cfg: TrainConfig
+        Training configurations to use.
+    ddp: DDPInfo, optional
+        Distributed data parallelism instance. The default is None.
+    step: int, optional
+        Current step. The default is None.
+    substep: int, optional
+        Current substep within the step. The default is None.
+
+    Returns
+    -------
+    x (B, T): tensor
+        Input batch.
+    y (B, T): tensor
+        Target batch. 'y' is 'x' shifted by one token.
+
+    '''
+    if cfg.batch_mode == 'random':
+        return get_batch_rand(split, cfg)
+    elif cfg.batch_mode == 'sequential':
+        if None in [ddp, step, substep]: raise ValueError("'ddp, step, substep' arguments are required!")
+        return get_batch_seq(split, cfg, ddp, step, substep)
+    else:
+        raise ValueError(f"Unknown 'batch_mode={cfg.batch_mode!r}' requested!")
+
+
+def get_batch_seq(split: TokenSplit, cfg: TrainConfig, ddp: DDPInfo, step: int, substep: int):
+    '''
+    Function to sample cfg.batch_size sequential windows.
+
+    Parameters
+    ----------
+    split: TokenSplit
+        Data to generate a batch from.
+    cfg: TrainConfig
+        Training configurations to use.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+    step: int
+        Current step.
+    substep: int
+        Current substep within the step.
+
+    Returns
+    -------
+    x (B, T): tensor
+        Input batch.
+    y (B, T): tensor
+        Target batch. 'y' is 'x' shifted by one token.
+
+    '''
+    # Fresh memmap per batch:
+    data = split.tokens()
+
+    # Initialization:
+    B, T, ga_iters = cfg.batch_size, cfg.model.block_size, cfg.get_grad_accum_iters(ddp.world_size)
+
+    # Read a chunk that spans 'B * T + 1' tokens since the last read:
+    ix = B * T * ( (step * ga_iters + substep) * ddp.world_size + ddp.rank )
+    idx = np.arange(ix, ix + B * T + 1) % len(data)     # wrap around for indices larger than len(data)
+    chunk = torch.from_numpy(data[idx].astype(np.int64))
+    x, y = chunk[:-1].view(B, T).contiguous(), chunk[1:].view(B, T).contiguous()
+
+    if cfg.device == 'cuda':                            # async copy from pinned memory
+        return (x.pin_memory().to('cuda', non_blocking=True),
+                y.pin_memory().to('cuda', non_blocking=True))
+    return x.to(cfg.device), y.to(cfg.device)
+
+
+def get_batch_rand(split: TokenSplit, cfg: TrainConfig):
     '''
     Function to sample cfg.batch_size random windows.
 

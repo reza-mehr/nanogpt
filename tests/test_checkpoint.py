@@ -82,7 +82,7 @@ def _training_checkpoint(tmp_path):
     model = build_model(cfg.model)
     optim = build_optimizer(model, cfg)
     path = tmp_path / 'best.pt'
-    save_checkpoint(path, model, optim, 1, CharTokenizer(TEXT).to_meta(), 1.0, cfg, git_info())
+    save_checkpoint(path, model, optim, 1, CharTokenizer(TEXT).to_meta(), 1.0, cfg, git_info(), [])
     return path
 
 

@@ -334,7 +334,6 @@ class GPT2(nn.Module):
         ------
         ValueError
             If cfg.pad_vocab_to_multiple is larger than 1.
-        ValueError
             If the pretrained model weights are unavailable for the requested (n_embed, n_blocks, head_num) values.
 
         '''

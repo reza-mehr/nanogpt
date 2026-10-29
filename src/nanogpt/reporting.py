@@ -123,7 +123,7 @@ def setup_logger(run_dir: Path | None, level: int = logging.INFO) -> logging.Log
 
 #%% Environment capture:
 
-def collect_env(device: str) -> dict:
+def collect_env(device: str, world_size: int = 1) -> dict:
     '''
     Function to collect the code version, software, and hardware details needed to interpret a run or benchmark.
 
@@ -131,6 +131,8 @@ def collect_env(device: str) -> dict:
     ----------
     device: str
         Device the code runs on.
+    world_size: int, optional
+        Number of distributed data parallel (DDP) processes.
 
     Returns
     -------
@@ -149,6 +151,7 @@ def collect_env(device: str) -> dict:
         'cpu': _run_cmd(['sysctl', '-n', 'machdep.cpu.brand_string']) if is_mac else platform.processor(),
         'ram (GB)': f'{ram_gb:.0f}',
         'torch cpu threads': torch.get_num_threads(),
+        'world size': world_size,
         'device': device,
     }
     if device == 'cuda':

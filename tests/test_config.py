@@ -149,7 +149,7 @@ def test_batch_tokens():
     # Default 'batch_tokens' value:
     cfg = TrainConfig(model=ModelConfig(block_size=8), batch_size=2)
     assert cfg.batch_tokens is None
-    assert cfg.grad_accum_iters == 1
+    assert cfg.get_grad_accum_iters() == 1
 
     # Impermissible 'batch_tokens' values:
     with pytest.raises(ValueError, match='batch_tokens'):
@@ -161,8 +161,8 @@ def test_batch_tokens():
 
     # Given 'batch_tokens' value:
     cfg = TrainConfig(model=ModelConfig(block_size=8), batch_size=2, batch_tokens=16)
-    assert cfg.grad_accum_iters == 1
+    assert cfg.get_grad_accum_iters() == 1
 
     # With gradient accumulation:
     cfg = TrainConfig(model=ModelConfig(block_size=8), batch_size=2, batch_tokens=32)
-    assert cfg.grad_accum_iters == 2
+    assert cfg.get_grad_accum_iters() == 2

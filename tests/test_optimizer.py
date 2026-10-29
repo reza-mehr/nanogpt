@@ -12,7 +12,8 @@ import pytest
 from dataclasses import replace
 
 from nanogpt.config import ModelConfig, TrainConfig
-from nanogpt.data import TokenSplit, get_batch
+from nanogpt.data import TokenSplit, get_batch_rand
+from nanogpt.distributed import DDPInfo
 from nanogpt.model import GPT
 from nanogpt.optimizer import build_optimizer, get_lr
 import nanogpt.trainer
@@ -70,24 +71,26 @@ def test_accumulated_gradient_matches(train_data, monkeypatch):
     '''Function to test that the accumulated gradient of two sub-steps matches the gradient of one large batch.'''
 
     # Configs for one batch of 2*B sequences, and for two accumulated sub-steps of B sequences:
-    model_cfg = replace(tiny_cfg.model, dropout=0.)     # dropout masks would differ between the runs
+    device = 'cpu'
+    model_cfg = replace(tiny_cfg.model, dropout=0.)                     # dropout masks would differ between the runs
     cfg_full = replace(tiny_cfg, model=model_cfg, batch_size=2*B, lr_schedule='constant', learning_rate=3e-4,
-                       decay_groups=False, device='cpu')
-    cfg_accum = replace(cfg_full, batch_size=B, batch_tokens=2*B*T)
-    assert cfg_accum.grad_accum_iters == 2
+                       decay_groups=False, device=device)
+    cfg_accum = replace(cfg_full, batch_size=B, batch_tokens=2*B*T)     # specify total batch tokens
+    assert cfg_accum.get_grad_accum_iters() == 2
 
     # One fixed batch shared by both runs, so they see the same sequences:
     torch.manual_seed(0)
-    x, y = get_batch(train_data, cfg_full)              # (2*B, T)
+    x, y = get_batch_rand(train_data, cfg_full)                         # (2*B, T)
 
     def run(cfg, batches):
         '''Function to run the production training step on the given batches and return the gradients.'''
         batches = iter(batches)
-        monkeypatch.setattr(nanogpt.trainer, 'get_batch', lambda split, cfg: next(batches))
+        monkeypatch.setattr(nanogpt.trainer, 'get_batch', lambda *args, **kwargs: next(batches))
         torch.manual_seed(0)                            # same initial weights in both runs
+        ddp = DDPInfo(device=device)                    # single process, no environment reads
         model = GPT(cfg.model)
         optim = build_optimizer(model, cfg)
-        train_step(cfg, model, optim, 1, train_data)
+        train_step(cfg, model, train_data, optim, 1, ddp)
         assert next(batches, None) is None              # train_step consumed every batch
         return {name: p.grad for name, p in model.named_parameters()}
 
