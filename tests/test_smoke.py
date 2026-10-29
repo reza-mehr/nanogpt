@@ -14,13 +14,14 @@ Before committing (everything):
 
 #%% Imports:
 
+import os
 import subprocess
 import sys
 from dataclasses import replace
 from pathlib import Path
-
 import numpy as np
 import pytest
+import json
 
 from nanogpt.config import PRESETS
 from nanogpt.data import TokenSplit
@@ -63,15 +64,18 @@ def _only_subfolder(folder: Path) -> Path:
     return subfolders[0]
 
 
-def _token_splits(tmp_path: Path, vocab_size: int, n_tokens: int = 4000) -> tuple[TokenSplit, TokenSplit]:
+def _token_splits(tmp_path: Path, tok: CharTokenizer, n_tokens: int = 4000) -> tuple[TokenSplit, TokenSplit, dict]:
     '''Function to write random token files in the dataset format and return train and validation splits.'''
     rng = np.random.default_rng(0)
     splits = []
+    meta = tok.to_meta() | {'dtype': '<u2', 'n_tokens': {}}
     for name in ('train', 'val'):
         path = tmp_path / f'{name}.bin'
-        rng.integers(0, vocab_size, n_tokens, dtype=np.uint16).astype('<u2').tofile(path)
+        rng.integers(0, tok.vocab_size, n_tokens, dtype=np.uint16).astype('<u2').tofile(path)
         splits.append(TokenSplit(str(path), n_tokens))
-    return splits[0], splits[1]
+        meta['n_tokens'][name] = n_tokens
+    (tmp_path / 'meta.json').write_text(json.dumps(meta, indent=2))
+    return splits[0], splits[1], meta
 
 #%% Training:
 
@@ -82,7 +86,7 @@ def trained_run(tmp_path_factory):
     # Initialization:
     tmp_path = tmp_path_factory.mktemp('train')
     tok = CharTokenizer(TEXT)
-    train_data, val_data = _token_splits(tmp_path, tok.vocab_size)
+    train_data, val_data, _ = _token_splits(tmp_path, tok)
     small = PRESETS['small_cfg']
     cfg = replace(small, model=replace(small.model, vocab_size=tok.vocab_size, dropout=0.0),
                   device='cpu', max_iters=4, eval_interval=2, ckpt_interval=2, eval_iters=2, lr_warmup_iters=1,
@@ -115,6 +119,51 @@ def test_train_resume_and_records(trained_run):
     _assert_files(run_dir, {'loss.png'})
     _run_script('plot_runs.py', '--path', str(run_dir.parent))
     _assert_files(run_dir.parent, {'comparison.png', 'comparison.md', 'comparison.csv'})
+
+
+def test_ddp_train_resume_and_records(tmp_path_factory):
+    '''Function to test training in distributed data parallel (DDP) mode.'''
+
+    # Initialization:
+    tmp_path = tmp_path_factory.mktemp('ddp')
+    tok = CharTokenizer(TEXT)
+    _token_splits(tmp_path, tok)
+
+    # Tokenized data and run folder paths:
+    data_dir, out_dir, run_name = tmp_path, tmp_path, 'smoke_ddp'
+    run_dir = tmp_path / run_name
+
+    # Train the model in DDP mode using the test's Python and a port apart from the default:
+    env = {**os.environ, 'PYTHON': sys.executable, 'MASTER_PORT': '29512'}
+    cmd = ['bash', str(ROOT / 'scripts' / 'ddp.sh'), '2', str(ROOT / 'scripts' / 'train.py'), 'small_cfg',
+           '--device', 'cpu', '--batch-mode', 'sequential',
+           '--data.dir', str(data_dir), '--out-dir', str(out_dir), '--run-name', run_name,
+           '--model.dropout', '0.', '--eval-interval', '2', '--ckpt-interval', '2', '--eval-iters', '2',
+           '--lr-warmup-iters', '1', '--sample-tokens', '8']
+    result = subprocess.run(cmd + ['--max-iters', '4'], env=env, capture_output=True, text=True, timeout=600)
+    assert result.returncode == 0, f"{' '.join(cmd)} failed:\n{result.stderr[-3000:]}"
+
+    # Assert all files exist as expected:
+    _assert_files(run_dir, RUN_RECORDS | {'latest.pt', 'best.pt', 'model.pt'})
+    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [2, 4]
+    report = (run_dir / 'report.md').read_text()
+    assert report.index('### Summary') < report.index('### Samples') < report.index('### Configuration')
+    assert report.count('#### Prompt') == 1
+    log = (run_dir / 'run.log').read_text()
+    assert log.count("| Built 'gpt' model with ") == 1      # only main process logs
+
+    # Assert successful training resume in DDP mode:
+    cmd += ['--max-iters', '6', '--resume']
+    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=600)
+    assert result.returncode == 0, f"{' '.join(cmd)} failed:\n{result.stderr[-3000:]}"
+
+    # Assert all files exist as expected:
+    _assert_files(run_dir, RUN_RECORDS | {'latest.pt', 'best.pt', 'model.pt'})
+    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [2, 4, 6]
+    log = (run_dir / 'run.log').read_text()
+    assert log.count("| Built 'gpt' model with ") == 2      # only main process logs
+    assert log.count("| Resumed from step 4") == 1          # main process logged the correct resume step
+
 
 #%% Generation:
 
