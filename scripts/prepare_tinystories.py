@@ -59,20 +59,22 @@ def write_split(ds, path: Path) -> int:
 def main(p: PrepConfig) -> None:
     '''Main function to prepare TinyStories for training.'''
 
-    # uint16 holds ids up to 65,535:
-    assert TOK.vocab_size < 2**16, 'vocabulary too large for uint16'
+    # Error handling (uint16 holds ids up to 65,535):
+    if TOK.vocab_size > 2**16: raise ValueError('Vocabulary too large for uint16!')
 
-    # Initialization:
+    # Construct the output path:
     out = Path(p.out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    if (out / 'meta.json').exists(): raise FileExistsError(f"Tokenized binaries already exist: {out}")
+
+    # Initialization:
     ds = load_dataset('roneneldan/TinyStories')
     meta = TOK.to_meta() | {'dtype': '<u2', 'n_tokens': {}}
 
     # Loop over splits:
     for split, name in [('train', 'train'), ('validation', 'val')]:
         d = ds[split]
-        if p.max_stories:
-            d = d.select(range(min(p.max_stories, len(d))))
+        if p.max_stories: d = d.select(range(min(p.max_stories, len(d))))
         d = d.map(tokenize_batch, batched=True, remove_columns=['text'],
                   num_proc=p.num_proc, desc=f'tokenizing {split}')
         meta['n_tokens'][name] = write_split(d, out / f'{name}.bin')

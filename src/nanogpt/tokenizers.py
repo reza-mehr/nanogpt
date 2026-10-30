@@ -176,6 +176,9 @@ class GPT2Tokenizer(Tokenizer):
     def encode(self, s: str) -> list[int]:
         return self.enc.encode_ordinary(s)       # ignores special-token syntax in the text
 
+    def encode_batch(self, batch: list, num_threads: int = 1) -> list[list[int]]:
+        return self.enc.encode_ordinary_batch(batch, num_threads=num_threads)
+
     def decode(self, ids: list[int]) -> str:
         return self.enc.decode(ids)
 
