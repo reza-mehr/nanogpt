@@ -6,17 +6,21 @@ This file contains the code to test checkpoint resumption and the inference-only
 
 #%% Imports:
 
+import os
+import sys
 import subprocess
 import numpy as np
 from dataclasses import replace
 
 import pytest
 import torch
+import torch.multiprocessing as mp
 
 from nanogpt import checkpoint
 from nanogpt.checkpoint import git_info, load_model_tokenizer, save_checkpoint
 from nanogpt.checkpoint import check_inference_checkpoint, save_inference_checkpoint
 from nanogpt.config import ModelConfig, TrainConfig
+from nanogpt.distributed import free_port
 from nanogpt.data import TokenSplit
 from nanogpt.model import build_model
 from nanogpt.optimizer import build_optimizer
@@ -37,16 +41,16 @@ def data(tmp_path):
     return TokenSplit(tmp_path / 'train.bin', 1800), TokenSplit(tmp_path / 'val.bin', 200)
 
 
-def tiny_cfg(tmp_path, run_name: str) -> TrainConfig:
+def tiny_cfg(tmp_path, run_name: str, batch_mode: str = 'random') -> TrainConfig:
     return TrainConfig(
         model=ModelConfig(name='gpt', vocab_size=VOCAB, block_size=8, n_embed=16,
                           head_num=2, head_size=8, n_blocks=2, dropout=0.1),     # dropout exercises RNG restore
-        batch_size=4, max_iters=20, eval_interval=5, eval_iters=2,
+        batch_size=4, batch_mode=batch_mode, max_iters=20, eval_interval=5, eval_iters=2,
         ckpt_interval=5, learning_rate=1e-3, lr_warmup_iters=5, seed=0, device='cpu',
         out_dir=str(tmp_path), run_name=run_name,
     )
 
-#%% Main code:
+#%% Checkpoint resume tests:
 
 @pytest.mark.parametrize('stop_after', [5, 7])
 def test_resume_matches_continuous_run(tmp_path, data, stop_after):
@@ -66,11 +70,53 @@ def test_resume_matches_continuous_run(tmp_path, data, stop_after):
     model_b, best_loss_b = train(replace(cfg_b, resume=True), train_data, val_data, tok_meta)
 
     # Assertions:
-    assert best_loss_a==best_loss_b
+    assert best_loss_a == best_loss_b
     sd_a, sd_b = model_a.state_dict(), model_b.state_dict()
     assert sd_a.keys() == sd_b.keys()
     for name in sd_a:
         assert torch.equal(sd_a[name], sd_b[name]), f'weights differ in {name}'
+
+
+@pytest.mark.smoke
+@pytest.mark.parametrize('batch_mode', ['random', 'sequential'])
+def test_resume_matches_continuous_run_ddp(tmp_path, data, batch_mode, stop_after = 7):
+    '''Function to test that an interrupted run resumes as expected in DDP mode (stops after step 7 so steps 6 and 7 are repeated).'''
+
+    # Generate synthetic data:
+    train_data, val_data = data
+    tok_meta = CharTokenizer(TEXT).to_meta()    # real metadata: the end of train() rebuilds the tokenizer from model.pt
+
+    # Run A: 20 steps without interruption:
+    world_size = 2
+    cfg_a = tiny_cfg(tmp_path, 'a_ddp', batch_mode)
+    mp.spawn(_worker, args=(world_size, free_port(), cfg_a, train_data, val_data, tok_meta), nprocs=world_size)
+
+    # Run B: same config, "crashes" after stop_after, then resumes to the end:
+    cfg_b = tiny_cfg(tmp_path, 'b_ddp', batch_mode)
+    mp.spawn(_worker, args=(world_size, free_port(), cfg_b, train_data, val_data, tok_meta, stop_after), nprocs=world_size)
+    assert (cfg_b.run_dir / 'latest.pt').exists()
+    cfg_b = replace(cfg_b, resume=True)
+    mp.spawn(_worker, args=(world_size, free_port(), cfg_b, train_data, val_data, tok_meta), nprocs=world_size)
+
+    # Load the checkpoints:
+    ckpt = torch.load(cfg_a.run_dir / 'latest.pt', map_location='cpu', weights_only=False)
+    sd_a, best_loss_a = ckpt['model'], ckpt['best_val']
+    ckpt = torch.load(cfg_b.run_dir / 'latest.pt', map_location='cpu', weights_only=False)
+    sd_b, best_loss_b = ckpt['model'], ckpt['best_val']
+
+    # Assertions:
+    assert best_loss_a == best_loss_b
+    assert sd_a.keys() == sd_b.keys()
+    for name in sd_a:
+        assert torch.equal(sd_a[name], sd_b[name]), f'weights differ in {name}'
+
+
+def _worker(rank, world_size, port, cfg, train_data, val_data, meta, stop_after=None):
+    '''Worker to set the environment variables and call the DDP training run.'''
+    os.environ.update({'RANK': str(rank), 'LOCAL_RANK': str(rank), 'WORLD_SIZE': str(world_size),
+                       'MASTER_ADDR': '127.0.0.1', 'MASTER_PORT': str(port)})
+    train(cfg, train_data, val_data, meta, stop_after)    # DDPInfo.setup reads the env vars, inits and tears down
+
 
 #%% Inference-only checkpoint:
 

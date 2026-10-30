@@ -19,7 +19,7 @@ from nanogpt.optimizer import build_optimizer, get_lr
 import nanogpt.trainer
 from nanogpt.trainer import train_step
 
-#%% Set up the configs:
+#%% Training configurations:
 
 VOCAB, T, B = 16, 8, 2
 
@@ -87,9 +87,9 @@ def test_accumulated_gradient_matches(train_data, monkeypatch):
         batches = iter(batches)
         monkeypatch.setattr(nanogpt.trainer, 'get_batch', lambda *args, **kwargs: next(batches))
         torch.manual_seed(0)                            # same initial weights in both runs
-        ddp = DDPInfo(device=device)                    # single process, no environment reads
         model = GPT(cfg.model)
         optim = build_optimizer(model, cfg)
+        ddp = DDPInfo(device=device)                    # single process, no environment reads
         train_step(cfg, model, train_data, optim, 1, ddp)
         assert next(batches, None) is None              # train_step consumed every batch
         return {name: p.grad for name, p in model.named_parameters()}

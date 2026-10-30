@@ -132,9 +132,9 @@ def get_batch_seq(split: TokenSplit, cfg: TrainConfig, ddp: DDPInfo, step: int, 
     ddp: DDPInfo
         Distributed data parallelism instance.
     step: int
-        Current step.
+        Current step (indexed from zero).
     substep: int
-        Current substep within the step.
+        Current substep within the step (indexed from zero).
 
     Returns
     -------

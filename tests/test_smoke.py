@@ -24,6 +24,7 @@ import pytest
 import json
 
 from nanogpt.config import PRESETS
+from nanogpt.distributed import free_port
 from nanogpt.data import TokenSplit
 from nanogpt.reporting import load_rows_csv, save_rows_csv
 from nanogpt.tokenizers import CharTokenizer
@@ -134,7 +135,7 @@ def test_ddp_train_resume_and_records(tmp_path_factory):
     run_dir = tmp_path / run_name
 
     # Train the model in DDP mode using the test's Python and a port apart from the default:
-    env = {**os.environ, 'PYTHON': sys.executable, 'MASTER_PORT': '29512'}
+    env = {**os.environ, 'PYTHON': sys.executable, 'MASTER_PORT': str(free_port())}
     cmd = ['bash', str(ROOT / 'scripts' / 'ddp.sh'), '2', str(ROOT / 'scripts' / 'train.py'), 'small_cfg',
            '--device', 'cpu', '--batch-mode', 'sequential',
            '--data.dir', str(data_dir), '--out-dir', str(out_dir), '--run-name', run_name,

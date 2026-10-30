@@ -25,11 +25,6 @@ shift                                           # "$@" now holds the script and 
 MASTER_ADDR='127.0.0.1'                         # IPv4 loopback, see above
 MASTER_PORT="${MASTER_PORT:-29500}"             # torchrun's default port unless overridden
 
-# On macOS, gloo must use the loopback interface (no effect on NCCL GPU runs):
-if [[ "$(uname)" == 'Darwin' ]]; then
-    export GLOO_SOCKET_IFNAME='lo0'
-fi
-
 #%% Launch:
 
 TORCHRUN_ARGS=(--nnodes=1 --nproc_per_node="${NPROC}" --master_addr="${MASTER_ADDR}" --master_port="${MASTER_PORT}")

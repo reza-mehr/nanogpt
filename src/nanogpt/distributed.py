@@ -6,6 +6,7 @@ This file contains the code and utility relevant for distributed data parallelis
 #%% Imports:
 
 import os
+import socket
 import torch
 from torch.distributed import init_process_group, destroy_process_group
 from dataclasses import dataclass
@@ -70,3 +71,26 @@ class DDPInfo:
     def teardown(self):
         '''Function to tear-down DDP process at the end.'''
         if self.is_active: destroy_process_group()
+
+
+#%% Utility functions:
+
+def free_port(host: str = '127.0.0.1') -> int:
+    '''
+    Function to find a free TCP port on 'host', e.g., for 'MASTER_PORT'.
+    The port is released before returning, so another process could take it before it is used. That race is acceptable for tests and local runs.
+
+    Parameters
+    ----------
+    host: str, optional
+        Address to bind to. The default is the IPv4 loopback '127.0.0.1'.
+
+    Returns
+    -------
+    port: int
+        Port number the OS reported as free.
+
+    '''
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((host, 0))                   # port 0: the OS assigns any free port
+        return s.getsockname()[1]

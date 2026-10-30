@@ -254,15 +254,17 @@ def train_step(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, optim
 
     # Loop over grad accumulation sub_steps:
     for substep in range(grad_accum_iters):
+        # Signal to sync at this step (must go before the forward pass):
+        if ddp.is_active: model.require_backward_grad_sync = (substep == grad_accum_iters-1)
+
         # Forward pass:
-        xb, yb = get_batch(train_data, cfg, ddp, step, substep)
+        xb, yb = get_batch(train_data, cfg, ddp, step-1, substep)   # steps are 1-based and batch generator is 0-based
         with autocast_ctx(cfg.device, cfg.precision):
             _, loss = model(xb, yb)
 
         # Loss computation:
         loss = loss / grad_accum_iters              # divide by number of sub-steps for correct reduction to mean
         loss_total += loss.detach()
-        if ddp.is_active: model.require_backward_grad_sync = (substep == grad_accum_iters-1)
         loss.backward()
     if ddp.is_active:
         dist.all_reduce(loss_total, op=dist.ReduceOp.SUM)
