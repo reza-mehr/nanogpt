@@ -1,6 +1,17 @@
 
 '''
-This file contains the code to download the FineWeb dataset, tokenize with GPT-2 BPE, and write flat uint16 token train and validation files.
+This file contains the code to download the FineWeb-10BT dataset, tokenize with GPT-2 BPE, and write flat uint16 token train and validation files.
+Notes:
+- meta.json marks a finished run.
+- HuggingFace dataset class caches downloads and map results, so a rerun reuses finished work.
+- On an 8-core laptop, 8 processes x 1 thread was fastest; threads added contention.
+- Compared to download and tokenization, wiriting binaries is fast.
+
+To download and tokenize a single parquet for debugging (writes to data/fineweb_single_parquet/):
+    uv run scripts/prepare_fineweb.py --data-file sample/10BT/000_00000.parquet
+
+To download and tokenize the entire dataset (writes to data/fineweb/):
+    uv run scripts/prepare_fineweb.py
 
 '''
 #%% Imports:

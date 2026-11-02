@@ -337,7 +337,8 @@ class GPT2(nn.Module):
             If the pretrained model weights are unavailable for the requested (n_embed, n_blocks, head_num) values.
 
         '''
-        if not cfg.vocab_size_padded == cfg.vocab_size: raise ValueError("Cannot load pre-trained weights for padded 'vocab_size' dimension.")
+        if not cfg.vocab_size_padded == cfg.vocab_size:
+            raise ValueError("Cannot load pre-trained weights for padded 'vocab_size' dimension.")
 
         # Model names based on (n_embed, n_blocks, head_num):
         model_types = {(768, 12, 12): 'gpt2', (1024, 24, 16): 'gpt2-medium',

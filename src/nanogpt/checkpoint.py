@@ -198,7 +198,7 @@ def load_checkpoint(path: Path, model: nn.Module, optimizer: Optimizer, ddp: DDP
 
 #%% Inference-only checkpoint utilities:
 
-def load_model_tokenizer(path: Path, device: str) -> tuple[nn.Module, Tokenizer, dict]:
+def load_model_tokenizer(path: Path, device: str) -> tuple[nn.Module, Tokenizer, TrainConfig]:
     '''
     Function to rebuild a model from a checkpoint for inference.
 
@@ -215,7 +215,7 @@ def load_model_tokenizer(path: Path, device: str) -> tuple[nn.Module, Tokenizer,
         Model in eval mode, built from the checkpoint's saved config.
     tok: Tokenizer
         Tokenizer to decode generation.
-    cfg: dict
+    cfg: TrainConfig
         The full saved config, e.g. for block_size or reporting.
 
     '''
@@ -223,8 +223,9 @@ def load_model_tokenizer(path: Path, device: str) -> tuple[nn.Module, Tokenizer,
     model = build_model(ModelConfig(**ckpt['cfg']['model']))
     model.load_state_dict(ckpt['model'])
     tok = build_tokenizer(ckpt['tokenizer'])
+    cfg = TrainConfig.from_dict(ckpt['cfg'])
 
-    return model.to(device).eval(), tok, ckpt['cfg']
+    return model.to(device).eval(), tok, cfg
 
 
 def save_inference_checkpoint(src: Path, dst: Path, dtype: torch.dtype = torch.bfloat16) -> None:
@@ -286,8 +287,8 @@ def check_inference_checkpoint(src: Path, dst: Path, tol: float = 1e-2, seed: in
     ref_model, _, cfg = load_model_tokenizer(src, 'cpu')
     model, _, _ = load_model_tokenizer(dst, 'cpu')
     gen = torch.Generator().manual_seed(seed)
-    T = min(cfg['model']['block_size'], 32)
-    idx = torch.randint(cfg['model']['vocab_size'], (2, T), generator=gen)
+    T = min(cfg.model.block_size, 32)
+    idx = torch.randint(cfg.model.vocab_size, (2, T), generator=gen)
 
     # Compare logits:
     ref_logits, _ = ref_model(idx)

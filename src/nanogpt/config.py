@@ -181,6 +181,14 @@ class TrainConfig:
         B, T, BT = self.batch_size, self.model.block_size, self.batch_tokens
         return BT // (B * T * world_size)
 
+    @classmethod
+    def from_dict(cls, cfg_dict):
+        '''Function to build a configuration object from nested dictionaries.'''
+        data = DataConfig(**cfg_dict['data'])
+        model = ModelConfig(**cfg_dict['model'])
+        cfg = cls(**{**cfg_dict, 'data': data, 'model': model})
+        return cfg
+
 #%% Preset configs:
 
 # Production nano-GPT model:
