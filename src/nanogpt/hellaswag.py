@@ -145,7 +145,7 @@ def mk_dp_batch(dps: pd.Series) -> tuple[torch.Tensor, torch.Tensor, list]:
     return x, mask, labels
 
 
-def mk_dp_batches(df: pd.DataFrame, tok: Tokenizer, batch_size: int, batch_num: int | None = None) -> list:
+def mk_dp_batches(df: pd.DataFrame, tok: Tokenizer, batch_size: int, batch_num: int | None = None, seed: int = 12) -> list:
     '''
     Function to generate inputs, masks, and labels of 'batch_size'.
 
@@ -159,6 +159,8 @@ def mk_dp_batches(df: pd.DataFrame, tok: Tokenizer, batch_size: int, batch_num: 
         Desired batch size.
     batch_num: int, optional
         Number of batches to construct. The default is None in which case, all available data-points are divided into batches of the requested size.
+    seed: int, optional
+        Random batch selection seed. The default is '12'. Ignored when 'batch_num' is None.
 
     Returns
     -------
@@ -172,6 +174,9 @@ def mk_dp_batches(df: pd.DataFrame, tok: Tokenizer, batch_size: int, batch_num: 
             Labels corresponding to data-points in the batch.
 
     '''
+    # Shuffle data-points using a fixed seed across ranks:
+    if batch_num: df = df.sample(batch_num * batch_size, random_state=seed)
+
     # Tokenize all data points:
     dps = df.apply(lambda row: mk_data_point(row, tok), axis=1)
 
@@ -179,7 +184,6 @@ def mk_dp_batches(df: pd.DataFrame, tok: Tokenizer, batch_size: int, batch_num: 
     out = []
     for ind in range(0, len(dps), batch_size):
         out.append( mk_dp_batch(dps[ind: ind+batch_size]) )
-        if batch_num and len(out) == batch_num: break
 
     return out
 

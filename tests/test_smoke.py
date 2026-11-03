@@ -90,7 +90,7 @@ def trained_run(tmp_path_factory):
     train_data, val_data, _ = _token_splits(tmp_path, tok)
     small = PRESETS['small_cfg']
     cfg = replace(small, model=replace(small.model, vocab_size=tok.vocab_size, dropout=0.0),
-                  device='cpu', max_iters=4, eval_interval=2, ckpt_interval=2, eval_iters=2, lr_warmup_iters=1,
+                  device='cpu', max_iters=4, eval_interval=2, ckpt_freq=1, eval_iters=2, lr_warmup_iters=1,
                   out_dir=str(tmp_path / 'runs'), run_name='smoke', sample_prompts=('', 'ab'), sample_tokens=8)
 
     # Fresh run:
@@ -106,14 +106,14 @@ def test_train_resume_and_records(trained_run):
     cfg, tok, train_data, val_data = trained_run
     run_dir = cfg.run_dir
     _assert_files(run_dir, RUN_RECORDS | {'latest.pt', 'best.pt', 'model.pt'})
-    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [2, 4]
+    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [1, 2, 4]
     report = (run_dir / 'report.md').read_text()
     assert report.index('### Summary') < report.index('### Samples') < report.index('### Configuration')
     assert report.count('#### Prompt') == 2
 
     # Resume to a later step:
     train(replace(cfg, max_iters=6, resume=True), train_data, val_data, tok.to_meta())
-    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [2, 4, 6]
+    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [1, 2, 4, 6]
 
     # Plot the single run, then compare the runs under the parent folder:
     _run_script('plot_runs.py', '--path', str(run_dir))
@@ -139,14 +139,14 @@ def test_ddp_train_resume_and_records(tmp_path_factory):
     cmd = ['bash', str(ROOT / 'scripts' / 'ddp.sh'), '2', str(ROOT / 'scripts' / 'train.py'), 'small_cfg',
            '--device', 'cpu', '--batch-mode', 'sequential',
            '--data.dir', str(data_dir), '--out-dir', str(out_dir), '--run-name', run_name,
-           '--model.dropout', '0.', '--eval-interval', '2', '--ckpt-interval', '2', '--eval-iters', '2',
+           '--model.dropout', '0.', '--eval-interval', '2', '--ckpt-freq', '1', '--eval-iters', '2',
            '--lr-warmup-iters', '1', '--sample-tokens', '8']
     result = subprocess.run(cmd + ['--max-iters', '4'], env=env, capture_output=True, text=True, timeout=600)
     assert result.returncode == 0, f"{' '.join(cmd)} failed:\n{result.stderr[-3000:]}"
 
     # Assert all files exist as expected:
     _assert_files(run_dir, RUN_RECORDS | {'latest.pt', 'best.pt', 'model.pt'})
-    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [2, 4]
+    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [1, 2, 4]
     report = (run_dir / 'report.md').read_text()
     assert report.index('### Summary') < report.index('### Samples') < report.index('### Configuration')
     assert report.count('#### Prompt') == 1
@@ -160,7 +160,7 @@ def test_ddp_train_resume_and_records(tmp_path_factory):
 
     # Assert all files exist as expected:
     _assert_files(run_dir, RUN_RECORDS | {'latest.pt', 'best.pt', 'model.pt'})
-    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [2, 4, 6]
+    assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [1, 2, 4, 6]
     log = (run_dir / 'run.log').read_text()
     assert log.count("| Built 'gpt' model with ") == 2      # only main process logs
     assert log.count("| Resumed from step 4") == 1          # main process logged the correct resume step

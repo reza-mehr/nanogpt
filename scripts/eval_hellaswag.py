@@ -44,7 +44,10 @@ class EvalConfig:
 
     def __post_init__(self):
         if self.batch_size < 1: raise ValueError(f"Invalid batch-size '{self.batch_size}'.")
-        if self.batch_num < 1: raise ValueError(f"Invalid batch-num '{self.batch_num}'.")
+        if self.batch_num is not None:
+            if self.batch_num < 1: raise ValueError(f"Invalid batch-num '{self.batch_num}'.")
+            if self.batch_num * self.batch_size > 10042:
+                raise ValueError(f"Number of requested data-points exceeds dataset size: batch-num * batch-size > 10042.")
         if self.gpt2_pretrained and self.checkpoint:
             raise ValueError("Only a single checkpoint or pre-trained model could be evaluated.")
         if self.gpt2_pretrained is None and self.checkpoint is None:
@@ -86,8 +89,7 @@ def main(p: EvalConfig):
             if not isinstance(tok_model, GPT2Tokenizer): raise ValueError(f"Model was trained using a tokenizer other than GPT2Tokenizer: {p.checkpoint}")
 
         # Download, tokenize, and split the dataset into batches:
-        if ddp.is_main:
-            get_dataset(p.data_dir)
+        if ddp.is_main: get_dataset(p.data_dir)
         if ddp.is_active: dist.barrier()        # all ranks wait for data download to complete
         df = load_dataset(f"{p.data_dir}/default/validation/0000.parquet")
         dp_batches = mk_dp_batches(df, tok, p.batch_size, p.batch_num)

@@ -30,10 +30,11 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 
-from nanogpt.config import TrainConfig, config_record
+from nanogpt.config import TrainConfig, HellaSwagConfig, config_record
 from nanogpt.checkpoint import git_info, get_device_rng_state, load_checkpoint, save_checkpoint
 from nanogpt.checkpoint import check_inference_checkpoint, save_inference_checkpoint
 from nanogpt.data import TokenSplit, get_batch, get_batch_rand
+from nanogpt.hellaswag import get_dataset, load_dataset, mk_dp_batches, eval_hellaswag
 from nanogpt.generation import generate_text
 from nanogpt.model import build_model
 from nanogpt.optimizer import build_optimizer, set_learning_rate
@@ -53,13 +54,13 @@ SUMMARY_COLS = [Col('metric', 'metric'), Col('value', 'value')]
 @dataclass
 class RunState:
     '''Class to hold the logging tools and bookkeeping shared by the training loop functions.'''
-    logger: Logger | None           # logger for the main process
-    writer: SummaryWriter | None    # Tensorboard writer for the main process
-    git: dict                       # commit, tag, dirty flag, diff, and untracked files to save to checkpoint
-    tokenizer_meta: dict            # tokenizer metadata to save to checkpoint and to rebuild the tokenizer
-    best_val: float                 # best smoothed validation loss so far
-    mark_time: float                # wall time when the current training interval started (after the last eval)
-    mark_step: int                  # last step before the current training interval
+    logger: Logger | None               # logger for the main process
+    writer: SummaryWriter | None        # Tensorboard writer for the main process
+    git: dict                           # commit, tag, dirty flag, diff, and untracked files to save to checkpoint
+    tokenizer_meta: dict                # tokenizer metadata to save to checkpoint and to rebuild the tokenizer
+    best_val: float                     # best smoothed validation loss so far
+    mark_time: float                    # wall time when the current training interval started (after the last eval)
+    mark_step: int                      # last step before the current training interval
 
 #%% Train functions:
 
@@ -114,6 +115,9 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     # Logging and status reports to run on the main process only:
     state, writer = setup_io(cfg, model, ddp, tokenizer_meta, resuming, start_step, best_val)
 
+    # Prep the HellaSwag dataset for evaluation if requested:
+    hellaswag_dps = prep_hellaswag(cfg.hellaswag, ddp, tokenizer_meta, state)
+
     # Compile the model for efficiency if requested:
     model_compiled = torch.compile(model) if cfg.compile_model else model
     if ddp.is_active:
@@ -127,8 +131,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
             lr, grad_norm = train_step(cfg, model_compiled, train_data, optim, step, ddp, writer)
 
             # Evaluate, record metrics, and save checkpoints:
-            if step % cfg.eval_interval == 0 or step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
-                evaluate_and_save(cfg, model, optim, step, train_data, val_data, lr, grad_norm, state, ddp)
+            evaluate_and_save(cfg, model, optim, step, train_data, val_data, lr, grad_norm, state, ddp, hellaswag_dps)
 
             # Emulate a crash for testing checkpoints:
             if stop_after is not None and step == stop_after: return model, state.best_val
@@ -206,13 +209,54 @@ def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: d
 
     # TensorBoard writer, created after resuming so it hides only the events logged after the checkpoint:
     writer = SummaryWriter(log_dir=cfg.run_dir / 'tb', purge_step=start_step)
-    logger.info(f'TensorBoard: uv run tensorboard --logdir {cfg.run_dir / "tb"}\n')
+    logger.info(f'TensorBoard: uv run tensorboard --logdir {cfg.run_dir / "tb"}')
 
     # Construct the run-state object for the main process:
     state = RunState(logger=logger, writer=writer, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val,
                         mark_time=time.perf_counter(), mark_step=start_step - 1)
 
     return state, writer
+
+
+def prep_hellaswag(cfg: HellaSwagConfig, ddp: DDPInfo, tokenizer_meta: dict, state: RunState):
+    '''
+    Function to download, tokenize, and split the HellaSwag dataset into batches.
+
+    Parameters
+    ----------
+    cfg: HellaSwagConfig
+        HellaSwag configurations.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+    tokenizer_meta: dict
+        Containing tokenizer metadata to include in the checkpoint.
+    state: RunState
+        Logging tools and bookkeeping.
+
+    Returns
+    -------
+    dp_batches: list of tuples
+        Each entry contains the tuple (x, mask, label). See hellaswag.py/mk_dp_batches() for details.
+
+    '''
+    if cfg.eval_freq == 0: return           # HellaSwag evaluation not requested
+
+    # Download the dataset:
+    if ddp.is_main: get_dataset(cfg.data_dir)
+    if ddp.is_active: dist.barrier()        # all ranks wait for data download to complete
+
+    # Initialization:
+    tok = build_tokenizer(tokenizer_meta)
+
+    # Load and batch data:
+    df = load_dataset(f"{cfg.data_dir}/default/validation/0000.parquet")
+    dp_batches = mk_dp_batches(df, tok, cfg.batch_size, cfg.batch_num, cfg.seed)
+
+    # Update status:
+    if ddp.is_main:
+        state.logger.info(f"Downloaded and tokenized HellaSwag dataset: {len(dp_batches)} batches\n")
+
+    return dp_batches
 
 
 def train_step(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, optim: Optimizer, step: int, ddp: DDPInfo, writer: None | SummaryWriter = None):
@@ -285,7 +329,7 @@ def train_step(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, optim
 
 #%% Evaluation utilities:
 
-def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, train_data: TokenSplit, val_data: TokenSplit, lr: float, grad_norm: float, state: RunState, ddp: DDPInfo):
+def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, train_data: TokenSplit, val_data: TokenSplit, lr: float, grad_norm: float, state: RunState, ddp: DDPInfo, hellaswag_dps: list | None):
     '''
     Function to estimate the smoothed losses, record them (log, TensorBoard, results.csv), and save checkpoints.
 
@@ -312,54 +356,99 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
         Logging tools and bookkeeping; 'best_val' and the interval marks are updated in place.
     ddp: DDPInfo
         Distributed data parallelism instance.
+    hellaswag_dps: list of tuples
+        Each entry contains the tuple (x, mask, label). See hellaswag.py/mk_dp_batches() for details.
 
     '''
+    if not cfg.is_eval_step(step): return
+
+    # Compute training time (excludes all evaluation below):
+    if ddp.is_main: train_s = time.perf_counter() - state.mark_time
+
     # Compute the smoothed losses over train and validation sets:
     losses = estimate_loss(cfg, model, train_data, val_data, ddp)
+    train_loss, val_loss = losses['train'].item(), losses['val'].item()
 
-    # Collect random number generator states to the main device to be stored in the checkpoint:
-    if step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
-        if ddp.is_active:
-            rng_state = [None] * ddp.world_size if ddp.is_main else None
-            dist.gather_object(get_device_rng_state(ddp), rng_state, dst=0)
-        else:
-            rng_state = [get_device_rng_state(ddp)]
+    # Evaluate the model over HellaSwag dataset and compute the normalized accuracy:
+    hellaswag_acc = eval_hellaswag(cfg, model, hellaswag_dps, ddp) if cfg.should_eval_hellaswag(step) else None
+
+    # Save the latest and potentially best checkpoints:
+    _save_checkpoints(cfg, model, optim, step, val_loss, state, ddp)
 
     if not ddp.is_main: return              # logging, checkpointing, and status reports only on main process
 
-    # Initialization:
-    latest, best = cfg.run_dir / 'latest.pt', cfg.run_dir / 'best.pt'   # checkpoint paths
-    tokens_per_step = cfg.batch_size * cfg.model.block_size * cfg.get_grad_accum_iters(ddp.world_size) * ddp.world_size
-
     # Throughput over the training interval since the last evaluation:
-    train_s = time.perf_counter() - state.mark_time
+    tokens_per_step = cfg.batch_size * cfg.model.block_size * cfg.get_grad_accum_iters(ddp.world_size) * ddp.world_size
     tok_per_sec = (step - state.mark_step) * tokens_per_step / train_s
 
     # Tensorboard logs:
-    train_loss, val_loss = losses['train'].item(), losses['val'].item()
     state.writer.add_scalar('eval/train_loss', train_loss, step)
     state.writer.add_scalar('eval/val_loss', val_loss, step)
     state.writer.add_scalar('eval/tok_per_sec', tok_per_sec, step)
+    if cfg.should_eval_hellaswag(step):
+        state.writer.add_scalar('eval/hella_swag_acc', hellaswag_acc, step)
 
     # Status update:
-    state.logger.info(f'{train_s:.3f} sec | step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s')
+    msg = f'{train_s:.3f} sec | step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s'
+    if cfg.hellaswag.eval_freq > 0:
+        if cfg.should_eval_hellaswag(step): msg += f" | HellaSwag acc {hellaswag_acc:.4f}"
+        else: msg += " | HellaSwag acc -----"
+    state.logger.info(msg)
 
     # Append one row to the results file (flushed immediately, so it survives a crash):
-    append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr,
-                        grad_norm=grad_norm, tok_per_sec=tok_per_sec, train_s=train_s), cfg.run_dir / 'results.csv')
-
-    # Save the latest and potentially best checkpoints:
-    if step % cfg.ckpt_interval == 0 or step == cfg.max_iters:
-        best_checkpoint = (val_loss < state.best_val)
-        if best_checkpoint: state.best_val = val_loss
-        save_checkpoint(latest, model, optim, step, state.tokenizer_meta, state.best_val, cfg, state.git, rng_state)
-        if best_checkpoint:                         # latest checkpoint is the best checkpoint
-            tmp = best.with_suffix('.tmp')
-            shutil.copyfile(latest, tmp)
-            os.replace(tmp, best)                   # atomic: never leaves a half-written checkpoint
+    append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr, grad_norm=grad_norm, tok_per_sec=tok_per_sec, train_s=train_s, hellaswag_acc=hellaswag_acc),
+                   cfg.run_dir / 'results.csv')
 
     # Start the next training interval after evaluation and checkpointing:
     state.mark_time, state.mark_step = time.perf_counter(), step
+
+
+def _save_checkpoints(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, val_loss: float, state: RunState, ddp: DDPInfo):
+    '''
+    Function to save latest and best checkpoints.
+
+    Parameters
+    ----------
+    cfg: TrainConfig
+        Configurations to use.
+    model: nn.Module
+        Model being trained.
+    optim: nn.optim
+        Optimizer.
+    step: int
+        Current optimization step.
+    val_loss: float
+        Validation loss computed in evaluate_and_save().
+    state: RunState
+        Logging tools and bookkeeping; 'best_val' and the interval marks are updated in place.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+
+    '''
+    if not cfg.is_ckpt_step(step): return
+
+    # Collect random number generator states to the main device to be stored in the checkpoint:
+    if ddp.is_active:
+        rng_state = [None] * ddp.world_size if ddp.is_main else None
+        dist.gather_object(get_device_rng_state(ddp), rng_state, dst=0)
+    else:
+        rng_state = [get_device_rng_state(ddp)]
+
+    if not ddp.is_main: return                  # only the main process writes checkpoints
+
+    # Initialization:
+    latest, best = cfg.run_dir / 'latest.pt', cfg.run_dir / 'best.pt'   # checkpoint paths
+    best_checkpoint = (val_loss < state.best_val)
+    if best_checkpoint: state.best_val = val_loss
+
+    # Save the latest checkpoint:
+    save_checkpoint(latest, model, optim, step, state.tokenizer_meta, state.best_val, cfg, state.git, rng_state)
+
+    # Save the best checkpoint:
+    if best_checkpoint:
+        tmp = best.with_suffix('.tmp')
+        shutil.copyfile(latest, tmp)            # latest checkpoint is the best checkpoint
+        os.replace(tmp, best)                   # atomic: never leaves a half-written checkpoint
 
 
 @torch.no_grad()
@@ -497,6 +586,7 @@ def write_inference_model(cfg: TrainConfig, state: RunState):
         Logging tools.
 
     '''
+    if cfg.ckpt_freq == 0: return       # checkpointing is not requested
     src, dst = cfg.run_dir / 'best.pt', cfg.run_dir / 'model.pt'
     save_inference_checkpoint(src, dst)
     rel_err = check_inference_checkpoint(src, dst)

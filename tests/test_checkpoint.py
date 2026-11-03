@@ -46,7 +46,7 @@ def tiny_cfg(tmp_path, run_name: str, batch_mode: str = 'random') -> TrainConfig
         model=ModelConfig(name='gpt', vocab_size=VOCAB, block_size=8, n_embed=16,
                           head_num=2, head_size=8, n_blocks=2, dropout=0.1),     # dropout exercises RNG restore
         batch_size=4, batch_mode=batch_mode, max_iters=20, eval_interval=5, eval_iters=2,
-        ckpt_interval=5, learning_rate=1e-3, lr_warmup_iters=5, seed=0, device='cpu',
+        ckpt_freq=1, learning_rate=1e-3, lr_warmup_iters=5, seed=0, device='cpu',
         out_dir=str(tmp_path), run_name=run_name,
     )
 

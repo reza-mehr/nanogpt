@@ -111,9 +111,27 @@ class ModelConfig:
 
 
 @dataclass
+class HellaSwagConfig:
+    eval_freq: int = 0                      # compute HellaSwag accuracy every 'eval-freq * eval-interval'
+    data_dir: str = 'data/hellaswag'        # path to download the dataset to
+    batch_size: int = 64                    # batch size
+    batch_num: int | None = None            # number of batches to use, default is None in which case all batches are used
+    seed: int = 12                          # batch-generation seed, ignored when 'batch_num' is None
+
+    def __post_init__(self):
+        if self.eval_freq < 0: raise ValueError(f"Evaluation frequency cannot be negative: {self.eval_freq} < 0")
+        if self.batch_size < 1: raise ValueError(f"Invalid batch-size '{self.batch_size}'.")
+        if self.batch_num is not None:
+            if self.batch_num < 1: raise ValueError(f"Invalid batch-num '{self.batch_num}'.")
+            if self.batch_num * self.batch_size > 10042:
+                raise ValueError(f"Number of requested data-points exceeds dataset size: batch-num * batch-size > 10042.")
+
+
+@dataclass
 class TrainConfig:
     data: DataConfig = field(default_factory=DataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
+    hellaswag: HellaSwagConfig = field(default_factory=HellaSwagConfig)
 
     batch_size: int = 64                                    # sequences per training step
     batch_tokens: None | int = None
@@ -136,7 +154,7 @@ class TrainConfig:
 
     eval_interval: int = 500                                # steps between evaluations
     eval_iters: int = 200                                   # batches averaged per evaluation
-    ckpt_interval: int = 500                                # steps between saves of latest.pt
+    ckpt_freq: int = 1                                      # save latest.pt every 'ckpt-freq * eval-interval' intervals
 
     device: str = DEVICE                                    # device type to run the training on
     precision: Literal['fp32', 'mixed_bf16'] = 'fp32'
@@ -165,6 +183,7 @@ class TrainConfig:
         B, T, BT = self.batch_size, self.model.block_size, self.batch_tokens
         if BT is not None and ( BT < B * T or BT % (B * T) > 0 ):
             raise ValueError(f"'batch_tokens' must be a multiple of B*T: {BT} % ({B} * {T}) = {BT % (B*T)}")
+        if self.ckpt_freq < 0: raise ValueError(f"Checkpoint frequency cannot be negative: {self.ckpt_freq} < 0")
 
     @property
     def run_dir(self) -> Path:
@@ -174,6 +193,25 @@ class TrainConfig:
     @property
     def min_learning_rate(self) -> float:
         return self.learning_rate * 0.1                     # 10 percent of the learning rate
+
+    @property
+    def ckpt_interval(self) -> int:
+        '''Steps between saves of latest.pt'''
+        return self.eval_interval * self.ckpt_freq
+
+    def is_ckpt_step(self, step):
+        '''Function to check if a checkpoint must be saved in the current step.'''
+        if self.ckpt_freq == 0: return False
+        return step % self.ckpt_interval == 0 or step == self.max_iters
+
+    def is_eval_step(self, step):
+        '''Function to check if the model must be evaluated in the current step.'''
+        return step == 1 or step % self.eval_interval == 0 or step == self.max_iters
+
+    def should_eval_hellaswag(self, step):
+        '''Function to check if HellaSwag evaluation must be done in the current step.'''
+        if self.hellaswag.eval_freq == 0: return False
+        return step % (self.eval_interval * self.hellaswag.eval_freq) == 0 or step == self.max_iters
 
     def get_grad_accum_iters(self, world_size: int=1) -> int:
         '''Number of gradient accumulation steps to realize 'batch_tokens' with B * T tokens.'''
@@ -207,11 +245,11 @@ stories_cfg = TrainConfig(data=DataConfig(dir='data/tinystories'),
                                             pos_embed='rope', dropout=0.0),
                           batch_size=32, max_iters=10000, lr_schedule='cosine', learning_rate=6e-4,
                           lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95,
-                          eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16')
+                          eval_interval=500, eval_iters=100, ckpt_freq=1, precision='mixed_bf16')
 
 # Open-AI GPT2 configs (Hugging Face version):
 gpt2_cfg = TrainConfig(model=ModelConfig(name='gpt2', vocab_size=50257, block_size=1024, n_embed=768, n_blocks=12, head_num=12, head_size=64, batched_attention=True, scaled_dot_prod=True, pos_embed='learned', ln_torch=True, dropout=0.),
-                       max_iters=10000, lr_schedule='cosine', learning_rate=6e-4, lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95, eval_interval=500, eval_iters=100, ckpt_interval=500, precision='mixed_bf16',
+                       max_iters=10000, lr_schedule='cosine', learning_rate=6e-4, lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95, eval_interval=500, eval_iters=100, ckpt_freq=1, precision='mixed_bf16',
                        batch_mode='sequential')
 
 gpt2_medium_cfg = replace(gpt2_cfg, model = replace(gpt2_cfg.model, n_embed=1024, n_blocks=24, head_num=16) )
