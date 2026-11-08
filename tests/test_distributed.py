@@ -6,12 +6,11 @@ This file contains tests related to the implementation of distributed data paral
 #%% Imports:
 
 import pytest
-import torch.multiprocessing as mp
 from dataclasses import replace
 import numpy as np
 
 import torch
-from torch import nn
+import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 

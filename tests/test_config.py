@@ -1,4 +1,8 @@
 
+'''
+This file contains the code to test the config classes.
+
+'''
 #%% Imports:
 
 import pytest
@@ -7,18 +11,12 @@ from pathlib import Path
 
 from nanogpt.config import PRESETS, ModelConfig, TrainConfig
 
-'''
-This file contains the code to test the config classes.
-
-'''
-
 #%% Test defaults with replace:
 
 def test_looped_attention_after_replace():
     '''Function to test that replace() into the looped path accepts a default (MHA) config, keeping 'kv_head_num' unresolved.'''
     batched = ModelConfig()
     looped = replace(batched, batched_attention=False, scaled_dot_prod=False)     # must not raise
-
 
 def test_head_num_override_keeps_mha():
     '''Function to test that overriding 'head_num' on a default config stays MHA by setting the 'n_kv_head' property, instead of silently becoming GQA.'''
@@ -30,7 +28,6 @@ def test_head_num_override_keeps_mha():
     cfg = replace(cfg, head_num=12)
     assert cfg.kv_head_num is None              # argument unchanged
     assert cfg.n_kv_head == 12                  # property still set to MHA
-
 
 @pytest.mark.parametrize('overrides, feature', [
     (dict(scaled_dot_prod=True), 'Scaled dot-product attention'),
@@ -44,7 +41,6 @@ def test_looped_attention_unsupported(overrides, feature):
     with pytest.raises(ValueError, match=feature):
         ModelConfig(**(looped | overrides))
 
-
 def test_looped_attention_reports_all_conflicts():
     '''Function to test that all unsupported features on the looped path are reported together.'''
 
@@ -53,6 +49,37 @@ def test_looped_attention_reports_all_conflicts():
     message = str(err.value)
     assert 'Scaled dot-product attention' in message and 'Rotary positional embedding' in message
 
+#%% Test vocab size padding:
+
+def test_reject_incorrect_pad_vocab_to_multiple():
+    '''Function to ensure that the inpermissible values of 'pad_vocab_to_multiple' raise a ValueError.'''
+    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
+        ModelConfig(vocab_size=61, pad_vocab_to_multiple=0)
+    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
+        ModelConfig(vocab_size=61, pad_vocab_to_multiple=3)
+    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
+        ModelConfig(vocab_size=61, pad_vocab_to_multiple=-3)
+
+def test_no_vocab_size_pad_default():
+    '''Function to ensure that the 'vocab_size_padded' is the same as 'vocab_size' when 'pad_vocab_to_multiple=1'.'''
+    cfg = ModelConfig(vocab_size=61)
+    assert cfg.vocab_size_padded == cfg.vocab_size
+    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=1)
+    assert cfg.vocab_size_padded == cfg.vocab_size
+
+def test_no_vocab_size_pad_if_already_multiple():
+    '''Function to test that the 'vocab_size' is not raised if it is already a multiple of 'pad_vocab_to_multiple'.'''
+    cfg = ModelConfig(vocab_size=64, pad_vocab_to_multiple=8)
+    assert cfg.vocab_size_padded == cfg.vocab_size
+    cfg = ModelConfig(vocab_size=64, pad_vocab_to_multiple=64)
+    assert cfg.vocab_size_padded == cfg.vocab_size
+
+def test_vocab_size_pad():
+    '''Function to test that the 'vocab_size' is raised to a multiple of 'pad_vocab_to_multiple'.'''
+    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=8)
+    assert cfg.vocab_size_padded == 64
+    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=128)
+    assert cfg.vocab_size_padded == 128
 
 #%% Grouped-query attention (GQA) tests:
 
@@ -102,46 +129,13 @@ def test_default_run_dir_names_preset_and_device():
     assert replace(cfg, run_name='mine').run_dir == Path('runs/mine')
     assert TrainConfig(device='cpu').run_dir.name == 'train_custom_cpu'        # built outside the presets
 
-
 @pytest.mark.parametrize('run_name', ['benchmark_x', 'profile_y'])
 def test_run_name_rejects_non_training_prefixes(run_name):
     '''Function to test that training runs cannot take the folder prefixes that mark benchmarks and profiles.'''
     with pytest.raises(ValueError, match='must not start with'):
         TrainConfig(run_name=run_name)
 
-#%% Test vocab size padding:
-
-def test_reject_incorrect_pad_vocab_to_multiple():
-    '''Function to ensure that the inpermissible values of 'pad_vocab_to_multiple' raise a ValueError.'''
-    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
-        ModelConfig(vocab_size=61, pad_vocab_to_multiple=0)
-    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
-        ModelConfig(vocab_size=61, pad_vocab_to_multiple=3)
-    with pytest.raises(ValueError,  match='pad_vocab_to_multiple'):
-        ModelConfig(vocab_size=61, pad_vocab_to_multiple=-3)
-
-def test_no_vocab_size_pad_default():
-    '''Function to ensure that the 'vocab_size_padded' is the same as 'vocab_size' when 'pad_vocab_to_multiple=1'.'''
-    cfg = ModelConfig(vocab_size=61)
-    assert cfg.vocab_size_padded == cfg.vocab_size
-    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=1)
-    assert cfg.vocab_size_padded == cfg.vocab_size
-
-def test_no_vocab_size_pad_if_already_multiple():
-    '''Function to test that the 'vocab_size' is not raised if it is already a multiple of 'pad_vocab_to_multiple'.'''
-    cfg = ModelConfig(vocab_size=64, pad_vocab_to_multiple=8)
-    assert cfg.vocab_size_padded == cfg.vocab_size
-    cfg = ModelConfig(vocab_size=64, pad_vocab_to_multiple=64)
-    assert cfg.vocab_size_padded == cfg.vocab_size
-
-def test_vocab_size_pad():
-    '''Function to test that the 'vocab_size' is raised to a multiple of 'pad_vocab_to_multiple'.'''
-    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=8)
-    assert cfg.vocab_size_padded == 64
-    cfg = ModelConfig(vocab_size=61, pad_vocab_to_multiple=128)
-    assert cfg.vocab_size_padded == 128
-
-#%% Test batch tokens:
+#%% Other tests:
 
 def test_batch_tokens():
     '''Function to test various assignment scenarios for 'batch_tokens'.'''
