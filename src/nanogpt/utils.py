@@ -3,6 +3,10 @@
 
 from contextlib import contextmanager, nullcontext
 import copy
+import csv
+import re
+from functools import lru_cache
+from pathlib import Path
 
 import torch
 from torch.nn import functional as F
@@ -13,6 +17,9 @@ from torch.profiler import record_function
 
 # Device synchronized at region boundaries (None disables the labels):
 _REGIONS_DEVICE: str | None = None
+
+PEAK_FLOPS_CSV = Path(__file__).with_name('peak_flops.csv')
+PRECISIONS = ('fp32', 'tf32', 'bf16', 'fp16')
 
 #%% Model utility functions:
 
@@ -237,9 +244,25 @@ def prepare_for_inference(model: nn.Module, mode: str):
 
 #%% General utility functions:
 
-def get_param_count(model: nn.Module):
-    '''Function to return the total number of trainable parameters in the 'model'.'''
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+def get_param_count(model: nn.Module, trainable_only: bool = True):
+    '''
+    Function to count the total number of parameters in the 'model'.
+
+    Parameters
+    ----------
+    model: nn.Module
+        Model to count its parameters.
+    trainable_only: bool, optional
+        Count only trainable parameters if True. The default is True.
+
+    Returns
+    -------
+    count: int
+        Total number of parameters.
+
+    '''
+    if trainable_only: return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    else: return sum(p.numel() for p in model.parameters())
 
 
 #%% Profiler region utilities:
@@ -271,3 +294,73 @@ def region(name: str):
     '''Function to return a profiler label for a code region, or a no-op context when labels are disabled.'''
     return nullcontext() if _REGIONS_DEVICE is None else _synced_region(name, _REGIONS_DEVICE)
 
+#%% Peak FLOPs utilities for different devices:
+
+@lru_cache
+def _load_table(path: Path) -> dict[str, dict[str, str]]:
+    '''Function to read the peak-FLOPs table keyed by device pattern.'''
+    with open(path, newline='') as f:
+        return {row['device']: row for row in csv.DictReader(f)}
+
+
+def get_device_name(device: str | torch.device) -> str:
+    '''
+    Function to get the name used to look up a device in the peak-FLOPs table.
+
+    Parameters
+    ----------
+    device: str or torch.device
+        Device such as 'cuda', 'cuda:1', 'mps', or 'cpu'.
+
+    Returns
+    -------
+    device: string
+        Full CUDA device name (e.g., 'NVIDIA A100-SXM4-80GB'), otherwise 'mps' or 'cpu'.
+
+    '''
+    device = torch.device(device)
+    if device.type == 'cuda':
+        return torch.cuda.get_device_name(device)
+    return device.type
+
+
+def get_peak_flops(device: str, precision: str, path: Path = PEAK_FLOPS_CSV) -> float:
+    '''
+    Function to look up the dense peak FLOP/s of a device at a given precision.
+
+    Parameters
+    ----------
+    device: string
+        Torch device, e.g. 'cuda', 'cuda:1', 'mps', or 'cpu'. Resolved to a hardware name via get_device_name().
+    precision: str
+        One of 'fp32', 'tf32', 'bf16', 'fp16'.
+    path: Path, optional
+        Path to the peak-FLOPs CSV table.
+
+    Returns
+    -------
+    float
+        Peak throughput in FLOP/s (not TFLOP/s).
+
+    Raises
+    ------
+    ValueError
+        If the precision is unknown or unsupported by the matched device.
+    KeyError
+        If no table entry matches the device name.
+
+    '''
+    device_name = get_device_name(device)       # map to GPU name for 'cuda' devices
+    if precision == 'mixed_bf16': precision = 'bf16'
+    if precision not in PRECISIONS: raise ValueError(f"Unknown precision {precision!r}; options: {PRECISIONS}")
+    table = _load_table(path)
+
+    # Longest pattern first so 'H100 PCIe' wins over 'H100', word boundaries keep 'L4' off 'L40S' and 'A10' off 'A10G':
+    for key in sorted(table, key=len, reverse=True):
+        if re.search(rf'\b{re.escape(key)}\b', device_name, flags=re.IGNORECASE):
+            value = table[key][precision]
+            if not value:
+                raise ValueError(f"{key} has no {precision} entry in the peak-FLOPs table")
+            return float(value) * 1e12
+
+    raise KeyError(f"Device not in peak-FLOPs table: {device!r}.")

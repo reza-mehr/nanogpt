@@ -12,7 +12,7 @@ from torch.nn import functional as F
 from nanogpt.registry import MODELS
 from nanogpt.config import ModelConfig
 from nanogpt.kv_cache import KVCache
-from nanogpt.utils import sample_logits
+from nanogpt.utils import sample_logits, get_param_count
 
 #%% Model component classes:
 
@@ -372,3 +372,18 @@ class GPT2(nn.Module):
                     sd[key].copy_(sd_hf[key])
 
         return model
+
+
+    def get_flops_per_token(self, T):
+        '''Function to get the number of FLOPs per token as 6 * N + 12 * L * T * d.'''
+
+        # Attributes:
+        cfg = self.cfg
+        L, d = cfg.n_blocks, cfg.head_num * cfg.head_size
+
+        # Parameter count:
+        N = get_param_count(self, trainable_only=False)
+        N -= self.transformer.wpe.weight.numel()        # exclude positional embedding table (lookup, no matmul)
+        # Note: 'wte' parameters are not excluded because they are tied to 'lm_head' parameters.
+
+        return 6 * N + 12 * L * T * d

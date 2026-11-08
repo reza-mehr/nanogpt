@@ -1,0 +1,12 @@
+device,fp32,tf32,bf16,fp16,note
+A100,19.5,156,312,312,SXM and PCIe; dense
+H100,67,494,989,989,SXM; dense; H200 same compute
+H100 PCIe,51,378,756,756,dense
+L40S,91.6,183,362,362,dense
+A10,31.2,62.5,125,125,dense; not A10G
+L4,30.3,60,121,121,dense
+RTX 4090,82.6,82.6,165,165,dense; fp32 accumulate
+V100,15.7,,,125,SXM2; no bf16 or tf32
+T4,8.1,,,65,no bf16 or tf32
+mps,4.0,,4.0,4.0,Apple M4 GPU estimate; no official figure; ~3.5-4.3 by core count
+cpu,0.75,,,,Apple M4 CPU rough NEON estimate; Accelerate/SME matmuls may run faster

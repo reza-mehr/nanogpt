@@ -41,7 +41,7 @@ from nanogpt.optimizer import build_optimizer, set_learning_rate
 from nanogpt.reporting import Col, append_row_csv, collect_env, load_json, load_rows_csv, prepare_run_dir, save_json
 from nanogpt.reporting import setup_logger, table_section, truncate_rows_csv, write_report
 from nanogpt.tokenizers import build_tokenizer
-from nanogpt.utils import autocast_ctx, get_param_count
+from nanogpt.utils import autocast_ctx, get_param_count, get_peak_flops
 from nanogpt.distributed import DDPInfo
 
 #%% Global variables:
@@ -61,6 +61,7 @@ class RunState:
     best_val: float                     # best smoothed validation loss so far
     mark_time: float                    # wall time when the current training interval started (after the last eval)
     mark_step: int                      # last step before the current training interval
+    flops_util_per_token: float | None  # FLOPs per token for the model divided by peak FLOPs of the compute card
 
 #%% Train functions:
 
@@ -179,7 +180,7 @@ def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: d
     '''
     # Processes other than main do not write IO but still track their basic state:
     if not ddp.is_main:
-        state = RunState(logger=None, writer=None, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val, mark_time=time.perf_counter(), mark_step=start_step - 1)
+        state = RunState(logger=None, writer=None, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val, mark_time=time.perf_counter(), mark_step=start_step - 1, flops_util_per_token=0.)
         return state, None
 
     # Logger:
@@ -211,9 +212,17 @@ def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: d
     writer = SummaryWriter(log_dir=cfg.run_dir / 'tb', purge_step=start_step)
     logger.info(f'TensorBoard: uv run tensorboard --logdir {cfg.run_dir / "tb"}')
 
+    # Get FLOPs per token for the model normalized by the peak FLOPs:
+    try:
+        flops_per_token = model.get_flops_per_token(cfg.model.block_size)
+        peak_flops = get_peak_flops(ddp.device, cfg.precision)
+        flops_util_per_token = flops_per_token / peak_flops
+    except (KeyError, ValueError) as e:
+        flops_util_per_token = None
+        logger.warning(f"MFU unavailable for the device: {e}")
+
     # Construct the run-state object for the main process:
-    state = RunState(logger=logger, writer=writer, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val,
-                        mark_time=time.perf_counter(), mark_step=start_step - 1)
+    state = RunState(logger=logger, writer=writer, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val, mark_time=time.perf_counter(), mark_step=start_step - 1, flops_util_per_token=flops_util_per_token)
 
     return state, writer
 
@@ -377,26 +386,29 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
 
     if not ddp.is_main: return              # logging, checkpointing, and status reports only on main process
 
-    # Throughput over the training interval since the last evaluation:
+    # Throughput and model FLOPs utilization (MFU) over the training interval since the last evaluation:
     tokens_per_step = cfg.batch_size * cfg.model.block_size * cfg.get_grad_accum_iters(ddp.world_size) * ddp.world_size
     tok_per_sec = (step - state.mark_step) * tokens_per_step / train_s
+    mfu = None if state.flops_util_per_token is None else state.flops_util_per_token * tok_per_sec / ddp.world_size * 100
 
     # Tensorboard logs:
     state.writer.add_scalar('eval/train_loss', train_loss, step)
     state.writer.add_scalar('eval/val_loss', val_loss, step)
     state.writer.add_scalar('eval/tok_per_sec', tok_per_sec, step)
+    if mfu is not None: state.writer.add_scalar('eval/mfu', mfu, step)
     if cfg.should_eval_hellaswag(step):
         state.writer.add_scalar('eval/hella_swag_acc', hellaswag_acc, step)
 
     # Status update:
     msg = f'{train_s:.3f} sec | step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s'
+    msg = msg + ( " | MFU ---" if mfu is None else f" | MFU {mfu:.1f} %" )
     if cfg.hellaswag.eval_freq > 0:
         if cfg.should_eval_hellaswag(step): msg += f" | HellaSwag acc {hellaswag_acc:.4f}"
         else: msg += " | HellaSwag acc -----"
     state.logger.info(msg)
 
     # Append one row to the results file (flushed immediately, so it survives a crash):
-    append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr, grad_norm=grad_norm, tok_per_sec=tok_per_sec, train_s=train_s, hellaswag_acc=hellaswag_acc),
+    append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr, grad_norm=grad_norm, tok_per_sec=tok_per_sec, mfu=mfu, train_s=train_s, hellaswag_acc=hellaswag_acc),
                    cfg.run_dir / 'results.csv')
 
     # Start the next training interval after evaluation and checkpointing:

@@ -33,7 +33,7 @@ from nanogpt.registry import MODELS
 from nanogpt.gpt2 import GPT2           # noqa: F401
 from nanogpt.utils import sample_logits
 from nanogpt.kv_cache import KVCache
-from nanogpt.utils import build_rope_cos_sin, apply_rope, expand_kv, region
+from nanogpt.utils import build_rope_cos_sin, apply_rope, expand_kv, region, get_param_count
 
 #%% Common interface to build models:
 
@@ -713,6 +713,22 @@ class GPT(nn.Module):
         return idx
 
 
+    def get_flops_per_token(self, T):
+        '''Function to get the number of FLOPs per token as 6 * N + 12 * L * T * d.'''
+
+        # Attributes:
+        cfg = self.cfg
+        L, d = cfg.n_blocks, cfg.head_num * cfg.head_size
+
+        # Parameter count:
+        N = get_param_count(self, trainable_only=False)
+        N -= self.token_embedding_table.weight.numel()  # exclude token embedding table (lookup, no matmul)
+        if cfg.pos_embed=='learned':                    # exclude positional embedding table (lookup, no matmul)
+            N -= self.position_embedding_table.weight.numel()
+
+        return 6 * N + 12 * L * T * d
+
+
 #%% Bigram model:
 
 @MODELS.register('bigram')
@@ -813,3 +829,9 @@ class BigramLanguageModel(nn.Module):
         if train_mode: self.train()                             # revert to original training mode
 
         return idx
+
+
+    def get_flops_per_token(self, T=None):
+        '''Function to get the number of FLOPs per token. Not applicable and is kept for API consistency.'''
+        return 0
+
