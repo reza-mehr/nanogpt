@@ -157,6 +157,8 @@ class TrainConfig:
     ckpt_freq: int = 1                                      # save latest.pt every 'ckpt-freq * eval-interval' intervals
 
     device: str = DEVICE                                    # device type to run the training on
+    matmul_precision: Literal['fp32', 'tf32'] = 'fp32'
+    # floating-point matrix multiplication precision; 'tf32' uses GPU tensor cores and is unavailable on 'cpu' and 'mps'
     precision: Literal['fp32', 'mixed_bf16'] = 'fp32'
     # compute precision for forward passes; bf16 uses autocast, with weights kept in fp32
     compile_model: bool = False                             # if True, compile model operations for efficiency
@@ -175,6 +177,8 @@ class TrainConfig:
 
     def __post_init__(self):
         '''Function to validate input arguments and assign default values.'''
+        if not self.device == 'cuda' and self.matmul_precision == 'tf32':
+            raise ValueError(f"'{self.matmul_precision}' unavailable for '{self.device}' device.")
         if self.lr_schedule == 'cosine' and not (0 < self.lr_warmup_iters < self.max_iters):
             raise ValueError(f"Warmup '{self.lr_warmup_iters}' must be between 0 and max iterations '{self.max_iters}'.")
         if self.run_name.startswith(NON_TRAINING_PREFIXES):

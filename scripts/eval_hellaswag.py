@@ -10,6 +10,9 @@ Evaluate a trained model accuracy, loaded from a checkpoint, over a small set of
 Evaluate using distributed data parallelism (DDP):
     bash scripts/ddp.sh 2 scripts/eval_hellaswag.py --batch-size 16 --batch-num 4 --gpt2-pretrained gpt2 --device cpu
 
+Evaluate the HuggingFace pre-trained model accuracy:
+    caffeinate -is uv run scripts/eval_hellaswag.py --gpt2-pretrained gpt2 --batch-size 8 --precision fp32
+
 Outputs (main process only) go to '<out-dir>/<run-name>': run.log, results.json, config.json, env.json, git.json, report.md.
 
 '''
@@ -29,6 +32,7 @@ from nanogpt.config import DEVICE, PRESETS, config_record
 from nanogpt.tokenizers import GPT2Tokenizer
 from nanogpt.distributed import DDPInfo
 from nanogpt.hellaswag import get_dataset, load_dataset, mk_dp_batches, eval_hellaswag
+from nanogpt.utils import matmul_precision_ctx
 from nanogpt.model import GPT2
 from nanogpt.checkpoint import load_model_tokenizer, git_info
 from nanogpt.reporting import Col, collect_env, prepare_run_dir, save_json, setup_logger, table_section, write_report
@@ -49,6 +53,8 @@ class EvalConfig:
     # pre-trained GPT2 model to load and evaluate
     checkpoint: str | None = None           # checkpoint to evaluate
     device: str = DEVICE                    # device to evaluate on
+    matmul_precision: Literal['fp32', 'tf32'] = 'fp32'
+    # floating-point matrix multiplication precision; 'tf32' uses GPU tensor cores and is unavailable on 'cpu' and 'mps'
     precision: Literal['fp32', 'mixed_bf16'] = 'mixed_bf16'
     # compute precision for forward passes; bf16 uses autocast, with weights kept in fp32
     out_dir: str = 'results/hellaswag'      # parent folder of the run folder
@@ -65,6 +71,8 @@ class EvalConfig:
             raise ValueError("Only a single checkpoint or pre-trained model could be evaluated.")
         if self.gpt2_pretrained is None and self.checkpoint is None:
             raise ValueError("Please specify a checkpoint or a pre-trained model to evaluate.")
+        if not self.device == 'cuda' and self.matmul_precision == 'tf32':
+            raise ValueError(f"'{self.matmul_precision}' unavailable for '{self.device}' device.")
 
     @property
     def model_name(self) -> str:
@@ -98,26 +106,26 @@ def main(p: EvalConfig):
     ddp = DDPInfo.setup(p.device)
 
     try:
-        # Run folder, logger, and environment (main process only):
-        logger, env = setup_io(p, ddp)
+        with matmul_precision_ctx(p):
+            # Run folder, logger, and environment (main process only):
+            logger, env = setup_io(p, ddp)
 
-        # Construct the model and the batches:
-        tok = GPT2Tokenizer()
-        model, cfg = build_model(p, ddp, tok)
-        dp_batches = prep_batches(p, ddp, tok)
+            # Construct the model and the batches:
+            tok = GPT2Tokenizer()
+            model, cfg = build_model(p, ddp, tok)
+            dp_batches = prep_batches(p, ddp, tok)
 
-        # Evaluate the model accuracy:
-        cfg = replace(cfg, device=ddp.device, precision=p.precision)
-        t0 = time.perf_counter()
-        acc = eval_hellaswag(cfg, model, dp_batches, ddp)
-        eval_s = time.perf_counter() - t0
+            # Evaluate the model accuracy:
+            cfg = replace(cfg, device=ddp.device, precision=p.precision)
+            t0 = time.perf_counter()
+            acc = eval_hellaswag(cfg, model, dp_batches, ddp)
+            eval_s = time.perf_counter() - t0
 
-        # Record the results (main process only):
-        if ddp.is_main:
-            results = dict(model=p.model_name, acc_norm=acc, ref_acc_norm=REF_ACC_NORM.get(p.gpt2_pretrained),
-                           n_examples=sum(len(labels) for _, _, labels in dp_batches), eval_s=eval_s,
-                           command=shlex.join(sys.argv))
-            save_results(p, cfg, results, env, logger)
+            # Record the results (main process only):
+            if ddp.is_main:
+                results = dict(model=p.model_name, acc_norm=acc, ref_acc_norm=REF_ACC_NORM.get(p.gpt2_pretrained),
+                n_examples=sum(len(labels) for _, _, labels in dp_batches), eval_s=eval_s, command=shlex.join(sys.argv))
+                save_results(p, cfg, results, env, logger)
 
     finally:
         ddp.teardown()

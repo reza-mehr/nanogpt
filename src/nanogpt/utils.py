@@ -242,6 +242,32 @@ def prepare_for_inference(model: nn.Module, mode: str):
     raise ValueError(f'Unknown precision mode: {mode}')
 
 
+@contextmanager
+def _matmul_precision_ctx(precision):
+    '''Function to set the 'matmul_precision' and switch back the global state when done.'''
+    global_state = torch.backends.cuda.matmul.fp32_precision        # current global state
+    torch.backends.cuda.matmul.fp32_precision = precision
+    try:
+        yield
+    finally:
+        torch.backends.cuda.matmul.fp32_precision = global_state    # restore the previous global state
+
+
+def matmul_precision_ctx(cfg):
+    '''Function to construct context manager to set matmul precision.'''
+
+    # Error handling:
+    if not cfg.device == 'cuda': return nullcontext()
+    if not torch.cuda.is_available(): raise ValueError("'cuda' device unavailable!")
+
+    cuda_capab = torch.cuda.get_device_capability()
+    if cfg.matmul_precision == 'tf32' and cuda_capab < (8, 0):
+        raise ValueError(f"'{cfg.matmul_precision}' unavailable for your CUDA capability: {cuda_capab} < (8, 0)")
+
+    precision = 'ieee' if cfg.matmul_precision == 'fp32' else 'tf32'
+    return _matmul_precision_ctx(precision)
+
+
 #%% General utility functions:
 
 def get_param_count(model: nn.Module, trainable_only: bool = True):
@@ -351,7 +377,6 @@ def get_peak_flops(device: str, precision: str, path: Path = PEAK_FLOPS_CSV) -> 
 
     '''
     device_name = get_device_name(device)       # map to GPU name for 'cuda' devices
-    if precision == 'mixed_bf16': precision = 'bf16'
     if precision not in PRECISIONS: raise ValueError(f"Unknown precision {precision!r}; options: {PRECISIONS}")
     table = _load_table(path)
 

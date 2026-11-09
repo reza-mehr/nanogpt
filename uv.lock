@@ -2391,7 +2391,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "tensorboard", specifier = ">=2.21.0" },
     { name = "tiktoken", specifier = ">=0.14.0" },
-    { name = "torch", specifier = ">=2.8.0" },
+    { name = "torch", specifier = ">=2.9.0" },
     { name = "tqdm", specifier = ">=4.70.1" },
     { name = "tyro", specifier = ">=1.0.16" },
 ]

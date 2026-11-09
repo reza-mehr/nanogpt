@@ -9,10 +9,11 @@ This file contains model tests that ensure expected shapes, uniform initializati
 import pytest
 import torch
 import math
+from dataclasses import replace
 
-from nanogpt.config import ModelConfig
+from nanogpt.config import ModelConfig, small_cfg
 from nanogpt.model import build_model
-from nanogpt.utils import autocast_ctx, prepare_for_inference, get_param_count
+from nanogpt.utils import autocast_ctx, matmul_precision_ctx, prepare_for_inference, get_param_count
 
 #%% Configuration setup for tests:
 
@@ -171,6 +172,42 @@ def test_no_leakage_across_batch(kv_head_num):
     assert torch.equal(logits[1:], logits2[1:])
 
 #%% Mixed-precision compute test:
+
+@pytest.mark.gpu
+@pytest.mark.skipif(not torch.cuda.is_available(), reason='needs CUDA')
+def test_tf32():
+    '''Function to test that tensor core operations take effect on GPU by checking the matmul error with respect to float64 ground truth.'''
+
+    # Skip if tensor core capability unavailable:
+    if torch.cuda.get_device_capability() < (8, 0):
+        pytest.skip("Skipped since tensor core capability unavailable for the current GPU.")
+
+    # Store global state to validate restoration:
+    global_state = torch.backends.cuda.matmul.fp32_precision
+
+    # Ground truth matmul in 'float64':
+    torch.manual_seed(0)
+    a = torch.randn((4096, 4096), dtype=torch.float64, device='cuda')
+    b = torch.randn((4096, 4096), dtype=torch.float64, device='cuda')
+    c_true = a @ b
+
+    # Same matmul in 'fp32':
+    cfg = replace(small_cfg, device='cuda', matmul_precision='fp32')
+    with matmul_precision_ctx(cfg):
+        a, b = a.to(torch.float32), b.to(torch.float32)
+        c_fp32 = a @ b
+        assert torch.norm(c_fp32 - c_true) / torch.norm(c_true) < 1e-5
+        assert torch.backends.cuda.matmul.fp32_precision == 'ieee'
+    assert torch.backends.cuda.matmul.fp32_precision == global_state
+
+    # Same matmul in 'tf32':
+    cfg = replace(cfg, matmul_precision='tf32')
+    with matmul_precision_ctx(cfg):
+        c_tf32 = a @ b
+        assert 1e-5 < torch.norm(c_tf32 - c_true) / torch.norm(c_true) < 1e-3
+        assert torch.backends.cuda.matmul.fp32_precision == 'tf32'
+    assert torch.backends.cuda.matmul.fp32_precision == global_state
+
 
 @pytest.mark.parametrize('dtype', ['mixed_bf16', 'bf16'])
 def test_bf16_forward_close_to_fp32(dtype):

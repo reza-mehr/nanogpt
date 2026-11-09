@@ -41,7 +41,7 @@ from nanogpt.optimizer import build_optimizer, set_learning_rate
 from nanogpt.reporting import Col, append_row_csv, collect_env, load_json, load_rows_csv, prepare_run_dir, save_json
 from nanogpt.reporting import setup_logger, table_section, truncate_rows_csv, write_report
 from nanogpt.tokenizers import build_tokenizer
-from nanogpt.utils import autocast_ctx, get_param_count, get_peak_flops
+from nanogpt.utils import autocast_ctx, matmul_precision_ctx, get_param_count, get_peak_flops
 from nanogpt.distributed import DDPInfo
 
 #%% Global variables:
@@ -127,15 +127,16 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
 
     # Training loop:
     try:
-        for step in range(start_step, cfg.max_iters+1):
-            # Run a training step:
-            lr, grad_norm = train_step(cfg, model_compiled, train_data, optim, step, ddp, writer)
+        with matmul_precision_ctx(cfg):
+            for step in range(start_step, cfg.max_iters+1):
+                # Run a training step:
+                lr, grad_norm = train_step(cfg, model_compiled, train_data, optim, step, ddp, writer)
 
-            # Evaluate, record metrics, and save checkpoints:
-            evaluate_and_save(cfg, model, optim, step, train_data, val_data, lr, grad_norm, state, ddp, hellaswag_dps)
+                # Evaluate, record metrics, and save checkpoints:
+                evaluate_and_save(cfg, model, optim, step, train_data, val_data, lr, grad_norm, state, ddp, hellaswag_dps)
 
-            # Emulate a crash for testing checkpoints:
-            if stop_after is not None and step == stop_after: return model, state.best_val
+                # Emulate a crash for testing checkpoints:
+                if stop_after is not None and step == stop_after: return model, state.best_val
 
     finally:
         ddp.teardown()                              # tear-down DDP process group
@@ -215,7 +216,8 @@ def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: d
     # Get FLOPs per token for the model normalized by the peak FLOPs:
     try:
         flops_per_token = model.get_flops_per_token(cfg.model.block_size)
-        peak_flops = get_peak_flops(ddp.device, cfg.precision)
+        precision = 'bf16' if cfg.precision == 'mixed_bf16' else cfg.matmul_precision
+        peak_flops = get_peak_flops(ddp.device, precision)
         flops_util_per_token = flops_per_token / peak_flops
     except (KeyError, ValueError) as e:
         flops_util_per_token = None
