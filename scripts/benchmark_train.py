@@ -1,6 +1,6 @@
 '''
 This file contains the code to benchmark training throughput and peak memory as each optimization is added cumulatively (batched attention, torch LayerNorm, fused AdamW, SDPA, mixed bf16).
-The journey, measurement, and reporting code lives in src/nanogpt/benchmarking.py.
+The configuration, journey, and measurement code lives in src/nanogpt/benchmarking/ (train.py and common.py).
 
 Quick debug run of the whole pipeline:
     uv run scripts/benchmark_train.py --preset small_cfg --block-sizes 32 64 --iters 5 --trials 1
@@ -20,7 +20,8 @@ An existing output folder is cleared only after confirmation (or with --overwrit
 
 import tyro
 
-from nanogpt.benchmarking import TRAIN_METRICS, TrainBenchConfig, run_or_load, run_train_journey
+from nanogpt.benchmarking.common import run_or_load
+from nanogpt.benchmarking.train import TRAIN_METRICS, TrainBenchConfig, run_train_journey
 from nanogpt.reporting import report_pivot
 
 #%% Main function:

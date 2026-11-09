@@ -1,6 +1,6 @@
 '''
 This file contains the code to profile where the time goes in a training step, a prompt prefill, or one decode step.
-The profiling, summarizing, and reporting code lives in src/nanogpt/benchmarking.py.
+The configuration, profiling, summarizing, and reporting code lives in src/nanogpt/benchmarking/ (profiling.py and common.py).
 
 The report has three parts:
 - Summary: step time and aten op calls per step per variant and length; op counts are the clearest evidence of per-op overhead (fewer, larger ops after batched attention and torch LayerNorm).
@@ -34,7 +34,8 @@ An existing output folder is cleared only after confirmation (or with --overwrit
 
 import tyro
 
-from nanogpt.benchmarking import ProfileConfig, report_profile, run_or_load, run_profile
+from nanogpt.benchmarking.common import run_or_load
+from nanogpt.benchmarking.profiling import ProfileConfig, report_profile, run_profile
 
 #%% Main function:
 

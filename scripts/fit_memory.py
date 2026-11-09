@@ -1,6 +1,6 @@
 '''
 This file contains the code to fit the memory model mem(T) = c + a T + b T^2 to a saved benchmark and plot it.
-The fitting and plotting code lives in src/nanogpt/benchmarking.py.
+The fitting and plotting code lives in src/nanogpt/benchmarking/memory_fit.py.
 
 - c: length-independent memory (weights, gradients, optimizer state)
 - a T: activations that grow linearly with the length
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import tyro
 
-from nanogpt.benchmarking import report_memory_fit
+from nanogpt.benchmarking.memory_fit import report_memory_fit
 from nanogpt.reporting import setup_logger
 
 #%% Configuration:

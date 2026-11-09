@@ -1,6 +1,6 @@
 '''
 This file contains the code to benchmark token generation: decode throughput, time to first token (TTFT), and memory.
-The journey, measurement, and reporting code lives in src/nanogpt/benchmarking.py.
+The configuration, journey, measurement, and reporting code lives in src/nanogpt/benchmarking/ (generate.py and common.py).
 
 Suites:
 - journey: cumulative inference optimizations (batched attention, torch LayerNorm, SDPA, KV cache, bf16 cast),
@@ -31,7 +31,8 @@ An existing output folder is cleared only after confirmation (or with --overwrit
 
 import tyro
 
-from nanogpt.benchmarking import GenerateBenchConfig, report_generate, run_generate, run_or_load
+from nanogpt.benchmarking.common import run_or_load
+from nanogpt.benchmarking.generate import GenerateBenchConfig, report_generate, run_generate
 
 #%% Main function:
 
