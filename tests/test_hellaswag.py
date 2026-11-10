@@ -269,7 +269,7 @@ class _DDPModel(nn.Module):
         return logits, None
 
 
-@pytest.mark.parametrize('parallel', [False, pytest.param(True, marks=pytest.mark.smoke)])
+@pytest.mark.parametrize('parallel', [False, pytest.param(True, marks=pytest.mark.slow)])
 @pytest.mark.parametrize('ndp', [1, 10])            # ndp = 1 tests the empty rank 1
 def test_eval_hellaswag(df, tok, parallel, ndp, tmp_path_factory):
     '''Function to test that the eval_hellaswag() computes the correct normalized accuracy in DDP and single process modes.'''

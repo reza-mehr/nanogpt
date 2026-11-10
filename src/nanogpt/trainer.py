@@ -119,18 +119,15 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     # Prep the HellaSwag dataset for evaluation if requested:
     hellaswag_dps = prep_hellaswag(cfg.hellaswag, ddp, tokenizer_meta, state)
 
-    # Compile the model for efficiency if requested:
-    model_compiled = torch.compile(model) if cfg.compile_model else model
-    if ddp.is_active:
-        device_ids = [ddp.local_rank] if cfg.device == 'cuda' else None
-        model_compiled = DDP(model_compiled, device_ids=device_ids)
+    # Wrap the model in DDP object and compile it:
+    model_wrapped = wrap_model(cfg, model, ddp)
 
     # Training loop:
     try:
         with matmul_precision_ctx(cfg):
             for step in range(start_step, cfg.max_iters+1):
                 # Run a training step:
-                lr, grad_norm = train_step(cfg, model_compiled, train_data, optim, step, ddp, writer)
+                lr, grad_norm = train_step(cfg, model_wrapped, train_data, optim, step, ddp, writer)
 
                 # Evaluate, record metrics, and save checkpoints:
                 evaluate_and_save(cfg, model, optim, step, train_data, val_data, lr, grad_norm, state, ddp, hellaswag_dps)
@@ -268,6 +265,35 @@ def prep_hellaswag(cfg: HellaSwagConfig, ddp: DDPInfo, tokenizer_meta: dict, sta
         state.logger.info(f"Downloaded and tokenized HellaSwag dataset: {len(dp_batches)} batches\n")
 
     return dp_batches
+
+
+def wrap_model(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo):
+    '''
+    Function to wrap the model in DDP object and compile it.
+    The default is to compile outside DDP so Dynamo can split the graph at bucket boundaries and overlap communication with backward.
+
+    Parameters
+    ----------
+    cfg: TrainConfig
+        Configurations to use.
+    model: nn.Module
+        Model to train.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+
+    Returns
+    -------
+    model_wrapped: nn.Module
+        Model to train potentially wrapped in DDP object and compiled depending on the configurations.
+
+    '''
+    def _compile_wrap(model):
+        return torch.compile(model) if cfg.compile_model else model
+    def _ddp_wrap(model):
+        if not ddp.is_active: return model
+        device_ids = [ddp.local_rank] if cfg.device == 'cuda' else None
+        return DDP(model, device_ids=device_ids)
+    return _compile_wrap(_ddp_wrap(model)) if cfg.compile_order == 'after_ddp' else _ddp_wrap(_compile_wrap(model))
 
 
 def train_step(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, optim: Optimizer, step: int, ddp: DDPInfo, writer: None | SummaryWriter = None):

@@ -33,5 +33,6 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["smoke: end-to-end runs of the scripts on tiny CPU settings (deselect with -m 'not smoke')",
+            "slow: slow tests (deselect with -m 'not slow')",
             "gpu: tests that require 'cuda' (deselect with -m 'not gpu')"]
 addopts = '--ignore=tests/test_gpt2_hf.py'

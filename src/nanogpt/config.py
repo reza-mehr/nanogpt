@@ -7,7 +7,7 @@ import tyro
 from dataclasses import dataclass, field, fields, is_dataclass, replace
 import torch
 import inspect
-from typing import Literal
+from typing import Literal, get_args
 import logging
 
 
@@ -162,6 +162,8 @@ class TrainConfig:
     precision: Literal['fp32', 'mixed_bf16'] = 'fp32'
     # compute precision for forward passes; bf16 uses autocast, with weights kept in fp32
     compile_model: bool = False                             # if True, compile model operations for efficiency
+    compile_order: Literal['after_ddp', 'before_ddp'] = 'after_ddp'
+    # whether to compile the DDP-wrapped model ('after_ddp') or DDP wrap the compiled model ('before_ddp')
 
     seed: int = 1337                                        # random seed
     preset: tyro.conf.Suppress[str] = 'custom'              # preset name, set in PRESETS, used in the default run name
@@ -188,6 +190,9 @@ class TrainConfig:
         if BT is not None and ( BT < B * T or BT % (B * T) > 0 ):
             raise ValueError(f"'batch_tokens' must be a multiple of B*T: {BT} % ({B} * {T}) = {BT % (B*T)}")
         if self.ckpt_freq < 0: raise ValueError(f"Checkpoint frequency cannot be negative: {self.ckpt_freq} < 0")
+        compile_order_vals = get_args(TrainConfig.__annotations__['compile_order'])
+        if self.compile_order not in compile_order_vals:
+            raise ValueError(f"Unknown compile order {self.compile_order!r}; options: {compile_order_vals}")
 
     @property
     def run_dir(self) -> Path:

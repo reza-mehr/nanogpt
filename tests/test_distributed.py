@@ -13,13 +13,14 @@ import torch
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
+from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import allreduce_hook
 
 from nanogpt.config import TrainConfig, ModelConfig
 from nanogpt.data import TokenSplit
 from nanogpt.distributed import DDPInfo
 from nanogpt.model import GPT
 from nanogpt.optimizer import build_optimizer
-from nanogpt.trainer import train_step
+from nanogpt.trainer import train_step, wrap_model
 
 #%% Training configurations:
 
@@ -99,7 +100,7 @@ def _worker(rank, world_size, tmp_dir, cfg, train_data):
         destroy_process_group()
 
 
-#%% Main code:
+#%% Gradient equivalence tests:
 
 @pytest.mark.parametrize('world_size', [1, 2])
 def test_single_step_grads_identical(tmp_path_factory, train_data, world_size):
@@ -135,3 +136,49 @@ def test_accum_grads_identical(tmp_path_factory, train_data):
     torch.testing.assert_close(grads_ddp, grads_serial)
 
 
+#%% No-sync test for gradient accumulation substeps:
+
+def _count_worker(rank, world_size, tmp_dir, cfg, train_data):
+    '''Function to run one training step per process and record which gradient buckets were all-reduced.'''
+
+    init_process_group('gloo', init_method=f'file://{tmp_dir}/rendezvous', rank=rank, world_size=world_size)
+    try:
+        # Initialization:
+        torch.manual_seed(0)
+        model = GPT(cfg.model)
+        optim = build_optimizer(model, cfg)
+        ddp = DDPInfo(rank=rank, local_rank=rank, world_size=world_size, device=cfg.device)
+        model_wrapped = wrap_model(cfg, model, ddp)     # wrap the model in DDP and compile in the requested order
+
+        # Record every communicated bucket, then all-reduce it as DDP normally would:
+        bucket_ids = []
+        def counting_hook(state, bucket):
+            bucket_ids.append(bucket.index())
+            return allreduce_hook(state, bucket)
+        model_wrapped.register_comm_hook(state=None, hook=counting_hook)
+
+        # Train for one step, wrapped the same way as the trainer, and save the record:
+        train_step(cfg, model_wrapped, train_data, optim, 1, ddp)
+        if ddp.is_main: torch.save(bucket_ids, tmp_dir / 'buckets.pt')
+
+    finally:
+        destroy_process_group()
+
+
+@pytest.mark.parametrize('compile_model', [False, pytest.param(True, marks=pytest.mark.slow)])
+@pytest.mark.parametrize('compile_order', ['after_ddp', 'before_ddp'])
+def test_accum_syncs_once_per_step(tmp_path_factory, train_data, compile_model, compile_order):
+    '''Function to test that gradient accumulation all-reduces each gradient bucket once per step, not once per substep.'''
+    # Initialization (two substeps per rank):
+    world_size = 2
+    cfg = replace(tiny_cfg, batch_tokens=2 * B * T * world_size, batch_size=B,
+                  compile_model=compile_model, compile_order=compile_order)
+    assert cfg.get_grad_accum_iters(world_size=world_size) == 2
+
+    # Run the workers and read rank 0's record:
+    tmp_dir = tmp_path_factory.mktemp('ddp_sync')
+    mp.spawn(_count_worker, args=(world_size, tmp_dir, cfg, train_data), nprocs=world_size)
+    bucket_ids = torch.load(tmp_dir / 'buckets.pt')
+
+    assert len(bucket_ids) > 0, 'no gradients were communicated'
+    assert len(bucket_ids) == len(set(bucket_ids)), f'buckets all-reduced more than once per step: {bucket_ids}'
