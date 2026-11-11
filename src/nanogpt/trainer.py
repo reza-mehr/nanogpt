@@ -27,7 +27,6 @@ import torch
 from torch import nn
 from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
-from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 
 from nanogpt.config import TrainConfig, HellaSwagConfig, config_record
@@ -42,7 +41,7 @@ from nanogpt.reporting import Col, append_row_csv, collect_env, load_json, load_
 from nanogpt.reporting import setup_logger, table_section, truncate_rows_csv, write_report
 from nanogpt.tokenizers import build_tokenizer
 from nanogpt.utils import autocast_ctx, matmul_precision_ctx, get_param_count, get_peak_flops
-from nanogpt.distributed import DDPInfo
+from nanogpt.distributed import DDPInfo, wrap_model
 
 #%% Global variables:
 
@@ -265,35 +264,6 @@ def prep_hellaswag(cfg: HellaSwagConfig, ddp: DDPInfo, tokenizer_meta: dict, sta
         state.logger.info(f"Downloaded and tokenized HellaSwag dataset: {len(dp_batches)} batches\n")
 
     return dp_batches
-
-
-def wrap_model(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo):
-    '''
-    Function to wrap the model in DDP object and compile it.
-    The default is to compile outside DDP so Dynamo can split the graph at bucket boundaries and overlap communication with backward.
-
-    Parameters
-    ----------
-    cfg: TrainConfig
-        Configurations to use.
-    model: nn.Module
-        Model to train.
-    ddp: DDPInfo
-        Distributed data parallelism instance.
-
-    Returns
-    -------
-    model_wrapped: nn.Module
-        Model to train potentially wrapped in DDP object and compiled depending on the configurations.
-
-    '''
-    def _compile_wrap(model):
-        return torch.compile(model) if cfg.compile_model else model
-    def _ddp_wrap(model):
-        if not ddp.is_active: return model
-        device_ids = [ddp.local_rank] if cfg.device == 'cuda' else None
-        return DDP(model, device_ids=device_ids)
-    return _compile_wrap(_ddp_wrap(model)) if cfg.compile_order == 'after_ddp' else _ddp_wrap(_compile_wrap(model))
 
 
 def train_step(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, optim: Optimizer, step: int, ddp: DDPInfo, writer: None | SummaryWriter = None):

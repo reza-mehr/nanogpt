@@ -14,13 +14,16 @@ import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Literal
+from contextlib import contextmanager
+from collections.abc import Generator
 
 import torch
 
 from nanogpt.config import DEVICE, PRESETS, ModelConfig, TrainConfig, config_record
 from nanogpt.kv_cache import KVCache
 from nanogpt.model import build_model
-from nanogpt.utils import autocast_ctx, prepare_for_inference, region, sync_device
+from nanogpt.utils import autocast_ctx, matmul_precision_ctx, prepare_for_inference, region, sync_device
+from nanogpt.distributed import DDPInfo, wrap_model
 
 from nanogpt.reporting import collect_env, load_json, save_json, load_rows_csv, save_rows_csv
 from nanogpt.reporting import prepare_run_dir, setup_logger
@@ -208,8 +211,12 @@ def median_time(fn: Callable[[], object], device: str, trials: int) -> float:
 
 #%% Training step:
 
-def make_step(cfg: TrainConfig):
-    '''Function to build a model, optimizer, and fixed batch and return a function that conducts one training step.'''
+@contextmanager
+def make_step(cfg: TrainConfig) -> Generator[Callable[..., float | None]]:
+    '''
+    Function to build a model, optimizer, and fixed batch and yield a function that conducts one training step.
+    Use as 'with make_step(cfg) as step:', the matmul precision holds for the whole block.
+    '''
 
     # Initialization:
     torch.manual_seed(0)
@@ -222,10 +229,14 @@ def make_step(cfg: TrainConfig):
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4, fused=cfg.adamw_fused)
     x = torch.randint(0, vocab_size, (batch_size, T), device=device)
 
+    # Reset Dynamo cache of compiled graphs to ensure that each benchmarking cell compiles from scratch:
+    torch._dynamo.reset()
+    model_wrapped = wrap_model(cfg, model, DDPInfo())       # compile the model if requested
+
     def step(measure_after_forward: bool = False):
         '''One optimization step; optionally return memory right after forward (MPS).'''
         with autocast_ctx(device, precision):
-            _, loss = model(x, x)
+            _, loss = model_wrapped(x, x)
         opt.zero_grad(set_to_none=True)
         mem = torch.mps.current_allocated_memory() / 2**20 if measure_after_forward else None
         with region('backward'):
@@ -234,7 +245,8 @@ def make_step(cfg: TrainConfig):
             opt.step()
         return mem
 
-    return step
+    with matmul_precision_ctx(cfg):         # matmul precision is set once for the life-cycle of 'step' function
+        yield step
 
 #%% Running and reloading:
 

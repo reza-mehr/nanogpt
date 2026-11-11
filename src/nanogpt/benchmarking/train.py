@@ -20,7 +20,7 @@ from nanogpt.benchmarking.common import make_step, median_time
 
 @dataclass
 class TrainBenchConfig(BenchBase):
-    block_sizes: tuple[int, ...] = (128, 256, 512, 1024)     # sequence lengths, the table columns
+    block_sizes: tuple[int, ...] = (128, 256, 512, 1024)    # sequence lengths, the table columns
     warmup: int = 5
     iters: int = 20                                         # training steps per timed trial
     trials: int = 3                                         # timed trials; the median is reported
@@ -59,20 +59,21 @@ def bench_train_cell(cfg: TrainConfig, b: TrainBenchConfig) -> tuple[float, floa
     # Initialization:
     batch_size, T, device = cfg.batch_size, cfg.model.block_size, cfg.device
     free_device_memory(device)
-    step = make_step(cfg)
 
-    # Warm-up steps to ensure transient and one-time processes do not affect the benchmarking:
-    for _ in range(b.warmup):
-        step()
-
-    # Measure the memory and the time per trial:
-    memory_mib = measure_peak_mib(step, device)
-
-    def run_iters():
-        for _ in range(b.iters):
+    with make_step(cfg) as step:
+        # Warm-up steps to ensure transient and one-time processes do not affect the benchmarking:
+        for _ in range(b.warmup):
             step()
 
-    seconds = median_time(run_iters, device, b.trials)
+        # Measure the memory and the time per trial:
+        memory_mib = measure_peak_mib(step, device)
+
+        # Benchmark for requested iterations and trials:
+        def run_iters():
+            for _ in range(b.iters):
+                step()
+
+        seconds = median_time(run_iters, device, b.trials)
 
     return b.iters * batch_size * T / seconds, memory_mib
 

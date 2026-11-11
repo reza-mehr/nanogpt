@@ -11,6 +11,8 @@ import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Literal
+from contextlib import contextmanager
+from collections.abc import Generator
 
 import torch
 from torch.autograd import DeviceType
@@ -85,9 +87,11 @@ def find_variant(variants: list[tuple[str, str, dict, dict]], name: str) -> tupl
     return found[name]
 
 
-def make_profile_step(p: ProfileConfig, variant: str, T: int) -> Callable[[], None]:
+@contextmanager
+def make_profile_step(p: ProfileConfig, variant: str, T: int) -> Generator[Callable[[], None]]:
     '''
-    Function to build the model for one variant and return a function that runs one step of the profiled mode.
+    Function to build the model for one variant and yield a function that runs one step of the profiled mode.
+    When profiling training, the function handles matmul precision. However, matmul precision is not currently part of the inference profiling.
 
     Parameters
     ----------
@@ -109,8 +113,10 @@ def make_profile_step(p: ProfileConfig, variant: str, T: int) -> Callable[[], No
     # Training step:
     if p.mode == 'train':
         base = base_train_cfg(p.preset, p.device, p.vocab_size, p.batch)
-        step = make_step(replace(base, model=replace(base.model, **model_over, block_size=T), **run_over))
-        return lambda: step()
+        cfg = replace(base, model=replace(base.model, **model_over, block_size=T), **run_over)
+        with make_step(cfg) as step:                # matmul precision is set once for the life-cycle of 'step' function
+            yield step
+        return
 
     # Inference model and inputs:
     base = base_model_cfg(p.preset, p.vocab_size, block_size=T + 1)
@@ -124,14 +130,14 @@ def make_profile_step(p: ProfileConfig, variant: str, T: int) -> Callable[[], No
             if p.mode == 'prefill':
                 if cache is not None: cache.reset()
                 model(prompt, cache=cache)
-            elif cache is not None:                         # decode one token against a cache filled to T
+            elif cache is not None:                 # decode one token against a cache filled to T
                 cache.reset()
                 cache.advance(T)
                 model(token, cache=cache)
-            else:                                           # decode without a cache recomputes the full context
+            else:                                   # decode without a cache recomputes the full context
                 model(idx)
 
-    return step
+    yield step
 
 
 def profile_case(step_fn: Callable[[], None], p: ProfileConfig, trace_path: Path) -> tuple[dict, float, list[dict]]:
@@ -253,9 +259,9 @@ def run_profile(p: ProfileConfig) -> dict[str, list[dict]]:
         for n, variant in enumerate(variants):
             free_device_memory(p.device)
             case = f'{variant} T={T}'
-            step_fn = make_profile_step(p, variant, T)
-            times, n_ops, top_ops = profile_case(step_fn, p, p.run_dir / 'traces' / f'{_slug(case)}.json')
-            del step_fn
+            with make_profile_step(p, variant, T) as step_fn:
+                times, n_ops, top_ops = profile_case(step_fn, p, p.run_dir / 'traces' / f'{_slug(case)}.json')
+            del step_fn         # drop the closure so the model can be freed before the next case
 
             # Whole step, compared with the previous variant:
             step_ms = times.get('step', math.nan)

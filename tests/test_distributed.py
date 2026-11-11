@@ -17,10 +17,10 @@ from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import allreduce_
 
 from nanogpt.config import TrainConfig, ModelConfig
 from nanogpt.data import TokenSplit
-from nanogpt.distributed import DDPInfo
+from nanogpt.distributed import DDPInfo, wrap_model
 from nanogpt.model import GPT
 from nanogpt.optimizer import build_optimizer
-from nanogpt.trainer import train_step, wrap_model
+from nanogpt.trainer import train_step
 
 #%% Training configurations:
 

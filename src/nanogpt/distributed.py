@@ -7,9 +7,14 @@ This file contains the code and utility relevant for distributed data parallelis
 
 import os
 import socket
-import torch
-from torch.distributed import init_process_group, destroy_process_group
 from dataclasses import dataclass
+
+import torch
+from torch import nn
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import init_process_group, destroy_process_group
+
+from nanogpt.config import TrainConfig
 
 #%% DDPInfo class:
 
@@ -74,6 +79,35 @@ class DDPInfo:
 
 
 #%% Utility functions:
+
+def wrap_model(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo):
+    '''
+    Function to wrap the model in DDP object and compile it.
+    The default is to compile outside DDP so Dynamo can split the graph at bucket boundaries and overlap communication with backward.
+
+    Parameters
+    ----------
+    cfg: TrainConfig
+        Configurations to use.
+    model: nn.Module
+        Model to train.
+    ddp: DDPInfo
+        Distributed data parallelism instance.
+
+    Returns
+    -------
+    model_wrapped: nn.Module
+        Model to train potentially wrapped in DDP object and compiled depending on the configurations.
+
+    '''
+    def _compile_wrap(model):
+        return torch.compile(model) if cfg.compile_model else model
+    def _ddp_wrap(model):
+        if not ddp.is_active: return model
+        device_ids = [ddp.local_rank] if cfg.device == 'cuda' else None
+        return DDP(model, device_ids=device_ids)
+    return _compile_wrap(_ddp_wrap(model)) if cfg.compile_order == 'after_ddp' else _ddp_wrap(_compile_wrap(model))
+
 
 def free_port(host: str = '127.0.0.1') -> int:
     '''
