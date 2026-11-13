@@ -544,6 +544,9 @@ RUN_COLS = [Col('group', 'run / group'), Col('runs', 'runs', 'd'), Col('tokens',
             Col('final_val', 'final val', '.4f'), Col('final_val_std', '± std', '.4f'),
             Col('best_val', 'best val', '.4f'), Col('best_val_std', '± std', '.4f')]
 
+# HellaSwag reference accuracies of the 124M models (lines on the HellaSwag plot):
+HELLASWAG_REFS = {'GPT-2 124M (HF weights, this eval)': 0.2955, 'GPT-3 Small (reported)': 0.337}
+
 
 def is_training_run(path: Path) -> bool:
     '''Function to tell a training run folder: it holds results.csv and its name has no benchmark or profile prefix.'''
@@ -588,29 +591,48 @@ def get_dotted(d: dict, key: str):
     return d
 
 
-def plot_run(run_dir: Path) -> Path:
+def plot_run(run_dir: Path, plot_type: Literal['loss', 'hellaswag'] = 'loss') -> Path | None:
     '''
-    Function to plot the train and validation loss of one run versus tokens seen and save it in the run folder.
+    Function to plot one run's metrics versus tokens seen and save the figure in the run folder.
 
     Parameters
     ----------
     run_dir: Path
         Training run folder containing results.csv.
+    plot_type: str, optional
+        'loss' (train and validation loss) or 'hellaswag' (accuracy with reference lines). The default is 'loss'.
 
     Returns
     -------
-    path: Path
-        Saved figure, 'run_dir/loss.png'.
+    path: Path or None
+        Saved figure, 'run_dir/<plot_type>.png', or None if the run has no data for this plot.
 
     '''
+    # Plot settings:
+    if plot_type == 'loss':
+        title, ylabel, col_names, refs = 'Loss', 'cross-entropy loss', ['train', 'val'], {}
+    else:
+        title, ylabel, col_names, refs = 'HellaSwag accuracy', 'normalized accuracy', ['hellaswag_acc'], HELLASWAG_REFS
+
+    # Gather the points of each series, skipping rows without a value (missing column or nan):
     rows = load_rows_csv(run_dir / 'results.csv')
-    fig, ax = new_axes(f'Loss: {run_dir.name}', 'tokens seen', 'cross-entropy loss', n_series=2)
-    for color, split in zip(SERIES_COLORS, ('train', 'val')):
-        x = [r['tokens'] for r in rows]
-        y = [r[split] for r in rows]
-        ax.plot(x, y, color=color, linewidth=2, label=split)
+    series = []
+    for col_name in col_names:
+        points = [(r['tokens'], r[col_name]) for r in rows
+                  if r.get(col_name) is not None and not math.isnan(r[col_name])]
+        if points: series.append((col_name, *zip(*points)))
+    if not series: return None                  # nothing to plot, so no figure is created
+
+    # Plot the series and the reference lines on one axes:
+    fig, ax = new_axes(f'{title}: {run_dir.name}', 'tokens seen', ylabel, n_series=len(series))
+    for color, (label, x, y) in zip(SERIES_COLORS, series):
+        ax.plot(x, y, color=color, linewidth=2, label=label)
+    for linestyle, (label, value) in zip(('--', ':'), refs.items()):
+        ax.axhline(value, color=_TEXT_MUTED, linestyle=linestyle, linewidth=1.5, label=label)
     _format_token_axis(ax)
-    path = run_dir / 'loss.png'
+
+    # Save the plot and return the path:
+    path = run_dir / f'{plot_type}.png'
     save_figure(fig, ax, path)
     return path
 

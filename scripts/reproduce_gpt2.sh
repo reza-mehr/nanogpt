@@ -65,7 +65,7 @@ mkdir -p logs
 exec > >(tee "logs/reproduce_gpt2_${MODE}_${STAMP}.log") 2>&1   # log everything, still print to the terminal
 
 SECONDS=0                                                       # bash builtin: seconds since this assignment
-step() { echo; echo "=== $(date +%H:%M:%S) | +$((SECONDS / 60)) min | $* ==="; }
+step() { echo; echo "=== $(date +%H:%M:%S) | elapsed $((SECONDS / 60)) min | $* ==="; }
 
 #%% Environment:
 

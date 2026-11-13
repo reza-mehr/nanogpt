@@ -22,6 +22,7 @@ import shutil
 import time
 from dataclasses import dataclass
 from logging import Logger
+import math
 
 import torch
 from torch import nn
@@ -377,7 +378,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     train_loss, val_loss = losses['train'].item(), losses['val'].item()
 
     # Evaluate the model over HellaSwag dataset and compute the normalized accuracy:
-    hellaswag_acc = eval_hellaswag(cfg, model, hellaswag_dps, ddp) if cfg.should_eval_hellaswag(step) else None
+    hellaswag_acc = eval_hellaswag(cfg, model, hellaswag_dps, ddp) if cfg.should_eval_hellaswag(step) else math.nan
 
     # Save the latest and potentially best checkpoints:
     _save_checkpoints(cfg, model, optim, step, val_loss, state, ddp)
@@ -387,19 +388,22 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     # Throughput and model FLOPs utilization (MFU) over the training interval since the last evaluation:
     tokens_per_step = cfg.batch_size * cfg.model.block_size * cfg.get_grad_accum_iters(ddp.world_size) * ddp.world_size
     tok_per_sec = (step - state.mark_step) * tokens_per_step / train_s
-    mfu = None if state.flops_util_per_token is None else state.flops_util_per_token * tok_per_sec / ddp.world_size * 100
+    if state.flops_util_per_token is None:
+        mfu = math.nan
+    else:
+        mfu = state.flops_util_per_token * tok_per_sec / ddp.world_size * 100
 
     # Tensorboard logs:
     state.writer.add_scalar('eval/train_loss', train_loss, step)
     state.writer.add_scalar('eval/val_loss', val_loss, step)
     state.writer.add_scalar('eval/tok_per_sec', tok_per_sec, step)
-    if mfu is not None: state.writer.add_scalar('eval/mfu', mfu, step)
+    if not math.isnan(mfu): state.writer.add_scalar('eval/mfu', mfu, step)
     if cfg.should_eval_hellaswag(step):
         state.writer.add_scalar('eval/hella_swag_acc', hellaswag_acc, step)
 
     # Status update:
     msg = f'{train_s:.3f} sec | step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s'
-    msg = msg + ( " | MFU ---" if mfu is None else f" | MFU {mfu:.1f} %" )
+    msg = msg + ( " | MFU ---" if math.isnan(mfu) else f" | MFU {mfu:.1f} %" )
     if cfg.hellaswag.eval_freq > 0:
         if cfg.should_eval_hellaswag(step): msg += f" | HellaSwag acc {hellaswag_acc:.4f}"
         else: msg += " | HellaSwag acc -----"

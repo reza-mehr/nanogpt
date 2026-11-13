@@ -1,8 +1,8 @@
 '''
-This file contains the code to plot training runs: loss curves for one run, or a comparison of several runs.
+This file contains the code to plot training runs: loss and HellaSwag accuracy curves for one run, or a comparison of several runs.
 The plotting and table code lives in src/nanogpt/reporting.py.
 
-- Training run folder (contains results.csv): saves loss.png (train and val loss vs tokens seen) in that folder.
+- Training run folder (contains results.csv): saves loss.png (train and val loss vs tokens seen) and hellaswag.png in that folder.
 - Parent folder (its subfolders are runs): saves comparison.png, comparison.md, and comparison.csv in that folder,
   one curve per run, or per group of runs with '--group-by' (mean curve, min-max band, mean ± std table).
   Benchmark and profile folders (names starting with 'benchmark' or 'profile') are skipped.
@@ -33,24 +33,41 @@ from nanogpt.reporting import compare_runs, find_runs, log, plot_run, setup_logg
 @dataclass
 class PlotConfig:
     path: Path                                  # a run folder, or a folder whose subfolders are runs
+    plot_types: tuple[Literal['loss', 'hellaswag'], ...] = ('loss', 'hellaswag')
+    # plot types to generate for each run folder
     group_by: str | None = None                 # dotted config key to group runs by, e.g. 'model.n_kv_head'
     split: Literal['train', 'val'] = 'val'      # loss to compare across runs
-    per_run: bool = False                       # if True, also save loss.png in every compared run folder
+    per_run: bool = False                       # if True, also save requested plots for every compared run folder
 
 #%% Main function:
 
+def _mk_run_plots(run_dir: Path, plot_types) -> None:
+    '''Function to plot all requested plot types for a run folder.'''
+    for plot_type in plot_types:
+        plot_path = plot_run(run_dir, plot_type)
+        if plot_path: log.info(f'Saved {plot_path}')
+        else: log.warning(f"No data to plot for '{plot_type}'.")
+
+
 def main(p: PlotConfig) -> None:
     '''Function to plot a single run, or compare the runs under a folder.'''
+
+    # Initialization:
     setup_logger(None)                          # stdout only: a comparison spans runs, so no single run.log
     runs = find_runs(p.path)
+
+    # Save requested plot types for a single run folder:
     if runs == [p.path]:
-        log.info(f'Saved {plot_run(p.path)}')
+        _mk_run_plots(p.path, p.plot_types)
         return
 
+    # Compare the requested loss values for multiple run folders:
     compare_runs(p.path, p.group_by, p.split)
+
+    # Save requested plot types for each individual run folder:
     if p.per_run:
         for run_dir in runs:
-            plot_run(run_dir)
+            _mk_run_plots(run_dir, p.plot_types)
 
 #%% Main call:
 
