@@ -13,7 +13,7 @@ import torch
 from tqdm import tqdm
 
 from nanogpt.config import PRESETS, TrainConfig
-from nanogpt.benchmarking.common import BenchBase, TRAIN_JOURNEY, base_train_cfg, free_device_memory, journey_variants
+from nanogpt.benchmarking.common import BenchBase, base_train_cfg, free_device_memory, journey_variants
 from nanogpt.benchmarking.common import make_step, median_time
 
 #%% Configuration:
@@ -37,6 +37,7 @@ class TrainBenchConfig(BenchBase):
 
 # Entries: (row key, table title, number format)
 TRAIN_METRICS = [('tps', 'Training throughput (tokens/sec)', ',.0f'),
+                 ('mfu', 'MFU (%)', ',.1f'),
                  ('mem', 'Peak memory (MiB)', ',.0f')]
 
 #%% Training benchmark:
@@ -53,14 +54,14 @@ def measure_peak_mib(step_fn, device: str) -> float:
     return math.nan
 
 
-def bench_train_cell(cfg: TrainConfig, b: TrainBenchConfig) -> tuple[float, float]:
-    '''Function to measure training throughput (tokens/sec) and peak memory (MiB) for one config.'''
+def bench_train_cell(cfg: TrainConfig, b: TrainBenchConfig) -> tuple[float, float, float]:
+    '''Function to measure training throughput (tokens/sec), MFU (%), and peak memory (MiB) for one config.'''
 
     # Initialization:
     batch_size, T, device = cfg.batch_size, cfg.model.block_size, cfg.device
     free_device_memory(device)
 
-    with make_step(cfg) as step:
+    with make_step(cfg) as (step, peak_sec_per_token):
         # Warm-up steps to ensure transient and one-time processes do not affect the benchmarking:
         for _ in range(b.warmup):
             step()
@@ -75,15 +76,19 @@ def bench_train_cell(cfg: TrainConfig, b: TrainBenchConfig) -> tuple[float, floa
 
         seconds = median_time(run_iters, device, b.trials)
 
-    return b.iters * batch_size * T / seconds, memory_mib
+    # Output:
+    toks_per_sec = b.iters * batch_size * T / seconds
+    mfu = peak_sec_per_token * toks_per_sec * 100 if peak_sec_per_token else math.nan
+
+    return toks_per_sec, mfu, memory_mib
 
 
 def run_train_journey(b: TrainBenchConfig) -> list[dict]:
     '''Function to benchmark every training journey variant at every block size and return flat rows.'''
-    base, rows = base_train_cfg(b.preset, b.device, b.vocab_size, b.batch), []
-    for variant, ref, model_over, train_over in tqdm(journey_variants(TRAIN_JOURNEY), desc='train journey'):
+    base, rows = base_train_cfg(b.preset, b.device, b.vocab, b.batch), []
+    for variant, ref, model_over, train_over in tqdm(journey_variants(b.train_journey), desc='train journey'):
         for T in b.block_sizes:
             cfg = replace(base, model=replace(base.model, **model_over, block_size=T), **train_over)
-            tps, mem = bench_train_cell(cfg, b)
-            rows.append(dict(variant=variant, ref=ref, T=T, tps=tps, mem=mem))
+            tps, mfu, mem = bench_train_cell(cfg, b)
+            rows.append(dict(variant=variant, ref=ref, T=T, tps=tps, mfu=mfu, mem=mem))
     return rows

@@ -16,13 +16,14 @@ from pathlib import Path
 from typing import Callable, Literal
 from contextlib import contextmanager
 from collections.abc import Generator
+import warnings
 
 import torch
 
 from nanogpt.config import DEVICE, PRESETS, ModelConfig, TrainConfig, config_record
 from nanogpt.kv_cache import KVCache
 from nanogpt.model import build_model
-from nanogpt.utils import autocast_ctx, matmul_precision_ctx, prepare_for_inference, region, sync_device
+from nanogpt.utils import autocast_ctx, matmul_precision_ctx, prepare_for_inference, region, sync_device, get_peak_flops
 from nanogpt.distributed import DDPInfo, wrap_model
 
 from nanogpt.reporting import collect_env, load_json, save_json, load_rows_csv, save_rows_csv
@@ -32,21 +33,25 @@ from nanogpt.reporting import prepare_run_dir, setup_logger
 
 @dataclass
 class BenchBase:
-    preset: Literal['main_cfg', 'small_cfg', 'stories_cfg'] = 'main_cfg'
-    # model preset; 'small_cfg' for quick debug runs
+    preset: Literal[*PRESETS.keys()] = 'main_cfg'   # model preset; 'small_cfg' for quick debug runs
     device: str = DEVICE
-    vocab_size: int = 65                    # synthetic tokens, no dataset needed
-    batch_size: int | None = None           # None -> the benchmark's default batch size
-    warmup: int = 3                         # untimed repeats before measuring (compiles kernels)
-    out_dir: Path = Path('results')         # parent folder of each benchmark's output folder
-    from_csv: bool = False                  # if True, skip measuring and rebuild the report from the CSV files
-    overwrite: bool = False                 # if True, clear an existing output folder without asking
-    log_level: int = logging.INFO           # logging level, 20 for INFO, 10 for DEBUG
+    vocab_size: int | None = None                   # None -> the preset's vocab, else 65 (synthetic tokens)
+    batch_size: int | None = None                   # None -> the benchmark's default batch size
+    warmup: int = 3                                 # untimed repeats before measuring (compiles kernels)
+    out_dir: Path = Path('results')                 # parent folder of each benchmark's output folder
+    from_csv: bool = False                          # if True, skip measuring and rebuild the report from the CSV files
+    overwrite: bool = False                         # if True, clear an existing output folder without asking
+    log_level: int = logging.INFO                   # logging level, 20 for INFO, 10 for DEBUG
 
     @property
     def kind(self) -> str:
         '''Function to return the benchmark name used in the output folder; set by each subclass.'''
         raise NotImplementedError
+
+    @property
+    def vocab(self) -> int:
+        '''Function to set the vocab size: explicit 'vocab_size', otherwise the preset, then 65 (synthetic tokens).'''
+        return self.vocab_size or PRESETS[self.preset].model.vocab_size or 65
 
     @property
     def batch(self) -> int:
@@ -58,11 +63,21 @@ class BenchBase:
         '''Function to return the output folder for the report, CSV, and environment files.'''
         return self.out_dir / f'{self.kind}_{self.preset}_{self.device}'
 
+    @property
+    def train_journey(self) -> list:
+        '''Function to pick and post-process the correct train journey based on preset.'''
+        journey = TRAIN_JOURNEY_GPT2 if self.preset.startswith('gpt2') else TRAIN_JOURNEY_NANO
+        len0 = len(journey)
+        if not self.device == 'cuda':           # tensor cores only available on 'cuda'
+            journey = [val for val in journey if not val[0] == '+tf32']
+            if not len(journey) == len0: warnings.warn(f"Dropped '+tf32' variant, unavailable on '{self.device}'.")
+        return journey
+
 #%% Optimization journeys:
 
 # Cumulative training journey (each variant adds exactly one change to the previous one):
 # Entries: (variant name, ModelConfig overrides, TrainConfig overrides)
-TRAIN_JOURNEY = [
+TRAIN_JOURNEY_NANO = [
     ('baseline',      dict(batched_attention=False, ln_torch=False, scaled_dot_prod=False),
                       dict(adamw_fused=False, precision='fp32')),
     ('+batched attn', dict(batched_attention=True), {}),
@@ -70,6 +85,15 @@ TRAIN_JOURNEY = [
     ('+fused AdamW',  {}, dict(adamw_fused=True)),
     ('+SDPA',         dict(scaled_dot_prod=True), {}),
     ('+mixed bf16',   {}, dict(precision='mixed_bf16')),
+]
+TRAIN_JOURNEY_GPT2 = [
+    ('baseline',      dict(scaled_dot_prod=False), dict(adamw_fused=False, precision='fp32')),
+    ('+tf32',         {}, dict(matmul_precision='tf32')),
+    ('+mixed bf16',   {}, dict(precision='mixed_bf16')),
+    ('+compile',      {}, dict(compile_model=True)),
+    ('+SDPA',         dict(scaled_dot_prod=True), {}),
+    ('+padding',      dict(pad_vocab_to_multiple=128), {}),
+    ('+fused AdamW',  {}, dict(adamw_fused=True)),
 ]
 
 # Cumulative inference journey:
@@ -212,10 +236,9 @@ def median_time(fn: Callable[[], object], device: str, trials: int) -> float:
 #%% Training step:
 
 @contextmanager
-def make_step(cfg: TrainConfig) -> Generator[Callable[..., float | None]]:
+def make_step(cfg: TrainConfig) -> Generator[tuple[Callable[..., float | None], float | None]]:
     '''
-    Function to build a model, optimizer, and fixed batch and yield a function that conducts one training step.
-    Use as 'with make_step(cfg) as step:', the matmul precision holds for the whole block.
+    Function to build a model, optimizer, and fixed batch and yield a function that conducts one training step and peak FLOP seconds per token. Use as 'with make_step(cfg) as (step, peak_sec_per_token):', the matmul precision holds for the whole block.
     '''
 
     # Initialization:
@@ -231,7 +254,8 @@ def make_step(cfg: TrainConfig) -> Generator[Callable[..., float | None]]:
 
     # Reset Dynamo cache of compiled graphs to ensure that each benchmarking cell compiles from scratch:
     torch._dynamo.reset()
-    model_wrapped = wrap_model(cfg, model, DDPInfo())       # compile the model if requested
+    ddp = DDPInfo(device=cfg.device)                    # single process, no DDP
+    model_wrapped = wrap_model(cfg, model, ddp)         # compile the model if requested
 
     def step(measure_after_forward: bool = False):
         '''One optimization step; optionally return memory right after forward (MPS).'''
@@ -245,8 +269,24 @@ def make_step(cfg: TrainConfig) -> Generator[Callable[..., float | None]]:
             opt.step()
         return mem
 
+    # Get FLOPs per token for the model normalized by the peak FLOPs:
+    peak_sec_per_token = _get_flops_per_token(cfg, model, ddp)
+
     with matmul_precision_ctx(cfg):         # matmul precision is set once for the life-cycle of 'step' function
-        yield step
+        yield step, peak_sec_per_token
+
+
+def _get_flops_per_token(cfg, model, ddp):
+    '''Function to get FLOPs per token for the model normalized by the peak FLOPs.'''
+    flops_per_token = model.get_flops_per_token(cfg.model.block_size)
+    try:
+        precision = 'bf16' if cfg.precision == 'mixed_bf16' else cfg.matmul_precision
+        peak_flops = get_peak_flops(ddp.device, precision)
+        peak_sec_per_token = flops_per_token / peak_flops
+    except (KeyError, ValueError) as e:
+        if ddp.device.startswith('cuda'): warnings.warn(f"Peak FLOPs unavailable for '{ddp.device}': {e}")
+        peak_sec_per_token = None
+    return peak_sec_per_token
 
 #%% Running and reloading:
 

@@ -258,8 +258,7 @@ stories_cfg = TrainConfig(data=DataConfig(dir='data/tinystories'),
 
 # Open-AI GPT2 configs (Hugging Face version):
 gpt2_cfg = TrainConfig(model=ModelConfig(name='gpt2', vocab_size=50257, block_size=1024, n_embed=768, n_blocks=12, head_num=12, head_size=64, batched_attention=True, scaled_dot_prod=True, pos_embed='learned', ln_torch=True, dropout=0.),
-                       max_iters=10000, lr_schedule='cosine', learning_rate=6e-4, lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95, eval_interval=500, eval_iters=100, ckpt_freq=1, precision='mixed_bf16',
-                       batch_mode='sequential')
+                       max_iters=10000, lr_schedule='cosine', learning_rate=6e-4, lr_warmup_iters=500, grad_clip=1.0, weight_decay=0.1, decay_groups=True, beta2=0.95, eval_interval=500, eval_iters=100, ckpt_freq=1, precision='mixed_bf16', batch_mode='sequential')
 
 gpt2_medium_cfg = replace(gpt2_cfg, model = replace(gpt2_cfg.model, n_embed=1024, n_blocks=24, head_num=16) )
 gpt2_large_cfg = replace(gpt2_cfg, model = replace(gpt2_cfg.model, n_embed=1280, n_blocks=36, head_num=20) )

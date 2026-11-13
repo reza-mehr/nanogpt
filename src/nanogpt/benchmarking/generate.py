@@ -92,7 +92,7 @@ def bench_generate_cell(model: nn.Module, ctx, use_cache: bool, b: GenerateBench
     '''
     # Initialization:
     device, B, N = b.device, b.batch, b.new_tokens
-    idx = torch.randint(0, b.vocab_size, (B, T), device=device)
+    idx = torch.randint(0, b.vocab, (B, T), device=device)
     cache = make_kv_cache(model.cfg, B) if use_cache else None     # allocated once, untimed
 
     def gen(n: int):
@@ -115,7 +115,7 @@ def bench_generate_cell(model: nn.Module, ctx, use_cache: bool, b: GenerateBench
 
 def run_generate_journey(b: GenerateBenchConfig) -> list[dict]:
     '''Function to benchmark every inference journey variant at every prompt length and return flat rows.'''
-    base = base_model_cfg(b.preset, b.vocab_size, block_size=max(b.prompt_lens) + b.new_tokens)
+    base = base_model_cfg(b.preset, b.vocab, block_size=max(b.prompt_lens) + b.new_tokens)
     rows = []
     for variant, ref, model_over, run_over in tqdm(journey_variants(GENERATE_JOURNEY, GENERATE_BRANCHES),
                                                    desc='generate journey'):
@@ -132,7 +132,7 @@ def run_generate_gqa(b: GenerateBenchConfig) -> list[dict]:
     '''Function to sweep the number of key-value heads on the fully optimized model and return flat rows.'''
 
     # Initialization:
-    base = base_model_cfg(b.preset, b.vocab_size, block_size=max(b.prompt_lens) + b.new_tokens)
+    base = base_model_cfg(b.preset, b.vocab, block_size=max(b.prompt_lens) + b.new_tokens)
     best = dict(batched_attention=True, ln_torch=True, scaled_dot_prod=True)
     n_kvs = [d for d in range(base.head_num, 0, -1) if base.head_num % d == 0]     # MHA first, MQA last
     bytes_per = 4 if b.precision == 'fp32' else 2

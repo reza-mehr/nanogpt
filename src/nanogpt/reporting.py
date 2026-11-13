@@ -302,7 +302,9 @@ def pivot_sections(rows: list[dict], row_key: str, col_key: str, metrics: list[t
                    total_row: str | None = None) -> list[str]:
     '''Function to log one pivot table per metric and return their Markdown sections.'''
     sections = []
+    if len(rows) == 0: return sections
     for value_key, title, fmt in metrics:
+        if value_key not in rows[0]: continue       # 'value_key' missing from the run (for backward compatibility)
         table, cols = pivot_rows(rows, row_key, col_key, value_key, fmt, total_label, ref_key, total_row)
         sections.append(table_section(table, cols, title))
     return sections

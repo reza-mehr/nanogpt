@@ -20,7 +20,7 @@ from torch.profiler import ProfilerActivity, profile, record_function, schedule
 
 from nanogpt.config import PRESETS
 from nanogpt.utils import enable_regions, sync_device
-from nanogpt.benchmarking.common import BenchBase, GENERATE_BRANCHES, GENERATE_JOURNEY, TRAIN_JOURNEY, journey_variants
+from nanogpt.benchmarking.common import BenchBase, GENERATE_BRANCHES, GENERATE_JOURNEY, journey_variants
 from nanogpt.benchmarking.common import base_model_cfg, base_train_cfg, build_inference_model, free_device_memory
 from nanogpt.benchmarking.common import make_kv_cache, make_step
 from nanogpt.reporting import Col, pivot_sections, table_section, write_report
@@ -50,13 +50,13 @@ class ProfileConfig(BenchBase):
     def journey(self) -> list[tuple[str, str, dict, dict]]:
         '''Function to return the variants of the journey that matches the profiling mode.'''
         if self.mode == 'train':
-            return journey_variants(TRAIN_JOURNEY)
+            return journey_variants(self.train_journey)
         return journey_variants(GENERATE_JOURNEY, GENERATE_BRANCHES)
 
     @property
     def selected(self) -> list[str]:
         '''Function to return the variant names to profile: explicit 'variants', otherwise the first and last steps.'''
-        steps = TRAIN_JOURNEY if self.mode == 'train' else GENERATE_JOURNEY
+        steps = self.train_journey if self.mode == 'train' else GENERATE_JOURNEY
         return list(self.variants) or [steps[0][0], steps[-1][0]]
 
 #%% Metrics and report columns:
@@ -112,29 +112,29 @@ def make_profile_step(p: ProfileConfig, variant: str, T: int) -> Generator[Calla
 
     # Training step:
     if p.mode == 'train':
-        base = base_train_cfg(p.preset, p.device, p.vocab_size, p.batch)
+        base = base_train_cfg(p.preset, p.device, p.vocab, p.batch)
         cfg = replace(base, model=replace(base.model, **model_over, block_size=T), **run_over)
-        with make_step(cfg) as step:                # matmul precision is set once for the life-cycle of 'step' function
+        with make_step(cfg) as (step, _):   # matmul precision is set once for the life-cycle of 'step' function
             yield step
         return
 
     # Inference model and inputs:
-    base = base_model_cfg(p.preset, p.vocab_size, block_size=T + 1)
+    base = base_model_cfg(p.preset, p.vocab, block_size=T + 1)
     model, ctx = build_inference_model(base, model_over, run_over['precision'], p.device)
     cache = make_kv_cache(model.cfg, p.batch) if run_over['use_cache'] else None
-    idx = torch.randint(0, p.vocab_size, (p.batch, T + 1), device=p.device)
-    prompt, token = idx[:, :T], idx[:, T:]                  # (B, T), (B, 1)
+    idx = torch.randint(0, p.vocab, (p.batch, T + 1), device=p.device)
+    prompt, token = idx[:, :T], idx[:, T:]  # (B, T), (B, 1)
 
     def step():
         with torch.inference_mode(), ctx:
             if p.mode == 'prefill':
                 if cache is not None: cache.reset()
                 model(prompt, cache=cache)
-            elif cache is not None:                 # decode one token against a cache filled to T
+            elif cache is not None:         # decode one token against a cache filled to T
                 cache.reset()
                 cache.advance(T)
                 model(token, cache=cache)
-            else:                                   # decode without a cache recomputes the full context
+            else:                           # decode without a cache recomputes the full context
                 model(idx)
 
     yield step
