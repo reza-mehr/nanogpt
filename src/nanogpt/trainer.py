@@ -193,7 +193,7 @@ def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: d
     grad_accum_iters = cfg.get_grad_accum_iters(ddp.world_size)
     if grad_accum_iters > 1:
         B, T, toks = cfg.batch_size, cfg.model.block_size, cfg.batch_tokens
-        logger.info(f"Performing {grad_accum_iters} gradient accumulation iterations with {ddp.world_size} devices and (B, T)=({B}, {T}) to realize {toks} tokens per batch.")
+        logger.info(f"Performing {grad_accum_iters} gradient accumulation iterations with {ddp.world_size} devices and (B, T) = ({B}, {T}) to realize {toks} tokens per batch.")
 
     # Drop the metrics logged after the latest checkpoint if resuming:
     if resuming:

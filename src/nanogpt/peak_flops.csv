@@ -9,4 +9,4 @@ RTX 4090,82.6,82.6,165,165,dense; fp32 accumulate
 V100,15.7,,,125,SXM2; no bf16 or tf32
 T4,8.1,,,65,no bf16 or tf32
 mps,4.0,,4.0,4.0,Apple M4 GPU estimate; no official figure; ~3.5-4.3 by core count
-cpu,0.75,,,,Apple M4 CPU rough NEON estimate; Accelerate/SME matmuls may run faster
+cpu,2.0,,2.0,,M4 SME microbenchmark (~2 TFLOPS fp32); not official

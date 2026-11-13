@@ -9,7 +9,7 @@ A decoder-only Transformer ([Vaswani et al., 2017](https://arxiv.org/abs/1706.03
 - **Architecture:** rotary position embeddings (RoPE), grouped-query attention (GQA/MQA).
 - **Training efficiency:** batched multi-head attention, PyTorch LayerNorm, SDPA (Flash / memory-efficient kernels), mixed-precision bf16, fused AdamW, cosine schedule with warmup.
 - **Inference:** KV cache, bf16 weights, temperature / top-k sampling.
-- **Engineering:** typed configs, checkpointing with bit-exact resume, unit and smoke tests in CI, benchmarking and profiling harness, seeded ablations, one-command reproduction (`scripts/reproduce.sh`).
+- **Engineering:** typed configs, checkpointing with bit-exact resume, unit and smoke tests in CI, benchmarking and profiling harness, seeded ablations, one-command reproduction (`scripts/reproduce_nanogpt.sh`).
 
 ## Highlights
 
@@ -183,7 +183,7 @@ All runs: `stories_cfg` (162.3M params), context length 512, batch size 64, 3,00
     - fp32 vs. mixed-bf16 and bf16 inference, within tolerance;
     - GQA with 12 KV heads vs. multi-head attention.
 - **Behavioral tests:** causality (no information from future tokens or across sequences in the batch), initial loss ≈ $\ln V$ (uniform predictions), single-batch overfitting, learning-rate schedules, weight-decay parameter groups, tokenizers, and RoPE's rotation properties. 201 tests in total.
-- **Tooling and reproducibility:** `pre-commit` runs the test suite on every commit, and CI runs it again on every push. `scripts/reproduce.sh smoke|full` runs the whole pipeline end to end (data, tests, training, benchmarks, profiles, ablations), from a laptop smoke run to the full A100 run. The results snapshot in `assets/` records the git commit it came from.
+- **Tooling and reproducibility:** `pre-commit` runs the test suite on every commit, and CI runs it again on every push. `scripts/reproduce_nanogpt.sh smoke|full` runs the whole pipeline end to end (data, tests, training, benchmarks, profiles, ablations), from a laptop smoke run to the full A100 run. The results snapshot in `assets/` records the git commit it came from.
 
 ## Next Steps
 
@@ -285,13 +285,13 @@ To reproduce the results in this file:
 
 ```bash
 # Laptop smoke run (about 15–25 min with the ablation runs):
-bash scripts/reproduce.sh smoke
+bash scripts/reproduce_nanogpt.sh smoke
 
 # A100, everything:
-bash scripts/reproduce.sh full
+bash scripts/reproduce_nanogpt.sh full
 
 # A100, without ~3 hours of ablation runs:
-bash scripts/reproduce.sh full skip-ablations
+bash scripts/reproduce_nanogpt.sh full skip-ablations
 ```
 
 ## References

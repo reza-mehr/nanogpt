@@ -9,7 +9,7 @@
 # IPv6 loopback, fails the lookup, and hangs. MASTER_PORT can be overridden, e.g. to run two jobs at once.
 # PYTHON can name an interpreter to launch with instead of 'uv run', e.g. the tests pass their own sys.executable.
 
-set -eo pipefail                                # no -u: matches reproduce.sh (macOS bash 3.2)
+set -eo pipefail                                # no -u: matches reproduce_nanogpt.sh (macOS bash 3.2)
 
 #%% Arguments:
 

@@ -3,15 +3,15 @@
 # benchmarks and profiles of the larger model, then the quality ablations (GQA, RoPE, learning rate, schedule).
 #
 # Laptop check first (minutes, tiny settings, same commands):
-#     bash scripts/reproduce.sh smoke
+#     bash scripts/reproduce_nanogpt.sh smoke
 #
 # Rented GPU (A100 80 GB; on a 40 GB card, halve the benchmark batch size below):
-#     bash scripts/reproduce.sh full
+#     bash scripts/reproduce_nanogpt.sh full
 #
 # Everything except the ablations (the longest part):
-#     bash scripts/reproduce.sh full skip-ablations
+#     bash scripts/reproduce_nanogpt.sh full skip-ablations
 #
-# Everything is logged to logs/reproduce_<mode>_<timestamp>.log; results land in runs/ and results/.
+# Everything is logged to logs/reproduce_nanogpt_<mode>_<timestamp>.log; results land in runs/nanogpt_<mode>/ and results/nanogpt_<mode>/.
 
 set -eo pipefail                                # no -u: empty arrays fail under macOS bash 3.2
 
@@ -20,8 +20,8 @@ set -eo pipefail                                # no -u: empty arrays fail under
 MODE="${1:-smoke}"                              # 'smoke' (laptop) or 'full' (GPU)
 ABLATIONS="${2:-run}"                           # 'run' or 'skip-ablations'
 STAMP="$(date +%Y-%m-%d_%H-%M-%S)"
-RUNS="runs/${MODE}"                             # parent folder for the training runs
-RESULTS="results/${MODE}"                       # parent folder for benchmarks and profiles
+RUNS="runs/nanogpt_${MODE}"                     # parent folder for the training runs
+RESULTS="results/nanogpt_${MODE}"               # parent folder for benchmarks and profiles
 SHAKES_DIR='data/tinyshakespeare_char'
 STORIES_VOCAB=50257                             # synthetic vocabulary for benchmarks; match the TinyStories tokenizer
 
@@ -63,7 +63,7 @@ fi
 
 rm -rf "${RUNS}" "${RESULTS}"                               # start clean; earlier logs and tarballs are kept
 mkdir -p logs
-exec > >(tee "logs/reproduce_${MODE}_${STAMP}.log") 2>&1    # log everything, still print to the terminal
+exec > >(tee "logs/reproduce_nanogpt_${MODE}_${STAMP}.log") 2>&1    # log everything, still print to the terminal
 
 step() { echo; echo "=== $(date +%H:%M:%S) | $* ==="; }
 
@@ -182,6 +182,6 @@ fi
 
 step 'Bundle outputs'
 # model.pt (inference-only) is kept for generation; the training checkpoints are only needed to resume:
-tar --exclude='latest.pt' --exclude='best.pt' -czf "outputs_${MODE}_${STAMP}.tar.gz" "${RUNS}" "${RESULTS}" logs
-ls -lh "outputs_${MODE}_${STAMP}.tar.gz"
-echo "Done. Copy outputs_${MODE}_${STAMP}.tar.gz off the machine before destroying it."
+tar --exclude='latest.pt' --exclude='best.pt' -czf "outputs_nanogpt_${MODE}_${STAMP}.tar.gz" "${RUNS}" "${RESULTS}" logs
+ls -lh "outputs_nanogpt_${MODE}_${STAMP}.tar.gz"
+echo "Done. Copy outputs_nanogpt_${MODE}_${STAMP}.tar.gz off the machine before destroying it."
