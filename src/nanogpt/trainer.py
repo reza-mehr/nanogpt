@@ -402,7 +402,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
         state.writer.add_scalar('eval/hella_swag_acc', hellaswag_acc, step)
 
     # Status update:
-    msg = f'{train_s:.3f} sec | step {step:5d} / {cfg.max_iters} | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s'
+    msg = f'step {step:5d} / {cfg.max_iters} | {train_s:.3f} sec | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s'
     msg = msg + ( " | MFU ---" if math.isnan(mfu) else f" | MFU {mfu:.1f} %" )
     if cfg.hellaswag.eval_freq > 0:
         if cfg.should_eval_hellaswag(step): msg += f" | HellaSwag acc {hellaswag_acc:.4f}"
@@ -410,7 +410,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     state.logger.info(msg)
 
     # Append one row to the results file (flushed immediately, so it survives a crash):
-    append_row_csv(dict(step=step, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr, grad_norm=grad_norm, tok_per_sec=tok_per_sec, mfu=mfu, train_s=train_s, hellaswag_acc=hellaswag_acc),
+    append_row_csv(dict(step=step, train_s=train_s, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr, grad_norm=grad_norm, tok_per_sec=tok_per_sec, mfu=mfu, hellaswag_acc=hellaswag_acc),
                    cfg.run_dir / 'results.csv')
 
     # Start the next training interval after evaluation and checkpointing:
@@ -536,21 +536,36 @@ def write_run_report(cfg: TrainConfig, model: nn.Module, state: RunState):
 
 def summary_rows(cfg: TrainConfig, model: nn.Module) -> list[dict]:
     '''Function to compute the headline numbers of a run from its results.csv, as preformatted table rows.'''
+
+    # Initialization:
     rows = load_rows_csv(cfg.run_dir / 'results.csv')
-    best, last = min(rows, key=lambda r: r['val']), rows[-1]
+    best, last = min(rows, key=lambda r: r['val']), rows[-1]        # best and last values per column
     train_s = sum(r['train_s'] for r in rows)
-    mean_tok_per_sec = sum(r['tok_per_sec'] * r['train_s'] for r in rows) / train_s     # tokens trained / seconds
+    mean_tok_per_sec = _rows_mean('tok_per_sec', rows)              # tokens trained / seconds
+    mean_mfu = _rows_mean('mfu', rows)
+    hellaswag_acc = last['hellaswag_acc'] if not math.isnan(last['hellaswag_acc']) else None
+
+    # Construct the dictionary containing the summary rows:
     summary = {
+        'parameters': f'{get_param_count(model):,}',
         'steps': f"{last['step']:,}",
+        'training time (s)': f'{train_s:,.0f}',
         'tokens': f"{last['tokens']:,}",
         'final train loss': f"{last['train']:.4f}",
         'final val loss': f"{last['val']:.4f}",
         'best val loss': f"{best['val']:.4f} (step {best['step']:,})",
-        'parameters': f'{get_param_count(model):,}',
-        'training time (s)': f'{train_s:,.0f}',
-        'mean throughput (tok/s)': f'{mean_tok_per_sec:,.0f}',
     }
+    if mean_tok_per_sec is not None: summary['mean throughput (tok/s)'] = f'{mean_tok_per_sec:,.0f}'
+    if mean_mfu is not None: summary['mean MFU (%)'] = f'{mean_mfu:,.1f}'
+    if hellaswag_acc is not None: summary['HellaSwag accuracy'] = f'{hellaswag_acc:.4f}'
+
     return [dict(metric=k, value=v) for k, v in summary.items()]
+
+
+def _rows_mean(col: str, rows: list[dict]) -> float | None:
+    '''Function to compute the weighted mean of a column across the 'results.csv' rows excluding first step that might include one time costs.'''
+    if len(rows) <= 1 or math.isnan(rows[0][col]): return None
+    return sum(r[col] * r['train_s'] for r in rows[1:]) / sum(r['train_s'] for r in rows[1:])
 
 
 def samples_section(cfg: TrainConfig, model: nn.Module, state: RunState) -> str:
