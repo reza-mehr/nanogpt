@@ -173,9 +173,11 @@ class TrainConfig:
     overwrite: bool = False                                 # if True, clear an existing run folder without asking
     log_level: int = logging.INFO                           # logging level, 20 for INFO, 10 for DEBUG
 
-    sample_prompts: tuple[str, ...] = ('',)                 # prompts for final samples; '' starts from the start token
+    sample_prompts: tuple[str, ...] = ('',)                 # prompts for samples; '' starts from the start token
     sample_tokens: int = 200                                # new tokens per sample
     sample_seed: int = 0                                    # fixed seed so samples are comparable across runs
+    sample_freq: int = 0
+    # save 'samples.md' every 'sample-freq * eval-interval' intervals, final samples in 'report.md' are generated for 'sample-prompts' regardless
 
     def __post_init__(self):
         '''Function to validate input arguments and assign default values.'''
@@ -186,10 +188,13 @@ class TrainConfig:
         if self.run_name.startswith(NON_TRAINING_PREFIXES):
             raise ValueError(f"Run name '{self.run_name}' must not start with {NON_TRAINING_PREFIXES}; "
                              f"those prefixes mark benchmark and profile folders.")
+        if self.resume and not (self.run_dir / 'latest.pt').exists():
+            raise FileNotFoundError(f"No checkpoint to resume from: {self.run_dir / 'latest.pt'}")
         B, T, BT = self.batch_size, self.model.block_size, self.batch_tokens
         if BT is not None and ( BT < B * T or BT % (B * T) > 0 ):
             raise ValueError(f"'batch_tokens' must be a multiple of B*T: {BT} % ({B} * {T}) = {BT % (B*T)}")
         if self.ckpt_freq < 0: raise ValueError(f"Checkpoint frequency cannot be negative: {self.ckpt_freq} < 0")
+        if self.sample_freq < 0: raise ValueError(f"Sampling frequency cannot be negative: {self.sample_freq} < 0")
         compile_order_vals = get_args(TrainConfig.__annotations__['compile_order'])
         if self.compile_order not in compile_order_vals:
             raise ValueError(f"Unknown compile order {self.compile_order!r}; options: {compile_order_vals}")
@@ -216,6 +221,11 @@ class TrainConfig:
     def is_eval_step(self, step):
         '''Function to check if the model must be evaluated in the current step.'''
         return step == 1 or step % self.eval_interval == 0 or step == self.max_iters
+
+    def is_sample_step(self, step):
+        '''Function to check if samples must be generated from the model in the current step.'''
+        if self.sample_freq == 0: return False
+        return step % (self.eval_interval * self.sample_freq) == 0
 
     def should_eval_hellaswag(self, step):
         '''Function to check if HellaSwag evaluation must be done in the current step.'''

@@ -39,7 +39,7 @@ from nanogpt.generation import generate_text
 from nanogpt.model import build_model
 from nanogpt.optimizer import build_optimizer, set_learning_rate
 from nanogpt.reporting import Col, append_row_csv, collect_env, load_json, load_rows_csv, prepare_run_dir, save_json
-from nanogpt.reporting import setup_logger, table_section, truncate_rows_csv, write_report
+from nanogpt.reporting import setup_logger, table_section, truncate_rows_csv, truncate_samples_md, write_report
 from nanogpt.tokenizers import build_tokenizer
 from nanogpt.utils import autocast_ctx, matmul_precision_ctx, get_param_count, get_peak_flops
 from nanogpt.distributed import DDPInfo, wrap_model
@@ -97,8 +97,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     torch.manual_seed(cfg.seed + ddp.rank)
 
     # Prepare the run folder; a fresh run must not mix its records with an earlier run of the same name:
-    resuming = cfg.resume and (cfg.run_dir / 'latest.pt').exists()
-    if ddp.is_main and not resuming: prepare_run_dir(cfg.run_dir, cfg.overwrite)
+    if ddp.is_main and not cfg.resume: prepare_run_dir(cfg.run_dir, cfg.overwrite)
 
     # Initialization:
     with torch.device(ddp.device):
@@ -109,12 +108,12 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     best_val = float('inf')
 
     # Load the latest checkpoint if requested:
-    if resuming:
+    if cfg.resume:
         start_step, best_val = load_checkpoint(latest, model, optim, ddp)
         start_step += 1
 
     # Logging and status reports to run on the main process only:
-    state, writer = setup_io(cfg, model, ddp, tokenizer_meta, resuming, start_step, best_val)
+    state, writer = setup_io(cfg, model, ddp, tokenizer_meta, start_step, best_val)
 
     # Prep the HellaSwag dataset for evaluation if requested:
     hellaswag_dps = prep_hellaswag(cfg.hellaswag, ddp, tokenizer_meta, state)
@@ -147,7 +146,7 @@ def train(cfg: TrainConfig, train_data: TokenSplit, val_data: TokenSplit, tokeni
     return model, state.best_val
 
 
-def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: dict, resuming: bool, start_step: int, best_val: float = float('inf')):
+def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: dict, start_step: int, best_val: float = float('inf')):
     '''
     Function to construct the run-state object for the processes.
 
@@ -161,12 +160,10 @@ def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: d
         Distributed data parallelism instance.
     tokenizer_meta: dict
         Containing tokenizer metadata to include in the checkpoint.
-    resuming: bool
-        True if the run is resumed from a checkpoint.
     start_step: int
-        Start step. Checkpoint step + 1 when 'resuming' is True.
+        Start step. Checkpoint step + 1 when 'cfg.resume' is True.
     best_val: float, optional
-        Best validation loss. The default is float('inf') when 'resuming' is False.
+        Best validation loss. The default is float('inf') when 'cfg.resume' is False.
 
     Returns
     -------
@@ -196,10 +193,11 @@ def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: d
         B, T, toks = cfg.batch_size, cfg.model.block_size, cfg.batch_tokens
         logger.info(f"Performing {grad_accum_iters} gradient accumulation iterations with {ddp.world_size} devices and (B, T) = ({B}, {T}) to realize {toks} tokens per batch.")
 
-    # Drop the metrics logged after the latest checkpoint if resuming:
-    if resuming:
+    # Drop the metrics and samples logged after the latest checkpoint if resuming:
+    if cfg.resume:
         results_path = cfg.run_dir / 'results.csv'
         truncate_rows_csv(results_path, key='step', max_value=start_step - 1)
+        truncate_samples_md(cfg.run_dir / 'samples.md', max_step=start_step - 1)
         logger.info(f"Resumed from step {start_step - 1}, best val loss {best_val:.4f}")
     else:
         # Record the configuration and the environment at the start of a fresh run:
@@ -219,6 +217,12 @@ def setup_io(cfg: TrainConfig, model: nn.Module, ddp: DDPInfo, tokenizer_meta: d
     except (KeyError, ValueError) as e:
         flops_util_per_token = None
         logger.warning(f"MFU unavailable for the device: {e}")
+
+    # Initialize 'samples.md' to save generated samples if requested:
+    if cfg.sample_freq > 0 and not (cfg.run_dir / 'samples.md').exists():
+        (cfg.run_dir / 'samples.md').write_text(
+            f'## Interim Samples\n\nSeed {cfg.sample_seed}, {cfg.sample_tokens} new tokens'
+        )
 
     # Construct the run-state object for the main process:
     state = RunState(logger=logger, writer=writer, git=git_info(), tokenizer_meta=tokenizer_meta, best_val=best_val, mark_time=time.perf_counter(), mark_step=start_step - 1, flops_util_per_token=flops_util_per_token)
@@ -409,6 +413,11 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
         else: msg += " | HellaSwag acc -----"
     state.logger.info(msg)
 
+    # Generate samples from the model trained up to the current step:
+    if cfg.is_sample_step(step):
+        with (cfg.run_dir / 'samples.md').open('a') as file:
+            file.write( samples_section(cfg, model, state, step) )
+
     # Append one row to the results file (flushed immediately, so it survives a crash):
     append_row_csv(dict(step=step, train_s=train_s, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr, grad_norm=grad_norm, tok_per_sec=tok_per_sec, mfu=mfu, hellaswag_acc=hellaswag_acc),
                    cfg.run_dir / 'results.csv')
@@ -568,9 +577,9 @@ def _rows_mean(col: str, rows: list[dict]) -> float | None:
     return sum(r[col] * r['train_s'] for r in rows[1:]) / sum(r['train_s'] for r in rows[1:])
 
 
-def samples_section(cfg: TrainConfig, model: nn.Module, state: RunState) -> str:
+def samples_section(cfg: TrainConfig, model: nn.Module, state: RunState, step: int | None = None) -> str:
     '''
-    Function to generate one fixed-seed sample per prompt from the final model, comparable across runs.
+    Function to generate one fixed-seed sample per prompt from the model, comparable across steps and runs.
 
     Parameters
     ----------
@@ -580,6 +589,8 @@ def samples_section(cfg: TrainConfig, model: nn.Module, state: RunState) -> str:
         Trained model.
     state: RunState
         Logging tools and the tokenizer metadata.
+    step: int, optional
+        Current training step. None for final step.
 
     Returns
     -------
@@ -587,8 +598,12 @@ def samples_section(cfg: TrainConfig, model: nn.Module, state: RunState) -> str:
         Markdown section with the samples, or a note that sampling failed; sampling must not fail a finished run.
 
     '''
-    header = (f'### Samples\n\nFinal model (step {cfg.max_iters}), seed {cfg.sample_seed}, '
-              f'{cfg.sample_tokens} new tokens.')
+    if step is None:
+        header = (f'### Samples\n\nFinal model (step {cfg.max_iters}), seed {cfg.sample_seed}, '
+                f'{cfg.sample_tokens} new tokens.')
+    else:
+        header = f'\n\n### Step {step}'             # truncate_samples_md() depends on this pattern
+
     try:
         tok = build_tokenizer(state.tokenizer_meta)
         parts = [header]

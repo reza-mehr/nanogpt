@@ -91,7 +91,8 @@ def trained_run(tmp_path_factory):
     small = PRESETS['small_cfg']
     cfg = replace(small, model=replace(small.model, vocab_size=tok.vocab_size, dropout=0.0),
                   device='cpu', max_iters=4, eval_interval=2, ckpt_freq=1, eval_iters=2, lr_warmup_iters=1,
-                  out_dir=str(tmp_path / 'runs'), run_name='smoke', sample_prompts=('', 'ab'), sample_tokens=8)
+                  out_dir=str(tmp_path / 'runs'), run_name='smoke',
+                  sample_prompts=('', 'ab'), sample_tokens=8, sample_freq=1)
 
     # Fresh run:
     train(cfg, train_data, val_data, tok.to_meta())
@@ -105,7 +106,7 @@ def test_train_resume_and_records(trained_run):
     # Records of the fresh run:
     cfg, tok, train_data, val_data = trained_run
     run_dir = cfg.run_dir
-    _assert_files(run_dir, RUN_RECORDS | {'latest.pt', 'best.pt', 'model.pt'})
+    _assert_files(run_dir, RUN_RECORDS | {'latest.pt', 'best.pt', 'model.pt', 'samples.md'})
     assert [r['step'] for r in load_rows_csv(run_dir / 'results.csv')] == [1, 2, 4]
     report = (run_dir / 'report.md').read_text()
     assert report.index('### Summary') < report.index('### Samples') < report.index('### Configuration')

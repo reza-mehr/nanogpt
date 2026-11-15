@@ -14,7 +14,7 @@ from nanogpt.tokenizers import Tokenizer
 #%% Functions:
 
 def truncate_at_end(ids: list[int], end_id: int | None, start: int) -> list[int]:
-    '''Cut ids at the first end_id at or after position start; unchanged if none.'''
+    '''Function to cut token ids at the first 'end_id', at or after position start; unchanged if none.'''
     if end_id is not None and end_id in ids[start:]:
         return ids[:ids.index(end_id, start)]
     return ids
@@ -54,15 +54,18 @@ def generate_text(model: nn.Module, tok: Tokenizer, prompt: str, new_tokens: int
         If key-value caching is requested and the prompt + new_tokens exceed the block size.
 
     '''
+    # Initialization:
     device = next(model.parameters()).device
-    torch.manual_seed(seed)
+    device_ids = [] if device.index is None else [device.index]
 
     # Process the prompt (the start token marks the beginning of a document):
     idx = [tok.start_id] + tok.encode(prompt)
-
-    # Generate and drop the start token:
     context = torch.tensor([idx], dtype=torch.long, device=device)      # (1, T)
-    new_ids = model.generate(context, new_tokens, temperature, top_k, use_cache=use_cache)[0].tolist()[1:]
+
+    # Generate and drop the start token (restores random seed after generation):
+    with torch.random.fork_rng(devices=device_ids, device_type=device.type):
+        torch.manual_seed(seed)
+        new_ids = model.generate(context, new_tokens, temperature, top_k, use_cache=use_cache)[0].tolist()[1:]
 
     # Stop at the first end-of-document token after the prompt, if any:
     new_ids = truncate_at_end(new_ids, tok.end_id, start=len(idx) - 1)

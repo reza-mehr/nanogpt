@@ -13,6 +13,7 @@ This file contains the shared reporting utilities for training runs, benchmarks,
 
 import csv
 import json
+import re
 import math
 import os
 import platform
@@ -236,6 +237,14 @@ def truncate_rows_csv(path: Path, key: str, max_value: float) -> None:
         save_rows_csv(rows, path)
     else:
         path.unlink()
+
+
+def truncate_samples_md(path: Path, max_step: int) -> None:
+    '''Function to drop the '### Step N' sections whose N exceeds 'max_step', e.g. samples written after the step a run resumes from.'''
+    if not path.exists(): return
+    header, *sections = re.split(r'(?=\n\n### Step \d+\n)', path.read_text())
+    keep = [s for s in sections if int(re.match(r'\n\n### Step (\d+)', s)[1]) <= max_step]
+    path.write_text(header + ''.join(keep))
 
 
 def save_json(data: dict, path: Path) -> None:
