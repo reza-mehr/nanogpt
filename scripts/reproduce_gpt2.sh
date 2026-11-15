@@ -36,7 +36,7 @@ if [[ "${MODE}" == 'smoke' ]]; then
     # DDP measurements: a few steps, logged often so there are rows after the first (compile) interval:
     DDP_ARGS=(--max-iters 6 --eval-interval 2 --eval-iters 1 --lr-schedule constant --ckpt-freq 0)
     FINEWEB_DIR="${DATA_ROOT}/fineweb_single_parquet"
-    MAIN_ARGS=(--max-iters 20 --lr-warmup-iters 5 --eval-interval 5 --eval-iters 2
+    MAIN_ARGS=(--max-iters 20 --lr-warmup-iters 5 --eval-interval 5 --eval-iters 2 --sample-freq 1
                --hellaswag.eval-freq 2 --hellaswag.batch-size 16 --hellaswag.batch-num 2)
 elif [[ "${MODE}" == 'full' ]]; then
     NGPU="$(uv run python -c 'import torch; print(torch.cuda.device_count())')"
@@ -48,7 +48,7 @@ elif [[ "${MODE}" == 'full' ]]; then
     DDP_ARGS=(--max-iters 60 --eval-interval 10 --eval-iters 5 --lr-schedule constant --ckpt-freq 0)
     FINEWEB_DIR="${DATA_ROOT}/fineweb"
     # 10B tokens / 2^19 = 19,073 steps; warmup 375M tokens = 715 steps (Karpathy's settings):
-    MAIN_ARGS=(--max-iters 19073 --lr-warmup-iters 715 --eval-interval 250 --hellaswag.eval-freq 1)
+    MAIN_ARGS=(--max-iters 19073 --lr-warmup-iters 715 --eval-interval 250 --sample-freq 4 --hellaswag.eval-freq 1)
 else
     echo "Unknown mode '${MODE}'; use 'smoke' or 'full'." >&2
     exit 1

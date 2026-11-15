@@ -377,6 +377,9 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     # Compute training time (excludes all evaluation below):
     if ddp.is_main: train_s = time.perf_counter() - state.mark_time
 
+    # Peak GPU memory usage in GiB:
+    gpu_mem = torch.cuda.max_memory_allocated() / 2**30 if ddp.is_main and cfg.device.startswith('cuda') else math.nan
+
     # Compute the smoothed losses over train and validation sets:
     losses = estimate_loss(cfg, model, train_data, val_data, ddp)
     train_loss, val_loss = losses['train'].item(), losses['val'].item()
@@ -401,12 +404,14 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     state.writer.add_scalar('eval/train_loss', train_loss, step)
     state.writer.add_scalar('eval/val_loss', val_loss, step)
     state.writer.add_scalar('eval/tok_per_sec', tok_per_sec, step)
+    if not math.isnan(gpu_mem): state.writer.add_scalar('eval/gpu_mem', gpu_mem, step)
     if not math.isnan(mfu): state.writer.add_scalar('eval/mfu', mfu, step)
     if cfg.should_eval_hellaswag(step):
         state.writer.add_scalar('eval/hella_swag_acc', hellaswag_acc, step)
 
     # Status update:
     msg = f'step {step:5d} / {cfg.max_iters} | {train_s:.3f} sec | train {train_loss:.4f} | val {val_loss:.4f} | lr {lr:.2e} | norm {grad_norm:.4f} | {tok_per_sec:,.0f} tok/s'
+    msg = msg + ( " | mem ---" if math.isnan(gpu_mem) else f" | mem {gpu_mem:.1f} GiB" )
     msg = msg + ( " | MFU ---" if math.isnan(mfu) else f" | MFU {mfu:.1f} %" )
     if cfg.hellaswag.eval_freq > 0:
         if cfg.should_eval_hellaswag(step): msg += f" | HellaSwag acc {hellaswag_acc:.4f}"
@@ -419,11 +424,12 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
             file.write( samples_section(cfg, model, state, step) )
 
     # Append one row to the results file (flushed immediately, so it survives a crash):
-    append_row_csv(dict(step=step, train_s=train_s, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr, grad_norm=grad_norm, tok_per_sec=tok_per_sec, mfu=mfu, hellaswag_acc=hellaswag_acc),
+    append_row_csv(dict(step=step, train_s=train_s, tokens=step * tokens_per_step, train=train_loss, val=val_loss, lr=lr, grad_norm=grad_norm, tok_per_sec=tok_per_sec, gpu_mem=gpu_mem, mfu=mfu, hellaswag_acc=hellaswag_acc),
                    cfg.run_dir / 'results.csv')
 
     # Start the next training interval after evaluation and checkpointing:
     state.mark_time, state.mark_step = time.perf_counter(), step
+    if cfg.device.startswith('cuda'): torch.cuda.reset_peak_memory_stats()
 
 
 def _save_checkpoints(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, val_loss: float, state: RunState, ddp: DDPInfo):
@@ -551,6 +557,7 @@ def summary_rows(cfg: TrainConfig, model: nn.Module) -> list[dict]:
     best, last = min(rows, key=lambda r: r['val']), rows[-1]        # best and last values per column
     train_s = sum(r['train_s'] for r in rows)
     mean_tok_per_sec = _rows_mean('tok_per_sec', rows)              # tokens trained / seconds
+    gpu_mem = max(r['gpu_mem'] for r in rows[1:]) if len(rows) >= 1 and not math.isnan(rows[0]['gpu_mem']) else None
     mean_mfu = _rows_mean('mfu', rows)
     hellaswag_acc = last['hellaswag_acc'] if not math.isnan(last['hellaswag_acc']) else None
 
@@ -565,6 +572,7 @@ def summary_rows(cfg: TrainConfig, model: nn.Module) -> list[dict]:
         'best val loss': f"{best['val']:.4f} (step {best['step']:,})",
     }
     if mean_tok_per_sec is not None: summary['mean throughput (tok/s)'] = f'{mean_tok_per_sec:,.0f}'
+    if gpu_mem is not None: summary['peak GPU memory (GiB)'] = f'{gpu_mem:,.1f}'
     if mean_mfu is not None: summary['mean MFU (%)'] = f'{mean_mfu:,.1f}'
     if hellaswag_acc is not None: summary['HellaSwag accuracy'] = f'{hellaswag_acc:.4f}'
 
