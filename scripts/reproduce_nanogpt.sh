@@ -30,7 +30,7 @@ if [[ "${MODE}" == 'smoke' ]]; then
     STORIES_DIR='data/tinystories_smoke'
     STORIES_PREP_ARGS=(--max-stories 2000)
     # Training: a few steps, small batches and contexts so the larger preset runs on a laptop:
-    TRAIN_ARGS=(--max-iters 20 --eval-interval 10 --ckpt-interval 10 --eval-iters 2 --lr-warmup-iters 5)
+    TRAIN_ARGS=(--max-iters 20 --eval-interval 10 --ckpt-freq 1 --eval-iters 2 --lr-warmup-iters 5)
     STORIES_ARGS=(--batch-size 4 --model.block-size 64)
     GEN_TOKENS=40
     # Benchmarks and profiles: one trial at two short lengths:
@@ -54,7 +54,7 @@ elif [[ "${MODE}" == 'full' ]]; then
     GEN_BENCH_ARGS=(--prompt-lens 128 512)
     PROF_ARGS=(--block-sizes 512)
     # Ablations: shorter runs (3k steps, ~98M tokens each) with denser evaluation; checkpoint only at the end:
-    ABL_ARGS=(--max-iters 3000 --eval-interval 250 --ckpt-interval 3000)
+    ABL_ARGS=(--max-iters 3000 --eval-interval 250 --ckpt-freq 12)
     SEEDS=(0 1 2)
 else
     echo "Unknown mode '${MODE}'; use 'smoke' or 'full'." >&2

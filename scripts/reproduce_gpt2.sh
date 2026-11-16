@@ -40,6 +40,8 @@ if [[ "${MODE}" == 'smoke' ]]; then
                --hellaswag.eval-freq 2 --hellaswag.batch-size 16 --hellaswag.batch-num 2)
 elif [[ "${MODE}" == 'full' ]]; then
     NGPU="$(uv run python -c 'import torch; print(torch.cuda.device_count())')"
+    # Fail fast without CUDA; otherwise the benchmark below falls back to the CPU and runs for hours:
+    if (( NGPU < 1 )); then echo "No CUDA devices visible (torch.cuda.device_count() = ${NGPU}); check nvidia-smi." >&2; exit 1; fi
     # Batch 16 keeps the fp32 baseline (B*T*50257 logits plus T^2 attention scores) inside 80 GB at T=1024:
     TRAIN_BENCH_ARGS=(--block-sizes 256 512 1024 --batch-size 16)
     # 2^19 = 524,288 tokens per step as in GPT-3 small: no accumulation on 8 GPUs, 8 substeps on 1:
@@ -119,6 +121,13 @@ ddp_run() {
 
 step 'DDP: single device (scaling baseline, gradient accumulation instead of ranks)'
 ddp_run "n1" 1
+
+# Intermediate device counts for the shape of the scaling curve (none in smoke mode, where NGPU=2):
+for n in 2 4; do
+    (( n < NGPU )) || continue
+    step "DDP: ${n} devices (scaling curve)"
+    ddp_run "n${n}" "${n}"
+done
 
 step "DDP: ${NGPU} devices, compile after DDP (recompiles logged: the sync toggle should recompile at most once)"
 TORCH_LOGS=recompiles ddp_run "n${NGPU}_after_ddp" "${NGPU}" --compile-order after_ddp
