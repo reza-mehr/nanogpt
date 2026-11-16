@@ -31,14 +31,18 @@ from nanogpt.tokenizers import GPT2Tokenizer
 #%% Global variables:
 
 TOK = GPT2Tokenizer()
+
+REPO_ID = 'HuggingFaceFW/fineweb-edu'
+REVISION = '87f09149ef4734204d70ed1d046ddc9ca3f2b8f9'   # pin down specific version for reproducibility
 REMOTE_NAME = 'sample-10BT'
+SEED = 0                                    # 'seed' required to resume failed tokenization runs and for reproducibility
 
 @dataclass
 class PrepConfig:
-    out_dir: str = 'data/fineweb'                   # path to write train.bin, val.bin, and meta.json files
-    num_proc: int = 8                               # worker processes for tokenization
-    data_file: str | None = None                    # single parquet file for testing, e.g., sample/10BT/000_00000.parquet
-    num_threads: int = 1                            # number of threads for multi-threading
+    out_dir: str = 'data/fineweb'           # path to write train.bin, val.bin, and meta.json files
+    num_proc: int = 8                       # worker processes for tokenization
+    data_file: str | None = None            # single parquet file for testing, e.g., sample/10BT/000_00000.parquet
+    num_threads: int = 1                    # number of threads for multi-threading
 
     @property
     def outpath(self):
@@ -85,7 +89,7 @@ def main(p: PrepConfig) -> None:
     if TOK.vocab_size > 2**16: raise ValueError('Vocabulary too large for uint16!')
 
     # Error handling:
-    if p.data_file and not HfApi().file_exists('HuggingFaceFW/fineweb-edu', p.data_file, repo_type='dataset'):
+    if p.data_file and not HfApi().file_exists(REPO_ID, p.data_file, repo_type='dataset', revision=REVISION):
         raise FileNotFoundError(f"Requested parquet file does not exist, make sure to use the full path sample/10BT/...: {p.data_file}")
 
     # Construct the output path:
@@ -95,13 +99,13 @@ def main(p: PrepConfig) -> None:
 
     # Initialization:
     kwargs = {'data_files': [p.data_file]} if p.data_file else {'name': REMOTE_NAME}
-    ds = load_dataset('HuggingFaceFW/fineweb-edu', split='train', **kwargs)
+    ds = load_dataset(REPO_ID, split='train', revision=REVISION, **kwargs)
     features = Features({'ids': Sequence(Value('uint16')),  # essential to save disk 4x with HF cache (int64 by default)
                          'len': Value('int64')})
-    meta = TOK.to_meta() | {'dtype': '<u2', 'n_tokens': {}}
+    meta = TOK.to_meta() | {'dtype': '<u2', 'n_tokens': {}, 'repo_id': REPO_ID, 'revision': REVISION, 'seed': SEED}
 
     # Split before mapping for contiguous .bin files (hold out 1% for validation):
-    ds = ds.train_test_split(test_size=0.01, shuffle=True, seed=0)  # 'seed' required to resume failed tokenization runs
+    ds = ds.train_test_split(test_size=0.01, shuffle=True, seed=SEED)
 
     # Loop over splits:
     for split, name in [('train', 'train'), ('test', 'val')]:

@@ -21,7 +21,7 @@ from nanogpt.utils import autocast_ctx
 
 #%% Global variables:
 
-HASH = '382ffb520660cc2ba98092cd8aa07cafc9c47f6d'       # pin down specific version for reproducibility
+REVISION = '382ffb520660cc2ba98092cd8aa07cafc9c47f6d'       # pin down specific version for reproducibility
 
 #%% Utility functions:
 
@@ -41,7 +41,7 @@ def get_dataset(out_dir='data/hellaswag') -> str:
 
     '''
     # Sync the dataset:
-    dl_path = hf_hub_download(repo_id='Rowan/hellaswag', repo_type='dataset', revision=HASH, filename='default/validation/0000.parquet', local_dir=out_dir)
+    dl_path = hf_hub_download(repo_id='Rowan/hellaswag', repo_type='dataset', revision=REVISION, filename='default/validation/0000.parquet', local_dir=out_dir)
 
     return dl_path
 
