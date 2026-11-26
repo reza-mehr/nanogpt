@@ -27,6 +27,7 @@ from huggingface_hub import HfApi
 from datasets import load_dataset, Features, Sequence, Value
 
 from nanogpt.tokenizers import GPT2Tokenizer
+from nanogpt.data import compute_checksum_sha256
 
 #%% Global variables:
 
@@ -102,7 +103,7 @@ def main(p: PrepConfig) -> None:
     ds = load_dataset(REPO_ID, split='train', revision=REVISION, **kwargs)
     features = Features({'ids': Sequence(Value('uint16')),  # essential to save disk 4x with HF cache (int64 by default)
                          'len': Value('int64')})
-    meta = TOK.to_meta() | {'dtype': '<u2', 'n_tokens': {}, 'repo_id': REPO_ID, 'revision': REVISION, 'seed': SEED}
+    meta = TOK.to_meta() | {'dtype': '<u2', 'n_tokens': {}, 'checksum_sha256': {}, 'repo_id': REPO_ID, 'revision': REVISION, 'seed': SEED}
 
     # Split before mapping for contiguous .bin files (hold out 1% for validation):
     ds = ds.train_test_split(test_size=0.01, shuffle=True, seed=SEED)
@@ -113,6 +114,7 @@ def main(p: PrepConfig) -> None:
         d = d.map(tokenize_batch, batched=True, remove_columns=d.column_names, features=features,
                   num_proc=p.num_proc, fn_kwargs={'num_threads': p.num_threads}, desc=f'tokenizing {split}')
         meta['n_tokens'][name] = write_split(d, out / f'{name}.bin')
+        meta['checksum_sha256'][name] = compute_checksum_sha256(out / f'{name}.bin')
 
     (out / 'meta.json').write_text(json.dumps(meta, indent=2))
     print(json.dumps(meta['n_tokens'], indent=2))

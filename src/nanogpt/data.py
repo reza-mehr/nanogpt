@@ -7,6 +7,7 @@ This file contains the code to generate batches from a tokenized text dataset.
 #%% Imports:
 
 from pathlib import Path
+import hashlib
 import torch
 import numpy as np
 import json
@@ -197,3 +198,35 @@ def get_batch_rand(split: TokenSplit, cfg: TrainConfig):
         return (x.pin_memory().to('cuda', non_blocking=True),
                 y.pin_memory().to('cuda', non_blocking=True))
     return x.to(cfg.device), y.to(cfg.device)
+
+#%% Utility functions:
+
+def compute_checksum_sha256(path: Path) -> str:
+    '''Function to compute the sha256 checksum hash for a tokenized binary file.'''
+    with open(path, 'rb') as file:
+        checksum = hashlib.file_digest(file, 'sha256').hexdigest()
+    return checksum
+
+
+def match_checksum_sha256(path: str | Path):
+    '''Function to cross-reference checksum hash stored in meta.json with the binary files.'''
+
+    # Error handling:
+    path = Path(path)
+    missing = {'train.bin', 'val.bin', 'meta.json'} - {p.name for p in path.iterdir()}
+    if len(missing) > 0: raise FileNotFoundError(f"Not a valid data directory '{path}', missing: {missing}")
+    with open(path / 'meta.json', 'r') as file:
+        meta = json.load(file)
+    if 'checksum_sha256' not in meta:
+        raise ValueError("'meta.json' does not contain checksums; re-run prepare dataset script.")
+
+    # Cross reference the checksum hashes:
+    for split in ['train', 'val']:
+        checksum0 = meta['checksum_sha256'][split]
+        checksum = compute_checksum_sha256(path / f'{split}.bin')
+        if not checksum == checksum0:
+            msg = "Corrupted tokenized binary file, computed sha256 checksum does not match the 'meta.json' value:\n"
+            msg += f"- file: {path / f'{split}.bin'}\n"
+            msg += f"- computed: {checksum}\n"
+            msg += f"- expected: {checksum0}"
+            raise ValueError(msg)
