@@ -8,6 +8,8 @@
 #
 # Full dataset (~20 GB of binaries, written to DATA_ROOT, 'data' in the repo by default):
 #     bash scripts/prepare_gpt2_data.sh full
+# In a container, set NUM_PROC to the CPU quota, since os.cpu_count() reports the host's cores there:
+#     NUM_PROC=32 bash scripts/prepare_gpt2_data.sh full
 #
 # Each step is skipped when its output exists (meta.json is written last), so a rerun after a crash resumes; the
 # HuggingFace cache also keeps finished downloads.
@@ -20,13 +22,16 @@ set -eo pipefail                                        # no -u: matches reprodu
 MODE="${1:-smoke}"                                      # 'smoke' (laptop) or 'full'
 STAMP="$(date +%Y-%m-%d_%H-%M-%S)"
 DATA_ROOT="${DATA_ROOT:-data}"                          # parent folder of the datasets
+# Tokenizer processes in full mode: all cores by default; set NUM_PROC in containers (see above) to avoid
+# oversubscribing the CPU quota and RAM:
+NUM_PROC="${NUM_PROC:-$(uv run python -c 'import os; print(os.cpu_count())')}"
 
 if [[ "${MODE}" == 'smoke' ]]; then
     FINEWEB_DIR="${DATA_ROOT}/fineweb_single_parquet"   # prepare_fineweb.py appends '_single_parquet' for --data-file
     FINEWEB_PREP_ARGS=(--data-file sample/10BT/000_00000.parquet)
 elif [[ "${MODE}" == 'full' ]]; then
     FINEWEB_DIR="${DATA_ROOT}/fineweb"
-    FINEWEB_PREP_ARGS=(--num-proc "$(uv run python -c 'import os; print(os.cpu_count())')")
+    FINEWEB_PREP_ARGS=(--num-proc "${NUM_PROC}")
 else
     echo "Unknown mode '${MODE}'; use 'smoke' or 'full'." >&2
     exit 1
@@ -42,7 +47,7 @@ step() { echo; echo "=== $(date +%H:%M:%S) | elapsed $((SECONDS / 60)) min | $* 
 
 step 'Environment'
 uv sync
-echo "CPU cores: $(uv run python -c 'import os; print(os.cpu_count())')"
+echo "CPU cores reported: $(uv run python -c 'import os; print(os.cpu_count())'), tokenizer processes (full mode): ${NUM_PROC}"
 # FineWeb needs ~20 GB of binaries in DATA_ROOT, plus several times that in the HuggingFace caches (downloaded parquet
 # files, and Arrow files from loading and tokenizing), which may sit on a different disk (set HF_HOME to move them):
 HF_HUB_CACHE_DIR="$(uv run python -c 'from huggingface_hub import constants; print(constants.HF_HUB_CACHE)')"
