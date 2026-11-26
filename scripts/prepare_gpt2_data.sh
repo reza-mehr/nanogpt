@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
-# This file prepares the GPT-2 data on a CPU-only node, so the GPU node never sits idle on downloading and tokenizing:
-# FineWeb-Edu 10BT tokenized into flat train.bin and val.bin, and the HellaSwag validation split.
+# This file prepares the GPT-2 data for scripts/reproduce_gpt2.sh: FineWeb-Edu 10BT tokenized into flat train.bin and
+# val.bin, and the HellaSwag validation split. It needs no GPU, so it can also run on a cheaper CPU-only machine; point
+# both scripts at the same DATA_ROOT.
 #
 # Laptop check (one FineWeb parquet, about 750M tokens):
 #     bash scripts/prepare_gpt2_data.sh smoke
 #
-# CPU node with a persistent volume, later mounted on the GPU node (point both scripts at the same DATA_ROOT):
-#     DATA_ROOT=/mnt/volume/data bash scripts/prepare_gpt2_data.sh full
+# Full dataset (~20 GB of binaries, written to DATA_ROOT, 'data' in the repo by default):
+#     bash scripts/prepare_gpt2_data.sh full
 #
 # Each step is skipped when its output exists (meta.json is written last), so a rerun after a crash resumes; the
-# HuggingFace cache also keeps finished downloads (set HF_HOME on the volume to keep them across nodes).
+# HuggingFace cache also keeps finished downloads.
 # Everything is logged to logs/prepare_gpt2_data_<mode>_<timestamp>.log.
 
-set -eo pipefail                                # no -u: matches reproduce_nanogpt.sh (macOS bash 3.2)
+set -eo pipefail                                        # no -u: matches reproduce_nanogpt.sh (macOS bash 3.2)
 
 #%% Settings:
 
-MODE="${1:-smoke}"                              # 'smoke' (laptop) or 'full' (CPU node)
+MODE="${1:-smoke}"                                      # 'smoke' (laptop) or 'full'
 STAMP="$(date +%Y-%m-%d_%H-%M-%S)"
-DATA_ROOT="${DATA_ROOT:-data}"                  # parent folder of the datasets, e.g. a persistent volume
+DATA_ROOT="${DATA_ROOT:-data}"                          # parent folder of the datasets
 
 if [[ "${MODE}" == 'smoke' ]]; then
     FINEWEB_DIR="${DATA_ROOT}/fineweb_single_parquet"   # prepare_fineweb.py appends '_single_parquet' for --data-file
@@ -42,7 +43,12 @@ step() { echo; echo "=== $(date +%H:%M:%S) | elapsed $((SECONDS / 60)) min | $* 
 step 'Environment'
 uv sync
 echo "CPU cores: $(uv run python -c 'import os; print(os.cpu_count())')"
-df -h "${DATA_ROOT}"                                        # FineWeb needs ~20 GB of binaries plus the download cache
+# FineWeb needs ~20 GB of binaries in DATA_ROOT, plus several times that in the HuggingFace caches (downloaded parquet
+# files, and Arrow files from loading and tokenizing), which may sit on a different disk (set HF_HOME to move them):
+HF_HUB_CACHE_DIR="$(uv run python -c 'from huggingface_hub import constants; print(constants.HF_HUB_CACHE)')"
+HF_DATASETS_CACHE_DIR="$(uv run python -c 'from datasets import config; print(config.HF_DATASETS_CACHE)')"
+mkdir -p "${HF_HUB_CACHE_DIR}" "${HF_DATASETS_CACHE_DIR}"   # df needs existing paths
+df -h "${DATA_ROOT}" "${HF_HUB_CACHE_DIR}" "${HF_DATASETS_CACHE_DIR}"
 
 #%% Data:
 
@@ -54,3 +60,6 @@ step 'Download HellaSwag'
 uv run python -c "from nanogpt.hellaswag import get_dataset; print(get_dataset('${DATA_ROOT}/hellaswag'))"
 
 printf 'Total wall time: %d h %02d min.\n' $((SECONDS / 3600)) $((SECONDS % 3600 / 60))
+echo "Done. Back up ${FINEWEB_DIR}, ${DATA_ROOT}/hellaswag and logs/prepare_gpt2_data_${MODE}_${STAMP}.log before"
+echo "removing them or this machine; scripts/reproduce_gpt2.sh reads the datasets from DATA_ROOT. The HuggingFace"
+echo "caches (${HF_HUB_CACHE_DIR}, ${HF_DATASETS_CACHE_DIR}) are not needed for training."

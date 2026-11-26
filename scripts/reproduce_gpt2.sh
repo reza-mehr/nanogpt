@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # This file runs the GPT-2 pipeline end to end: tests, the speed journey benchmark with MFU, the DDP measurements
 # (scaling efficiency, compile order, recompiles), and the main run with HellaSwag evaluation. The data is prepared
-# beforehand by scripts/prepare_gpt2_data.sh, on a CPU-only node for the full run, so the GPUs never wait on it.
+# beforehand by scripts/prepare_gpt2_data.sh into DATA_ROOT ('data' in the repo by default), on this machine or on a
+# CPU-only one with the datasets copied here; both scripts must point at the same DATA_ROOT, on local disk, since
+# training reads memory-mapped files.
 #
 # Laptop check first (minutes, tiny settings, DDP on CPU processes with gloo):
 #     bash scripts/prepare_gpt2_data.sh smoke && bash scripts/reproduce_gpt2.sh smoke
 #
-# Rented GPUs (8x A100 80 GB; on a 40 GB card, halve the batch sizes below), with the prepared volume mounted; the
-# datasets are copied to LOCAL_ROOT (default 'data' in the repo) on local disk first:
-#     DATA_ROOT=/mnt/volume/data bash scripts/reproduce_gpt2.sh full
+# GPUs (8x A100 80 GB; on a 40 GB card, halve the batch sizes below):
+#     bash scripts/prepare_gpt2_data.sh full && bash scripts/reproduce_gpt2.sh full
 #
 # Everything is logged to logs/reproduce_gpt2_<mode>_<timestamp>.log; each phase header shows the elapsed time, and the
 # total wall time is printed at the end (cost = hourly rate x hours). Results land in runs/gpt2_<mode>/ and results/.
@@ -21,8 +22,7 @@ MODE="${1:-smoke}"                          # 'smoke' (laptop) or 'full' (GPU)
 STAMP="$(date +%Y-%m-%d_%H-%M-%S)"
 RUNS="runs/gpt2_${MODE}"                    # parent folder for the training runs
 RESULTS="results/gpt2_${MODE}"              # parent folder for the benchmarks
-DATA_ROOT="${DATA_ROOT:-data}"              # parent folder of the prepared datasets, e.g. a persistent volume
-LOCAL_ROOT="${LOCAL_ROOT:-data}"            # local disk the datasets are copied to (~20 GB); same as DATA_ROOT: no copy
+DATA_ROOT="${DATA_ROOT:-data}"              # parent folder of the prepared datasets, same as in prepare_gpt2_data.sh
 HELLASWAG_DIR="${DATA_ROOT}/hellaswag"
 
 if [[ "${MODE}" == 'smoke' ]]; then
@@ -58,7 +58,8 @@ fi
 
 # Fail before renting time is spent: the data must already be prepared (meta.json is written last):
 if [[ ! -f "${FINEWEB_DIR}/meta.json" || ! -d "${HELLASWAG_DIR}" ]]; then
-    echo "Missing data under '${DATA_ROOT}'; run 'DATA_ROOT=${DATA_ROOT} bash scripts/prepare_gpt2_data.sh ${MODE}' first." >&2
+    echo "Missing data under '${DATA_ROOT}'; run 'DATA_ROOT=${DATA_ROOT} bash scripts/prepare_gpt2_data.sh ${MODE}' first," \
+         "or copy the prepared datasets there." >&2
     exit 1
 fi
 
@@ -76,22 +77,8 @@ uv sync
 uv run python -c "import torch; print(torch.__version__, torch.cuda.is_available() and torch.cuda.get_device_name(0))"
 command -v nvidia-smi > /dev/null && nvidia-smi || true
 
-step 'Copy data to local disk (training reads memory-mapped files; keeps network storage out of the measurements)'
-local_copy() {
-    # Copy the prepared dataset to '<dst>' through '<dst>.partial', rename at the end so a partial copy is never used:
-    local src="$1" dst="$2"
-    if [[ "${src}" -ef "${dst}" || -e "${dst}" ]]; then echo "Using ${dst}"; return; fi
-    rm -rf "${dst}.partial"                                 # leftover from an interrupted copy
-    mkdir -p "$(dirname "${dst}")"
-    cp -R "${src}" "${dst}.partial"
-    mv "${dst}.partial" "${dst}"
-    du -sh "${dst}"
-}
-df -h "$(dirname "${LOCAL_ROOT}/.")"
-local_copy "${FINEWEB_DIR}" "${LOCAL_ROOT}/$(basename "${FINEWEB_DIR}")"
-local_copy "${HELLASWAG_DIR}" "${LOCAL_ROOT}/$(basename "${HELLASWAG_DIR}")"
-FINEWEB_DIR="${LOCAL_ROOT}/$(basename "${FINEWEB_DIR}")"
-HELLASWAG_DIR="${LOCAL_ROOT}/$(basename "${HELLASWAG_DIR}")"
+step 'Verify data checksums (recorded in meta.json by prepare_fineweb.py; catches corrupted or partial copies)'
+uv run python -c "import sys; from nanogpt.data import match_checksum_sha256; match_checksum_sha256(sys.argv[1])" "${FINEWEB_DIR}"
 
 step 'Tests'
 if [[ "${MODE}" == 'smoke' ]]; then
