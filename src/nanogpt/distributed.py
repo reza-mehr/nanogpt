@@ -64,6 +64,9 @@ class DDPInfo:
         if device0 == 'cuda':
             if not torch.cuda.is_available(): raise ValueError("Cannot use 'cuda' as device, unavailable!")
             device = f'cuda:{local_rank}'
+            # Make the rank's GPU the current device: object collectives (gather_object, broadcast_object_list) place
+            # their tensors on torch.cuda.current_device(), and any bare 'cuda' would otherwise mean cuda:0 on every rank:
+            torch.cuda.set_device(device)
             init_process_group(backend='nccl', device_id=torch.device(device))
         elif device0 == 'cpu':
             device = 'cpu'
