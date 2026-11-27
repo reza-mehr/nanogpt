@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# This file runs the GPT-2 pipeline end to end: tests, the speed journey benchmark with MFU, the DDP measurements
-# (scaling efficiency, compile order, recompiles), and the main run with HellaSwag evaluation. The data is prepared
+# This file runs the GPT-2 pipeline end to end: tests, a short check of the main run's exact path on all devices, the
+# speed journey benchmark with MFU, the DDP measurements (scaling efficiency, compile order, recompiles), and the main
+# run with HellaSwag evaluation. The data is prepared
 # beforehand by scripts/prepare_gpt2_data.sh into DATA_ROOT ('data' in the repo by default), on this machine or on a
 # CPU-only one with the datasets copied here; both scripts must point at the same DATA_ROOT, on local disk, since
 # training reads memory-mapped files.
@@ -86,6 +87,27 @@ if [[ "${MODE}" == 'smoke' ]]; then
 else
     uv run pytest -m 'not smoke'                            # unit, slow and GPU tests; the smoke tests ran on the laptop
 fi
+
+#%% Check of the main run's path: the same model, batch, compile, precision, data and device count as the main run, but
+#   a few steps, with every periodic action (eval, HellaSwag, checkpoint, sample) at least once. Catches GPU-side
+#   failures (driver and CUDA build, Triton, NCCL, compile under DDP, memory at full size) in minutes, not after the
+#   benchmarks. A hang counts as a failure: 'timeout' (GNU coreutils; missing on macOS, where the check runs without it)
+#   stops it after CHECK_TIMEOUT, default 15 min, and kills all ranks.
+
+CHECK_ARGS=(--max-iters 6 --lr-warmup-iters 2 --eval-interval 3 --eval-iters 2 --ckpt-freq 1
+            --sample-freq 1 --sample-tokens 16 --hellaswag.eval-freq 1 --hellaswag.batch-size 16 --hellaswag.batch-num 2)
+TIMEOUT_CMD=()
+if command -v timeout > /dev/null; then
+    TIMEOUT_CMD=(timeout --kill-after=60 "${CHECK_TIMEOUT:-15m}")
+else
+    echo "No 'timeout' command: the check below runs without a time limit."
+fi
+
+step "Check the main run's path (${NGPU} devices, ${CHECK_ARGS[1]} steps, time limit ${CHECK_TIMEOUT:-15m})"
+"${TIMEOUT_CMD[@]}" bash scripts/ddp.sh "${NGPU}" scripts/train.py gpt2_cfg --data.dir "${FINEWEB_DIR}" --out-dir "${RUNS}" \
+    --run-name check --hellaswag.data-dir "${HELLASWAG_DIR}" --sample-prompts '' "Hello, I'm a language model," \
+    "${MODEL_ARGS[@]}" "${OPT_ARGS[@]}" "${CHECK_ARGS[@]}" \
+    || { echo "Check of the main run's path failed or timed out (exit $?; 124 = timeout); see the log above." >&2; exit 1; }
 
 #%% Speed journey (single device): tokens/s, MFU, and memory after each optimization:
 
