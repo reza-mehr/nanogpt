@@ -112,7 +112,7 @@ def get_batch(split: TokenSplit, cfg: TrainConfig, ddp: DDPInfo | None = None, s
 
     '''
     if cfg.batch_mode == 'random':
-        return get_batch_rand(split, cfg)
+        return get_batch_rand(split, cfg, None if ddp is None else ddp.device)
     elif cfg.batch_mode == 'sequential':
         if None in [ddp, step, substep]: raise ValueError("'ddp, step, substep' arguments are required!")
         return get_batch_seq(split, cfg, ddp, step, substep)
@@ -157,13 +157,10 @@ def get_batch_seq(split: TokenSplit, cfg: TrainConfig, ddp: DDPInfo, step: int, 
     chunk = torch.from_numpy(data[idx].astype(np.int64))
     x, y = chunk[:-1].view(B, T).contiguous(), chunk[1:].view(B, T).contiguous()
 
-    if cfg.device == 'cuda':                            # async copy from pinned memory
-        return (x.pin_memory().to('cuda', non_blocking=True),
-                y.pin_memory().to('cuda', non_blocking=True))
-    return x.to(cfg.device), y.to(cfg.device)
+    return _to_device(x, y, ddp.device)
 
 
-def get_batch_rand(split: TokenSplit, cfg: TrainConfig):
+def get_batch_rand(split: TokenSplit, cfg: TrainConfig, device: str | None = None):
     '''
     Function to sample cfg.batch_size random windows.
 
@@ -173,6 +170,9 @@ def get_batch_rand(split: TokenSplit, cfg: TrainConfig):
         Data to generate a batch from.
     cfg: TrainConfig
         Training configurations to use.
+    device: str, optional
+        Device to put the batch on, e.g. DDPInfo.device ('cuda:<local_rank>' under DDP). The default is None, meaning
+        cfg.device.
 
     Returns
     -------
@@ -194,10 +194,17 @@ def get_batch_rand(split: TokenSplit, cfg: TrainConfig):
     chunk = torch.from_numpy(data[idx].astype(np.int64)) # one gather, one copy
     x, y = chunk[:, :-1].contiguous(), chunk[:, 1:].contiguous()
 
-    if cfg.device == 'cuda':                            # async copy from pinned memory
-        return (x.pin_memory().to('cuda', non_blocking=True),
-                y.pin_memory().to('cuda', non_blocking=True))
-    return x.to(cfg.device), y.to(cfg.device)
+    return _to_device(x, y, device or cfg.device)
+
+
+def _to_device(x: torch.Tensor, y: torch.Tensor, device: str) -> tuple[torch.Tensor, torch.Tensor]:
+    '''
+    Function to move a batch to 'device', asynchronously from pinned memory on CUDA. The device must name the rank's
+    GPU under DDP ('cuda:<local_rank>'): a bare 'cuda' means the current device, which is GPU 0 on every rank.
+    '''
+    if device.startswith('cuda'):
+        return x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
+    return x.to(device), y.to(device)
 
 #%% Utility functions:
 

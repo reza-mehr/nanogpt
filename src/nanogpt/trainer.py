@@ -513,7 +513,7 @@ def estimate_loss(cfg: TrainConfig, model: nn.Module, train_data: TokenSplit, va
     for split, data in zip(['train', 'val'], [train_data, val_data]):
         losses = torch.zeros(iters, device=ddp.device)
         for k in range(iters):          # loop over smoothed iterations
-            xb, yb = get_batch_rand(data, cfg)
+            xb, yb = get_batch_rand(data, cfg, ddp.device)
             with autocast_ctx(cfg.device, cfg.precision):
                 _, loss = model(xb, yb)
             losses[k] = loss
