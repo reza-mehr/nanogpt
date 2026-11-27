@@ -295,8 +295,8 @@ def get_param_count(model: nn.Module, trainable_only: bool = True):
 
 def sync_device(device: str) -> None:
     '''Function to ensure that the tasks are measured and not the queue time.'''
-    if device == 'cuda':
-        torch.cuda.synchronize()
+    if device.startswith('cuda'):           # 'cuda' or 'cuda:<index>', e.g. a DDP rank's GPU
+        torch.cuda.synchronize(device)
     elif device == 'mps':
         torch.mps.synchronize()
 

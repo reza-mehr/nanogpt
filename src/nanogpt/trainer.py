@@ -378,7 +378,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
     if ddp.is_main: train_s = time.perf_counter() - state.mark_time
 
     # Peak GPU memory usage in GiB:
-    gpu_mem = torch.cuda.max_memory_allocated() / 2**30 if ddp.is_main and cfg.device.startswith('cuda') else math.nan
+    gpu_mem = torch.cuda.max_memory_allocated(ddp.device) / 2**30 if ddp.is_main and cfg.device.startswith('cuda') else math.nan
 
     # Compute the smoothed losses over train and validation sets:
     losses = estimate_loss(cfg, model, train_data, val_data, ddp)
@@ -429,7 +429,7 @@ def evaluate_and_save(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step
 
     # Start the next training interval after evaluation and checkpointing:
     state.mark_time, state.mark_step = time.perf_counter(), step
-    if cfg.device.startswith('cuda'): torch.cuda.reset_peak_memory_stats()
+    if cfg.device.startswith('cuda'): torch.cuda.reset_peak_memory_stats(ddp.device)   # rank's GPU, not cuda:0
 
 
 def _save_checkpoints(cfg: TrainConfig, model: nn.Module, optim: Optimizer, step: int, val_loss: float, state: RunState, ddp: DDPInfo):
