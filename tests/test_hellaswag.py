@@ -294,10 +294,10 @@ def test_eval_hellaswag(df, tok, parallel, ndp, tmp_path_factory):
     acc_true = 1 - dp_false / ndp
 
     # Compute the accuracy on fake HellaSwag dataset:
-    if parallel:                                    # spawn worker processes under current test process
+    if parallel:                                            # spawn worker processes under current test process
         tmp_dir = tmp_path_factory.mktemp('ddp_run')
         world_size = 2
-        with mp.Manager() as manager:
+        with mp.get_context('spawn').Manager() as manager:  # spawn: fork of a threaded process warns on Linux
             out_dict = manager.dict()
             mp.spawn(_worker, args=(world_size, tmp_dir, cfg, tok_ind, dp_batches, out_dict), nprocs=world_size)
             acc = out_dict['acc']
