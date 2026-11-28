@@ -1,0 +1,8 @@
+{
+  "model": "gpt2",
+  "acc_norm": 0.2954590618610382,
+  "ref_acc_norm": 0.2955,
+  "n_examples": 10042,
+  "eval_s": 659.6122696670063,
+  "command": "scripts/eval_hellaswag.py --gpt2-pretrained gpt2 --batch-size 8 --precision fp32 --device mps"
+}

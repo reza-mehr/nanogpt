@@ -1,0 +1,22 @@
+2026-11-27 21:03:01 | 
+HellaSwag
+Model      Examples      acc_norm      Reference      Time (s)
+--------------------------------------------------------------
+gpt2         10,042        0.2966         0.2955         536.3
+
+2026-11-27 21:03:01 | 
+Environment
+-----------------------------------
+date: 2026-11-27T20:54:00
+git: gpt2-run-2026-11-27-1-g54f2ecc
+python: 3.12.14
+torch: 2.14.1
+os: macOS-26.7.3-arm64-arm-64bit
+cpu: Apple M4
+ram (GB): 24
+torch cpu threads: 4
+world size: 1
+device: mps
+power: Now drawing from 'AC Power'
+
+2026-11-27 21:03:01 | Normalized accuracy: 0.2966 | results: results/hellaswag/gpt2_mixed_bf16

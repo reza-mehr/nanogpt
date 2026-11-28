@@ -1,0 +1,36 @@
+{
+  "eval": {
+    "data_dir": "data/hellaswag",
+    "batch_size": 8,
+    "batch_num": null,
+    "gpt2_pretrained": "gpt2",
+    "checkpoint": null,
+    "device": "mps",
+    "matmul_precision": "fp32",
+    "precision": "fp32",
+    "out_dir": "results/hellaswag",
+    "run_name": null,
+    "overwrite": false,
+    "model_name": "gpt2",
+    "run_dir": "results/hellaswag/gpt2_fp32"
+  },
+  "model": {
+    "name": "gpt2",
+    "vocab_size": 50257,
+    "pad_vocab_to_multiple": 1,
+    "block_size": 1024,
+    "n_embed": 768,
+    "n_blocks": 12,
+    "head_num": 12,
+    "kv_head_num": null,
+    "head_size": 64,
+    "batched_attention": true,
+    "scaled_dot_prod": true,
+    "pos_embed": "learned",
+    "rope_base": 10000.0,
+    "ln_torch": true,
+    "dropout": 0.0,
+    "n_kv_head": 12,
+    "vocab_size_padded": 50257
+  }
+}

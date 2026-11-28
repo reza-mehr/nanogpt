@@ -34,7 +34,7 @@ All results come from commit `96be5de` (`v1.0.0-39-g96be5de`, tag [`gpt2-run-202
 | Tokenizer | GPT-2 BPE (50,257) |
 | Training | 19,073 steps × 2^19 tokens = 10.0B tokens (≈1 epoch), mixed bf16, cosine lr 6e-4 |
 | Time | 101 min of training steps, 1.654M tok/s (56.7% MFU); 113 min for the main run including evaluation, checkpoints, and compiling |
-| **Best val loss** | **3.0598** (Karpathy's `train_gpt2.py`: 3.0726; OpenAI's GPT-2 124M on the same val split: TODO) |
+| **Best val loss** | **3.0598** (Karpathy's `train_gpt2.py`: 3.0726) |
 | HellaSwag | 0.3014 (OpenAI's GPT-2 124M: 0.2966, same mixed-bf16 eval) |
 | Cost | at \$12.81/h for 8× A100: ≈ \$21.6 for the training steps (101 min), ≈ \$24 for the main run (113 min), ≈ \$29 for the full script (136 min) |
 | Details | [report](../assets/a100x8_2026_11_27/runs/gpt2_full/main/report.md) |
@@ -45,18 +45,15 @@ The figure below shows the training and validation curves:
 
 - **No overfitting:** the final train/val gap is only 0.015 (3.0450 vs. 3.0604).
 - **The plateau comes from the schedule:** the cosine decay reaches its floor (6e-5) at the last step, so the updates shrink and the loss flattens as the decay finishes.
-- **Not under-trained:** 10.0B tokens for 124.5M parameters is ≈80 tokens per parameter, four times the compute-optimal ≈20 ([Hoffmann et al., 2022](https://arxiv.org/abs/2203.15556)). More tokens would still lower the loss, but with diminishing returns. In contrast, the TinyStories model saw about 2 tokens per parameter and was under-trained ([here](NANOGPT.md#trained-models)).
+- **Past compute-optimal:** 10.0B tokens for 124.5M parameters is ≈80 tokens per parameter, four times the compute-optimal ≈20 ([Hoffmann et al., 2022](https://arxiv.org/abs/2203.15556)). More tokens would still lower the loss, but with diminishing returns. In contrast, the TinyStories model saw about 2 tokens per parameter and was under-trained ([here](NANOGPT.md#trained-models)).
 
 ### Samples
 
 Best checkpoint (step 18,500), bf16 weights (`model.pt`), temperature 0.8, top-k 50, seed 0, CPU, 200 new tokens; first sample, not cherry-picked.
 
-- **Pure sampling fails on FineWeb-Edu:** the samples logged during training used temperature 1.0 and no top-k, the same settings that gave fluent text for TinyShakespeare and TinyStories ([here](NANOGPT.md#samples)), and produced nonsense; see them [here](../assets/a100x8_2026_11_27/runs/gpt2_full/main/report.md#samples).
-    - The loss is the average negative log-probability of the next token, in nats (natural-log units; 1 nat ≈ 1.44 bits). TinyStories is predictable (val 1.34 nats per token), so its next-token distribution is sharp. FineWeb-Edu is not (3.06 nats per token), so much more of the probability sits in the long tail of rare tokens.
-    - Over 200 steps, pure sampling is almost certain to draw some tail tokens, and each one becomes context that pushes the text further off.
-    - Top-k removes the tail before sampling, and temperature < 1 sharpens what is left.
-- **Both prompts share a seed,** so `torch.multinomial` draws the same random numbers at each step. The seed fixes where in each distribution a draw lands, not which word it picks, so steps that land in the tail do so for both prompts; once the texts drift into similar contexts, they pick similar words. That's why the temperature-1.0 samples share words ("soda", "slopes from", "nor are …"); the samples are not independent.
-- **Lower temperature and top-k trade gibberish for repetition:** the first sample loops ("A language model is a type of language model." and close variants, until it ends in bullets that repeat it). A sharper distribution falls into the model's own high-probability loops, because each repeat makes the next one more likely. This degeneration is described by [Holtzman et al., 2019](https://arxiv.org/abs/1904.09751), who propose nucleus (top-p) sampling as a middle ground.
+- **Pure sampling fails on FineWeb-Edu:** the samples logged during training used temperature 1.0 and no top-k, the same settings that gave fluent text for TinyShakespeare and TinyStories ([here](NANOGPT.md#samples)), and produced nonsense; see them [here](../assets/a100x8_2026_11_27/runs/gpt2_full/main/report.md#samples). FineWeb-Edu is less predictable than TinyStories (3.06 vs. 1.34 nats per token; 1 nat ≈ 1.44 bits), so more probability sits in the long tail, and pure sampling draws from it. Top-k removes the tail, and temperature < 1 sharpens what's left.
+- **Both prompts use the same seed,** so their random draws line up step by step; that's why the temperature-1.0 samples share words ("soda", "slopes from").
+- **Lower temperature and top-k trade gibberish for repetition:** the first sample loops ("A language model is a type of language model."). A sharper distribution falls into the model's own high-probability loops, because each repeat makes the next one more likely. This degeneration is described by [Holtzman et al., 2019](https://arxiv.org/abs/1904.09751), who propose nucleus (top-p) sampling as a middle ground.
 
 **Prompt** `"Hello, I'm a language model,"`:
 
@@ -83,7 +80,7 @@ The study was conducted in an attempt to determine how cats relate to dogs, and 
 
 ### DDP Scaling
 
-Throughput as a function of the number of GPUs, for a fixed batch of 2^19 = 524,288 tokens per optimizer step and 60 steps per run (31.5M tokens). With fewer GPUs, gradient accumulation keeps the batch size the same, so the 1-GPU baseline matches the batch, not the code path: it runs 8 accumulation substeps, while 8 GPUs run none.
+Throughput as a function of the number of GPUs, for a fixed batch of 2^19 = 524,288 tokens per optimizer step and 60 steps per run (31.5M tokens). With fewer GPUs, gradient accumulation keeps the batch size the same: the 1-GPU baseline runs 8 accumulation substeps; 8 GPUs run none.
 
 | GPUs | 1 | 2 | 4 | 8 |
 |---|---|---|---|---|
@@ -98,7 +95,7 @@ Throughput as a function of the number of GPUs, for a fixed batch of 2^19 = 524,
 
 - **Scaling is near-linear:** most of the gradient all-reduce is hidden behind the backward pass, and the remaining ~5% at 8 GPUs is communication and synchronization that isn't overlapped (profiling it is a [Next Step](#next-steps)).
 - **Memory stays flat** because each GPU processes the same micro-batch; only the number of accumulation substeps changes.
-- **Per-GPU MFU drops at the same rate as scaling efficiency:** the GPUs don't compute more slowly; part of each step is spent waiting on communication. Matching per-GPU MFU against scaling efficiency is a cheap sanity check: if they drop together, the lost time is outside the kernels (communication or waiting), not slower compute.
+- **Per-GPU MFU drops with scaling efficiency,** a cheap sanity check: if they drop together, the lost time is outside the kernels (communication or waiting), not slower compute.
 
 ### Training Benchmarks
 
@@ -156,7 +153,7 @@ The impact of the training optimization journey on throughput, peak memory, and 
 
 - **The denominator is the peak for each row's precision,** from [`peak_flops.csv`](../src/nanogpt/peak_flops.csv): fp32 (baseline) 19.5 TFLOP/s, TF32 (second row) 156 TFLOP/s, bf16 (the rest) 312 TFLOP/s.
     - As a result, MFU is only comparable within one precision: it falls over the first three rows while [throughput](#throughput-tokenssec) rises 3.4–3.8×, because the peak grows faster than the throughput.
-    - The baseline's 75.8% means fp32 is compute-bound because its peak is so low: the hardware was busy, not the code fast.
+    - The baseline's 75.8%: fp32's low peak makes it compute-bound.
 - **FLOP counts include the full $T \times T$ attention,** not halved for causal masking, following PaLM ([Chowdhery et al., 2022](https://arxiv.org/abs/2204.02311), Appendix B) and Karpathy.
 - **The padded vocabulary's FLOPs are included,** since the padded rows still go through the matmuls.
 - **The benchmark matches the main run:** the last row reaches 54.6% MFU at $T$ = 1024 with batch size 16 on one GPU; the main run reached 56.7% with micro-batch 64 on 8 GPUs.
@@ -167,10 +164,10 @@ The impact of the training optimization journey on throughput, peak memory, and 
 
 <img src="../assets/a100x8_2026_11_27/runs/gpt2_full/main/hellaswag.png" width="600" alt="HellaSwag accuracy">
 
-- **Random choice scores 0.25.** At step 500 the model scores 0.238, below chance: per-token loss favors endings made of common tokens, so a model that only knows token frequencies is biased toward the wrong ending, not neutral. The bias goes away once the model uses the context.
+- **Random choice scores 0.25.** At step 500 the model scores 0.238, below chance, likely because per-token loss favors endings made of common tokens until the model uses the context.
 - **The run reaches OpenAI's pre-trained GPT-2 124M weights:** it first passes 0.2966 at step 14,000 (7.3B tokens) and stays above it from step 15,000 (7.9B tokens). With a standard error of ≈0.0046, the final 0.3014 matches rather than beats it. Scores for the pre-trained weights with the same code:
-    - 0.2955 in fp32;
-    - 0.2966 in mixed bf16: 11 more correct answers, from bf16 rounding flipping near-ties in the forward pass;
+    - 0.2955 in fp32 ([report](../assets/a100x8_2026_11_27/results/hellaswag/gpt2_fp32/report.md));
+    - 0.2966 in mixed bf16 ([report](../assets/a100x8_2026_11_27/results/hellaswag/gpt2_mixed_bf16/report.md)): 11 more correct answers, from bf16 rounding flipping near-ties in the forward pass;
     - see [this section](#hellaswag-1) for the command to reproduce.
 - **GPT-3 Small (125M) scores ≈0.337** ([Brown et al., 2020](https://arxiv.org/abs/2005.14165), zero-shot), after 300B training tokens vs. 10.0B here.
 - **About 0.311 is reported for the same weights** with [EleutherAI's lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness), whose preprocessing and per-character normalization differ from the scoring here; not reproduced in this repo.
@@ -191,7 +188,7 @@ This section tests whether the order of wrapping the model in DDP and compiling 
 
 - **The throughputs differ by 0.1%, within run-to-run noise,** so the order makes no measurable difference here.
 - **Hypothesis for the tie:** on this NVSwitch node, communication costs only ~5% of the step ([DDP Scaling](#ddp-scaling)). With so little to hide, overlap can recover at most that much. On a slower interconnect, or across nodes, the order would likely matter.
-- **Recompiles from the gradient-sync toggle:** under gradient accumulation, sync is off for all substeps but the last, and switching it could recompile the graph, giving one graph with sync and one without. On the laptop (2 CPU ranks, gloo, 4 accumulation substeps, 10 steps, `TORCH_LOGS=recompiles`), toggling sync produced no recompiles. Hypothesis: DDP reads the sync flag in its reducer, which schedules the all-reduce outside the compiled graph, so Dynamo never guards on it. The 8-GPU runs have no gradient accumulation, so they don't exercise the toggle; checking it on 2 GPUs is a [Next Step](#next-steps).
+- **Recompiles from the gradient-sync toggle:** on the laptop (2 CPU ranks, 4 accumulation substeps, `TORCH_LOGS=recompiles`), toggling sync caused no recompiles, likely because DDP reads the flag outside the compiled graph. The 8-GPU runs don't accumulate gradients, so they don't test this; checking it on 2 GPUs is a [Next Step](#next-steps).
 
 ## Engineering
 
@@ -247,10 +244,10 @@ All three failures came from paths the laptop tests (CPU, gloo, few cores, tiny 
 
 ## Next Steps
 
-- **Measure OpenAI's GPT-2 124M val loss** on the same FineWeb-Edu val split, for a like-for-like baseline in [Trained Model](#trained-model).
+- **Measure OpenAI's GPT-2 124M val loss** on the same val split, for a like-for-like baseline.
 - **Move temperature and top-k into the configs** instead of hard-coding them in the trainer's sampling.
 - **Profile compute/communication overlap** under DDP, for both compile orders.
-- **Check recompiles on 2 GPUs** with `TORCH_LOGS=recompiles`: the 8-GPU run has no gradient accumulation, so the sync toggle between accumulation substeps was never exercised there.
+- **Check recompiles from the gradient-sync toggle on 2 GPUs.**
 - **Record the dataset config** (`sample-10BT`) in the tokenized data's `meta.json`, next to the repo id and revision.
 
 ## Usage
