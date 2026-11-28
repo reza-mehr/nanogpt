@@ -1,0 +1,39 @@
+2026-11-27 04:42:29 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:42:29 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/ddp/n8_after_ddp/tb
+2026-11-27 04:42:45 | step     1 / 60 | 13.638 sec | train 10.3580 | val 10.3569 | lr 6.00e-04 | norm 9.5668 | 38,444 tok/s | mem 39.1 GiB | MFU 1.3 %
+2026-11-27 04:42:48 | step    10 / 60 | 2.846 sec | train 7.7541 | val 7.7643 | lr 6.00e-04 | norm 0.5567 | 1,658,258 tok/s | mem 40.0 GiB | MFU 56.8 %
+2026-11-27 04:42:51 | step    20 / 60 | 3.125 sec | train 7.7112 | val 7.6982 | lr 6.00e-04 | norm 0.2947 | 1,677,581 tok/s | mem 40.0 GiB | MFU 57.5 %
+2026-11-27 04:42:55 | step    30 / 60 | 3.146 sec | train 7.6718 | val 7.6879 | lr 6.00e-04 | norm 0.2774 | 1,666,616 tok/s | mem 40.0 GiB | MFU 57.1 %
+2026-11-27 04:42:58 | step    40 / 60 | 3.146 sec | train 7.5980 | val 7.5882 | lr 6.00e-04 | norm 0.2452 | 1,666,729 tok/s | mem 40.0 GiB | MFU 57.1 %
+2026-11-27 04:43:01 | step    50 / 60 | 3.141 sec | train 7.4565 | val 7.4745 | lr 6.00e-04 | norm 0.2870 | 1,668,942 tok/s | mem 40.0 GiB | MFU 57.2 %
+2026-11-27 04:43:05 | step    60 / 60 | 3.155 sec | train 7.3508 | val 7.3605 | lr 6.00e-04 | norm 0.4947 | 1,661,931 tok/s | mem 40.0 GiB | MFU 57.0 %
+2026-11-27 04:43:06 | 
+Summary: n8_after_ddp
+metric                       value           
+---------------------------------------------
+parameters                   124,475,904     
+steps                        60              
+training time (s)            32              
+tokens                       31,457,280      
+final train loss             7.3508          
+final val loss               7.3605          
+best val loss                7.3605 (step 60)
+mean throughput (tok/s)      1,666,798       
+peak GPU memory (GiB)        40.0            
+mean MFU (%)                 57.1            
+
+2026-11-27 04:43:07 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:42:29
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 8
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+

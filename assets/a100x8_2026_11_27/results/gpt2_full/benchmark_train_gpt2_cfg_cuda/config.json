@@ -1,0 +1,76 @@
+{
+  "preset": "gpt2_cfg",
+  "device": "cuda",
+  "vocab_size": null,
+  "batch_size": 16,
+  "warmup": 5,
+  "out_dir": "results/gpt2_full",
+  "from_csv": false,
+  "overwrite": false,
+  "log_level": 20,
+  "block_sizes": [
+    256,
+    512,
+    1024
+  ],
+  "iters": 20,
+  "trials": 3,
+  "batch": 16,
+  "kind": "benchmark_train",
+  "run_dir": "results/gpt2_full/benchmark_train_gpt2_cfg_cuda",
+  "train_journey": [
+    [
+      "baseline",
+      {
+        "scaled_dot_prod": false
+      },
+      {
+        "adamw_fused": false,
+        "precision": "fp32"
+      }
+    ],
+    [
+      "+tf32",
+      {},
+      {
+        "matmul_precision": "tf32"
+      }
+    ],
+    [
+      "+mixed bf16",
+      {},
+      {
+        "precision": "mixed_bf16"
+      }
+    ],
+    [
+      "+compile",
+      {},
+      {
+        "compile_model": true
+      }
+    ],
+    [
+      "+SDPA",
+      {
+        "scaled_dot_prod": true
+      },
+      {}
+    ],
+    [
+      "+padding",
+      {
+        "pad_vocab_to_multiple": 128
+      },
+      {}
+    ],
+    [
+      "+fused AdamW",
+      {},
+      {
+        "adamw_fused": true
+      }
+    ]
+  ],
+  "vocab": 50257
+}

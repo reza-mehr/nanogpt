@@ -1,0 +1,114 @@
+2026-11-27 04:44:44 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:44:44 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/main/tb
+2026-11-27 04:44:49 | Downloaded and tokenized HellaSwag dataset: 157 batches
+
+2026-11-27 04:45:04 | step     1 / 19073 | 16.560 sec | train 11.0001 | val 11.0004 | lr 8.39e-07 | norm 9.5668 | 31,659 tok/s | mem 39.1 GiB | MFU 1.1 % | HellaSwag acc -----
+2026-11-27 04:46:31 | step   250 / 19073 | 78.529 sec | train 6.2696 | val 6.2807 | lr 2.10e-04 | norm 0.9936 | 1,662,405 tok/s | mem 40.0 GiB | MFU 57.0 % | HellaSwag acc 0.2474
+2026-11-27 04:48:00 | step   500 / 19073 | 79.207 sec | train 5.4876 | val 5.4874 | lr 4.20e-04 | norm 1.2511 | 1,654,803 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2377
+2026-11-27 04:49:28 | step   750 / 19073 | 79.252 sec | train 4.7593 | val 4.7626 | lr 6.00e-04 | norm 0.6148 | 1,653,853 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2456
+2026-11-27 04:50:56 | step  1000 / 19073 | 79.124 sec | train 4.2236 | val 4.2166 | lr 6.00e-04 | norm 0.5063 | 1,656,532 tok/s | mem 40.0 GiB | MFU 56.8 % | HellaSwag acc 0.2526
+2026-11-27 04:52:26 | step  1250 / 19073 | 79.169 sec | train 3.9725 | val 3.9694 | lr 5.99e-04 | norm 0.3499 | 1,655,588 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2538
+2026-11-27 04:53:54 | step  1500 / 19073 | 79.226 sec | train 3.8348 | val 3.8353 | lr 5.98e-04 | norm 0.4270 | 1,654,401 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2571
+2026-11-27 04:55:23 | step  1750 / 19073 | 79.148 sec | train 3.7196 | val 3.7279 | lr 5.96e-04 | norm 0.2723 | 1,656,046 tok/s | mem 40.0 GiB | MFU 56.8 % | HellaSwag acc 0.2562
+2026-11-27 04:56:51 | step  2000 / 19073 | 79.272 sec | train 3.6588 | val 3.6686 | lr 5.93e-04 | norm 0.3427 | 1,653,454 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2599
+2026-11-27 04:58:20 | step  2250 / 19073 | 79.257 sec | train 3.6015 | val 3.6047 | lr 5.91e-04 | norm 0.3120 | 1,653,768 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2585
+2026-11-27 04:59:49 | step  2500 / 19073 | 79.200 sec | train 3.5603 | val 3.5623 | lr 5.88e-04 | norm 0.2910 | 1,654,956 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2621
+2026-11-27 05:01:17 | step  2750 / 19073 | 79.182 sec | train 3.5147 | val 3.5154 | lr 5.84e-04 | norm 0.2761 | 1,655,318 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2592
+2026-11-27 05:02:45 | step  3000 / 19073 | 79.186 sec | train 3.4849 | val 3.4931 | lr 5.80e-04 | norm 0.2471 | 1,655,235 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2625
+2026-11-27 05:04:15 | step  3250 / 19073 | 79.223 sec | train 3.4657 | val 3.4572 | lr 5.75e-04 | norm 0.2744 | 1,654,467 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2616
+2026-11-27 05:05:43 | step  3500 / 19073 | 79.191 sec | train 3.4350 | val 3.4356 | lr 5.70e-04 | norm 0.3154 | 1,655,136 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2637
+2026-11-27 05:07:11 | step  3750 / 19073 | 79.226 sec | train 3.4172 | val 3.4135 | lr 5.64e-04 | norm 0.2717 | 1,654,411 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2631
+2026-11-27 05:08:40 | step  4000 / 19073 | 79.228 sec | train 3.3984 | val 3.4038 | lr 5.58e-04 | norm 0.2789 | 1,654,357 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2693
+2026-11-27 05:10:09 | step  4250 / 19073 | 79.199 sec | train 3.3726 | val 3.3828 | lr 5.52e-04 | norm 0.2815 | 1,654,971 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2708
+2026-11-27 05:11:38 | step  4500 / 19073 | 79.221 sec | train 3.3579 | val 3.3643 | lr 5.45e-04 | norm 0.2870 | 1,654,510 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2712
+2026-11-27 05:13:06 | step  4750 / 19073 | 79.274 sec | train 3.3538 | val 3.3623 | lr 5.38e-04 | norm 0.2876 | 1,653,406 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2688
+2026-11-27 05:14:34 | step  5000 / 19073 | 79.298 sec | train 3.3276 | val 3.3457 | lr 5.31e-04 | norm 0.2836 | 1,652,895 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2741
+2026-11-27 05:16:04 | step  5250 / 19073 | 79.281 sec | train 3.3211 | val 3.3272 | lr 5.23e-04 | norm 0.2978 | 1,653,263 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2764
+2026-11-27 05:17:32 | step  5500 / 19073 | 79.169 sec | train 3.3018 | val 3.3239 | lr 5.14e-04 | norm 0.3472 | 1,655,597 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2745
+2026-11-27 05:19:01 | step  5750 / 19073 | 79.331 sec | train 3.2984 | val 3.3083 | lr 5.06e-04 | norm 0.2820 | 1,652,211 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2778
+2026-11-27 05:20:29 | step  6000 / 19073 | 79.258 sec | train 3.2895 | val 3.2966 | lr 4.97e-04 | norm 0.3472 | 1,653,742 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2815
+2026-11-27 05:21:58 | step  6250 / 19073 | 79.265 sec | train 3.2831 | val 3.2854 | lr 4.88e-04 | norm 0.3007 | 1,653,591 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2763
+2026-11-27 05:23:27 | step  6500 / 19073 | 79.243 sec | train 3.2709 | val 3.2689 | lr 4.78e-04 | norm 0.2951 | 1,654,046 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2806
+2026-11-27 05:24:55 | step  6750 / 19073 | 79.192 sec | train 3.2651 | val 3.2672 | lr 4.68e-04 | norm 0.3028 | 1,655,113 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2754
+2026-11-27 05:26:24 | step  7000 / 19073 | 79.224 sec | train 3.2541 | val 3.2645 | lr 4.58e-04 | norm 0.2951 | 1,654,458 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2779
+2026-11-27 05:27:53 | step  7250 / 19073 | 79.313 sec | train 3.2264 | val 3.2537 | lr 4.48e-04 | norm 0.2905 | 1,652,599 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2861
+2026-11-27 05:29:21 | step  7500 / 19073 | 79.265 sec | train 3.2411 | val 3.2393 | lr 4.38e-04 | norm 0.3321 | 1,653,598 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2834
+2026-11-27 05:30:50 | step  7750 / 19073 | 79.301 sec | train 3.2261 | val 3.2319 | lr 4.27e-04 | norm 0.3490 | 1,652,837 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2825
+2026-11-27 05:32:18 | step  8000 / 19073 | 79.169 sec | train 3.2174 | val 3.2282 | lr 4.16e-04 | norm 0.2799 | 1,655,598 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2848
+2026-11-27 05:33:48 | step  8250 / 19073 | 79.314 sec | train 3.2263 | val 3.2162 | lr 4.05e-04 | norm 0.2847 | 1,652,570 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2826
+2026-11-27 05:35:16 | step  8500 / 19073 | 79.230 sec | train 3.2069 | val 3.2151 | lr 3.94e-04 | norm 0.2773 | 1,654,322 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2863
+2026-11-27 05:36:45 | step  8750 / 19073 | 79.324 sec | train 3.1940 | val 3.2022 | lr 3.83e-04 | norm 0.3268 | 1,652,371 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2830
+2026-11-27 05:38:12 | step  9000 / 19073 | 79.215 sec | train 3.1878 | val 3.2072 | lr 3.71e-04 | norm 0.2688 | 1,654,630 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2860
+2026-11-27 05:39:40 | step  9250 / 19073 | 79.176 sec | train 3.1874 | val 3.2054 | lr 3.60e-04 | norm 0.2774 | 1,655,462 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2869
+2026-11-27 05:41:08 | step  9500 / 19073 | 79.285 sec | train 3.1816 | val 3.1957 | lr 3.48e-04 | norm 0.3183 | 1,653,171 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2873
+2026-11-27 05:42:37 | step  9750 / 19073 | 79.218 sec | train 3.1810 | val 3.1902 | lr 3.37e-04 | norm 0.2924 | 1,654,567 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2882
+2026-11-27 05:44:05 | step 10000 / 19073 | 79.164 sec | train 3.1770 | val 3.1708 | lr 3.25e-04 | norm 0.3091 | 1,655,702 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2853
+2026-11-27 05:45:34 | step 10250 / 19073 | 79.176 sec | train 3.1642 | val 3.1649 | lr 3.14e-04 | norm 0.3049 | 1,655,445 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2895
+2026-11-27 05:47:02 | step 10500 / 19073 | 79.270 sec | train 3.1607 | val 3.1721 | lr 3.02e-04 | norm 0.2892 | 1,653,481 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2929
+2026-11-27 05:48:29 | step 10750 / 19073 | 79.266 sec | train 3.1527 | val 3.1653 | lr 2.91e-04 | norm 0.2856 | 1,653,581 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2859
+2026-11-27 05:49:57 | step 11000 / 19073 | 79.262 sec | train 3.1555 | val 3.1584 | lr 2.79e-04 | norm 0.2919 | 1,653,645 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2879
+2026-11-27 05:51:27 | step 11250 / 19073 | 79.225 sec | train 3.1412 | val 3.1536 | lr 2.68e-04 | norm 0.2807 | 1,654,423 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2893
+2026-11-27 05:52:55 | step 11500 / 19073 | 79.268 sec | train 3.1433 | val 3.1378 | lr 2.57e-04 | norm 0.2923 | 1,653,534 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2935
+2026-11-27 05:54:22 | step 11750 / 19073 | 79.286 sec | train 3.1419 | val 3.1397 | lr 2.46e-04 | norm 0.2781 | 1,653,147 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2939
+2026-11-27 05:55:51 | step 12000 / 19073 | 79.284 sec | train 3.1299 | val 3.1327 | lr 2.35e-04 | norm 0.3252 | 1,653,193 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2934
+2026-11-27 05:57:19 | step 12250 / 19073 | 79.175 sec | train 3.1257 | val 3.1407 | lr 2.24e-04 | norm 0.2788 | 1,655,472 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2922
+2026-11-27 05:58:46 | step 12500 / 19073 | 79.340 sec | train 3.1184 | val 3.1373 | lr 2.14e-04 | norm 0.2869 | 1,652,023 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2915
+2026-11-27 06:00:15 | step 12750 / 19073 | 79.312 sec | train 3.1225 | val 3.1250 | lr 2.03e-04 | norm 0.2984 | 1,652,604 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2953
+2026-11-27 06:01:43 | step 13000 / 19073 | 79.236 sec | train 3.1160 | val 3.1139 | lr 1.93e-04 | norm 0.3068 | 1,654,201 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2941
+2026-11-27 06:03:13 | step 13250 / 19073 | 79.245 sec | train 3.1027 | val 3.1126 | lr 1.83e-04 | norm 0.2912 | 1,654,007 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2952
+2026-11-27 06:04:40 | step 13500 / 19073 | 79.301 sec | train 3.1011 | val 3.1186 | lr 1.74e-04 | norm 0.3182 | 1,652,832 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2926
+2026-11-27 06:06:08 | step 13750 / 19073 | 79.269 sec | train 3.0996 | val 3.1039 | lr 1.64e-04 | norm 0.3214 | 1,653,518 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2962
+2026-11-27 06:07:37 | step 14000 / 19073 | 79.301 sec | train 3.0931 | val 3.0971 | lr 1.56e-04 | norm 0.2827 | 1,652,832 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2981
+2026-11-27 06:09:06 | step 14250 / 19073 | 79.302 sec | train 3.0881 | val 3.0930 | lr 1.47e-04 | norm 0.2871 | 1,652,816 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2985
+2026-11-27 06:10:34 | step 14500 / 19073 | 79.314 sec | train 3.0941 | val 3.1019 | lr 1.39e-04 | norm 0.2990 | 1,652,575 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2966
+2026-11-27 06:12:02 | step 14750 / 19073 | 79.234 sec | train 3.0817 | val 3.0919 | lr 1.31e-04 | norm 0.3099 | 1,654,231 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2946
+2026-11-27 06:13:30 | step 15000 / 19073 | 79.205 sec | train 3.0816 | val 3.0872 | lr 1.23e-04 | norm 0.2886 | 1,654,854 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2981
+2026-11-27 06:15:00 | step 15250 / 19073 | 79.337 sec | train 3.0727 | val 3.0841 | lr 1.16e-04 | norm 0.2796 | 1,652,090 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2983
+2026-11-27 06:16:27 | step 15500 / 19073 | 79.424 sec | train 3.0618 | val 3.0842 | lr 1.09e-04 | norm 0.2733 | 1,650,292 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2990
+2026-11-27 06:17:55 | step 15750 / 19073 | 79.328 sec | train 3.0638 | val 3.0859 | lr 1.02e-04 | norm 0.2837 | 1,652,288 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2976
+2026-11-27 06:19:23 | step 16000 / 19073 | 79.434 sec | train 3.0673 | val 3.0725 | lr 9.65e-05 | norm 0.3048 | 1,650,082 tok/s | mem 40.0 GiB | MFU 56.5 % | HellaSwag acc 0.3000
+2026-11-27 06:20:52 | step 16250 / 19073 | 79.357 sec | train 3.0669 | val 3.0781 | lr 9.09e-05 | norm 0.3064 | 1,651,681 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2979
+2026-11-27 06:22:20 | step 16500 / 19073 | 79.367 sec | train 3.0716 | val 3.0690 | lr 8.58e-05 | norm 0.3104 | 1,651,478 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2991
+2026-11-27 06:23:49 | step 16750 / 19073 | 79.299 sec | train 3.0612 | val 3.0624 | lr 8.11e-05 | norm 0.3155 | 1,652,883 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2987
+2026-11-27 06:25:16 | step 17000 / 19073 | 79.319 sec | train 3.0672 | val 3.0770 | lr 7.68e-05 | norm 0.2764 | 1,652,459 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2993
+2026-11-27 06:26:44 | step 17250 / 19073 | 79.439 sec | train 3.0564 | val 3.0696 | lr 7.30e-05 | norm 0.3000 | 1,649,975 tok/s | mem 40.0 GiB | MFU 56.5 % | HellaSwag acc 0.3000
+2026-11-27 06:28:12 | step 17500 / 19073 | 79.277 sec | train 3.0496 | val 3.0665 | lr 6.97e-05 | norm 0.2953 | 1,653,352 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2991
+2026-11-27 06:29:39 | step 17750 / 19073 | 79.209 sec | train 3.0450 | val 3.0632 | lr 6.69e-05 | norm 0.2725 | 1,654,760 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.3005
+2026-11-27 06:31:07 | step 18000 / 19073 | 79.316 sec | train 3.0526 | val 3.0599 | lr 6.45e-05 | norm 0.3118 | 1,652,520 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.3010
+2026-11-27 06:32:36 | step 18250 / 19073 | 79.390 sec | train 3.0486 | val 3.0617 | lr 6.27e-05 | norm 0.2937 | 1,650,983 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2980
+2026-11-27 06:34:04 | step 18500 / 19073 | 79.283 sec | train 3.0511 | val 3.0598 | lr 6.13e-05 | norm 0.2730 | 1,653,212 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.3001
+2026-11-27 06:35:31 | step 18750 / 19073 | 79.343 sec | train 3.0456 | val 3.0628 | lr 6.04e-05 | norm 0.2868 | 1,651,969 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.3000
+2026-11-27 06:36:59 | step 19000 / 19073 | 79.442 sec | train 3.0448 | val 3.0633 | lr 6.00e-05 | norm 0.2881 | 1,649,907 tok/s | mem 40.0 GiB | MFU 56.5 % | HellaSwag acc 0.3010
+2026-11-27 06:37:31 | step 19073 / 19073 | 23.164 sec | train 3.0450 | val 3.0604 | lr 6.00e-05 | norm 0.3167 | 1,652,243 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.3014
+2026-11-27 06:37:31 | 
+Summary: main
+metric                       value               
+-------------------------------------------------
+parameters                   124,475,904         
+steps                        19,073              
+training time (s)            6,063               
+tokens                       9,999,745,024       
+final train loss             3.0450              
+final val loss               3.0604              
+best val loss                3.0598 (step 18,500)
+mean throughput (tok/s)      1,653,707           
+peak GPU memory (GiB)        40.0                
+mean MFU (%)                 56.7                
+HellaSwag accuracy           0.3014              
+
+2026-11-27 06:37:33 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:44:44
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 8
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-11-27 06:37:37 | Saved runs/gpt2_full/main/model.pt (311 MiB, logits relative error vs best.pt 3.5e-03)

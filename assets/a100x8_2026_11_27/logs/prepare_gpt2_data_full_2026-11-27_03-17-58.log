@@ -1,0 +1,34 @@
+
+=== 03:17:58 | elapsed 0 min | Environment ===
+Resolved 137 packages in 2ms
+Checked 126 packages in 0.83ms
+CPU cores reported: 192, tokenizer processes (full mode): 32
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vdb         16T   27G   15T   1% /ephemeral
+/dev/vdb         16T   27G   15T   1% /ephemeral
+/dev/vdb         16T   27G   15T   1% /ephemeral
+
+=== 03:18:01 | elapsed 0 min | Prepare FineWeb ===
+{
+  "tokenizer": "gpt2",
+  "vocab_size": 50257,
+  "eot": 50256,
+  "dtype": "<u2",
+  "n_tokens": {
+    "train": 9854782052,
+    "val": 99207292
+  },
+  "checksum_sha256": {
+    "train": "e3f6323e6b6dfe3aab3603e0a739b0768f141f1c64a84c5c87c8c6a59a0f336a",
+    "val": "83b5dcb6d8e21fced9ffea4b2e77526125673090a11b66b02ebedc3cf93d0e30"
+  },
+  "repo_id": "HuggingFaceFW/fineweb-edu",
+  "revision": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+  "seed": 0
+}
+=== 03:18:01 | elapsed 0 min | Download HellaSwag ===
+/ephemeral/nanogpt/data/hellaswag/default/validation/0000.parquet
+Total wall time: 0 h 00 min.
+Done. Back up data/fineweb, data/hellaswag and logs/prepare_gpt2_data_full_2026-11-27_03-17-58.log before
+removing them or this machine; scripts/reproduce_gpt2.sh reads the datasets from DATA_ROOT. The HuggingFace
+caches (/ephemeral/hf_cache/hub, /ephemeral/hf_cache/datasets) are not needed for training.

@@ -1,0 +1,40 @@
+2026-11-27 04:40:57 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:40:57 | Performing 2 gradient accumulation iterations with 4 devices and (B, T) = (64, 1024) to realize 524288 tokens per batch.
+2026-11-27 04:40:57 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/ddp/n4/tb
+2026-11-27 04:41:14 | step     1 / 60 | 15.532 sec | train 10.3595 | val 10.3502 | lr 6.00e-04 | norm 9.5668 | 33,754 tok/s | mem 39.5 GiB | MFU 2.3 %
+2026-11-27 04:41:20 | step    10 / 60 | 6.412 sec | train 7.7553 | val 7.7641 | lr 6.00e-04 | norm 0.5630 | 735,932 tok/s | mem 40.5 GiB | MFU 50.4 %
+2026-11-27 04:41:27 | step    20 / 60 | 6.078 sec | train 7.7044 | val 7.6942 | lr 6.00e-04 | norm 0.2900 | 862,576 tok/s | mem 40.5 GiB | MFU 59.1 %
+2026-11-27 04:41:33 | step    30 / 60 | 6.089 sec | train 7.6598 | val 7.7041 | lr 6.00e-04 | norm 0.2888 | 861,082 tok/s | mem 40.5 GiB | MFU 59.0 %
+2026-11-27 04:41:39 | step    40 / 60 | 6.099 sec | train 7.6240 | val 7.5871 | lr 6.00e-04 | norm 0.2426 | 859,681 tok/s | mem 40.5 GiB | MFU 58.9 %
+2026-11-27 04:41:46 | step    50 / 60 | 6.116 sec | train 7.4458 | val 7.4810 | lr 6.00e-04 | norm 0.2918 | 857,217 tok/s | mem 40.5 GiB | MFU 58.8 %
+2026-11-27 04:41:52 | step    60 / 60 | 6.128 sec | train 7.3544 | val 7.3748 | lr 6.00e-04 | norm 0.3789 | 855,547 tok/s | mem 40.5 GiB | MFU 58.6 %
+2026-11-27 04:41:54 | 
+Summary: n4
+metric                       value           
+---------------------------------------------
+parameters                   124,475,904     
+steps                        60              
+training time (s)            52              
+tokens                       31,457,280      
+final train loss             7.3544          
+final val loss               7.3748          
+best val loss                7.3748 (step 60)
+mean throughput (tok/s)      837,804         
+peak GPU memory (GiB)        40.5            
+mean MFU (%)                 57.4            
+
+2026-11-27 04:41:55 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:40:57
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 4
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+

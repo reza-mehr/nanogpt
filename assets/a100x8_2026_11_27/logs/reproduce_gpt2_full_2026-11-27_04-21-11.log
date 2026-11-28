@@ -1,0 +1,653 @@
+
+=== 04:21:14 | elapsed 0 min | Environment ===
+Resolved 137 packages in 2ms
+Checked 126 packages in 0.82ms
+2.14.1+cu126 NVIDIA A100-SXM4-80GB
+Fri Nov 27 04:21:27 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          On  |   00000000:0D:00.0 Off |                    0 |
+| N/A   33C    P0             62W /  500W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+|   1  NVIDIA A100-SXM4-80GB          On  |   00000000:0E:00.0 Off |                    0 |
+| N/A   32C    P0             63W /  500W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+|   2  NVIDIA A100-SXM4-80GB          On  |   00000000:0F:00.0 Off |                    0 |
+| N/A   31C    P0             63W /  500W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+|   3  NVIDIA A100-SXM4-80GB          On  |   00000000:10:00.0 Off |                    0 |
+| N/A   32C    P0             66W /  500W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+|   4  NVIDIA A100-SXM4-80GB          On  |   00000000:11:00.0 Off |                    0 |
+| N/A   34C    P0             85W /  500W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+|   5  NVIDIA A100-SXM4-80GB          On  |   00000000:12:00.0 Off |                    0 |
+| N/A   32C    P0             67W /  500W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+|   6  NVIDIA A100-SXM4-80GB          On  |   00000000:13:00.0 Off |                    0 |
+| N/A   32C    P0             73W /  500W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+|   7  NVIDIA A100-SXM4-80GB          On  |   00000000:14:00.0 Off |                    0 |
+| N/A   31C    P0             81W /  500W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+=== 04:21:30 | elapsed 0 min | Verify data checksums (recorded in meta.json by prepare_fineweb.py; catches corrupted or partial copies) ===
+
+=== 04:22:00 | elapsed 0 min | Tests ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /ephemeral/nanogpt
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, platformdirs-4.12.0, typeguard-4.6.0
+collected 251 items / 13 deselected / 238 selected
+
+tests/test_attention.py ..                                               [  0%]
+tests/test_checkpoint.py .......                                         [  3%]
+tests/test_config.py ........................                            [ 13%]
+tests/test_distributed.py .......                                        [ 16%]
+tests/test_generate.py ..s.                                              [ 18%]
+tests/test_hellaswag.py ............                                     [ 23%]
+tests/test_kv_cache.py ....................................              [ 38%]
+tests/test_layernorm.py .                                                [ 39%]
+tests/test_model.py .................................................... [ 60%]
+..................................................................       [ 88%]
+tests/test_optimizer.py .....                                            [ 90%]
+tests/test_reporting.py ......                                           [ 93%]
+tests/test_rope.py .........                                             [ 97%]
+tests/test_tokenizers.py .......                                         [100%]
+
+========== 237 passed, 1 skipped, 13 deselected in 126.65s (0:02:06) ===========
+
+=== 04:24:13 | elapsed 2 min | Check the main run's path (8 devices, 6 steps, time limit 15m) ===
+ddp.sh: 8 processes, TORCHINDUCTOR_COMPILE_THREADS=1
+2026-11-27 04:24:35 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:24:35 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/check/tb
+2026-11-27 04:24:38 | Downloaded and tokenized HellaSwag dataset: 2 batches
+
+[rank1]:W1127 04:24:39.682000 94966 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank7]:W1127 04:24:39.683000 94972 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank0]:W1127 04:24:39.695000 94965 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank3]:W1127 04:24:39.699000 94968 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank5]:W1127 04:24:39.700000 94970 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank4]:W1127 04:24:39.702000 94969 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank6]:W1127 04:24:39.712000 94971 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank2]:W1127 04:24:39.743000 94967 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+2026-11-27 04:24:51 | step     1 / 6 | 13.670 sec | train 10.2648 | val 10.2643 | lr 3.00e-04 | norm 9.5668 | 38,354 tok/s | mem 39.1 GiB | MFU 1.3 % | HellaSwag acc -----
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  9.11it/s]100%|██████████| 1/1 [00:00<00:00,  9.10it/s]
+2026-11-27 04:24:57 | step     3 / 6 | 0.631 sec | train 9.1480 | val 9.1554 | lr 5.21e-04 | norm 2.0437 | 1,660,950 tok/s | mem 40.0 GiB | MFU 56.9 % | HellaSwag acc 0.1250
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 11.32it/s]
+2026-11-27 04:25:02 | step     6 / 6 | 0.939 sec | train 8.8303 | val 8.8207 | lr 6.00e-05 | norm 1.7334 | 1,675,859 tok/s | mem 40.0 GiB | MFU 57.4 % | HellaSwag acc 0.1875
+2026-11-27 04:25:04 | 
+Summary: check
+metric                       value          
+--------------------------------------------
+parameters                   124,475,904    
+steps                        6              
+training time (s)            15             
+tokens                       3,145,728      
+final train loss             8.8303         
+final val loss               8.8207         
+best val loss                8.8207 (step 6)
+mean throughput (tok/s)      1,669,864      
+peak GPU memory (GiB)        40.0           
+mean MFU (%)                 57.2           
+HellaSwag accuracy           0.1875         
+
+2026-11-27 04:25:04 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:24:35
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 8
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-11-27 04:25:09 | Saved runs/gpt2_full/check/model.pt (311 MiB, logits relative error vs best.pt 1.6e-03)
+
+=== 04:25:20 | elapsed 4 min | Benchmark the GPT-2 training journey ===
+train journey:   0%|          | 0/7 [00:00<?, ?it/s]train journey:  14%|█▍        | 1/7 [02:09<12:57, 129.63s/it]train journey:  29%|██▊       | 2/7 [02:59<06:54, 82.95s/it] train journey:  43%|████▎     | 3/7 [03:45<04:22, 65.71s/it]train journey:  57%|█████▋    | 4/7 [05:43<04:19, 86.39s/it]train journey:  71%|███████▏  | 5/7 [07:15<02:57, 88.51s/it]train journey:  86%|████████▌ | 6/7 [08:48<01:30, 90.19s/it]train journey: 100%|██████████| 7/7 [09:19<00:00, 70.80s/it]train journey: 100%|██████████| 7/7 [09:19<00:00, 79.97s/it]
+2026-11-27 04:34:49 | 
+Training throughput (tokens/sec)
+variant            T=256                T=512                T=1024         
+----------------------------------------------------------------------------
+baseline            19,184               18,480               16,403        
++tf32               63,664 (+232%)       60,761 (+229%)       49,316 (+201%)
++mixed bf16         73,492 (+15%)        70,441 (+16%)        56,086 (+14%) 
++compile           127,924 (+74%)       140,924 (+100%)      133,914 (+139%)
++SDPA              137,235 (+7%)        165,526 (+17%)       184,640 (+38%) 
++padding           139,415 (+2%)        167,832 (+1%)        186,338 (+1%)  
++fused AdamW       172,847 (+24%)       189,866 (+13%)       199,208 (+7%)  
+total vs base              (+801%)              (+927%)             (+1114%)
+
+2026-11-27 04:34:49 | 
+MFU (%)
+variant            T=256             T=512             T=1024      
+-------------------------------------------------------------------
+baseline           75.8              75.7              71.9        
++tf32              31.4 (-59%)       31.1 (-59%)       27.0 (-62%) 
++mixed bf16        18.1 (-42%)       18.0 (-42%)       15.4 (-43%) 
++compile           31.6 (+74%)       36.1 (+100%)      36.7 (+139%)
++SDPA              33.9 (+7%)        42.4 (+17%)       50.6 (+38%) 
++padding           34.4 (+2%)        43.0 (+1%)        51.1 (+1%)  
++fused AdamW       42.7 (+24%)       48.6 (+13%)       54.6 (+7%)  
+total vs base           (-44%)            (-36%)            (-24%) 
+
+2026-11-27 04:34:49 | 
+Peak memory (MiB)
+variant            T=256              T=512               T=1024        
+------------------------------------------------------------------------
+baseline           7,497              14,698              32,610        
++tf32              7,497 (0%)         14,698 (0%)         32,610 (0%)   
++mixed bf16        6,223 (-17%)       12,503 (-15%)       30,259 (-7%)  
++compile           4,763 (-23%)        9,021 (-28%)       20,945 (-31%) 
++SDPA              4,187 (-12%)        6,692 (-26%)       11,668 (-44%) 
++padding           4,190 (0%)          6,695 (0%)         11,673 (0%)   
++fused AdamW       4,188 (0%)          6,695 (0%)         11,672 (0%)   
+total vs base            (-44%)              (-54%)              (-64%) 
+
+2026-11-27 04:34:49 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:25:29
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 1
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-11-27 04:35:05 | 
+Memory model fit: mem(T) = c + a T + b T²
+variant           c (MiB)      a (MiB/token)      b (MiB/token²)      T² share at max T (%)          R²      points
+-------------------------------------------------------------------------------------------------------------------
+baseline            1,466             21.275            8.92e-03                         29      1.0000           3
++tf32               1,466             21.275            8.92e-03                         29      1.0000           3
++mixed bf16         1,676             14.380            1.32e-02                         46      1.0000           3
++compile            1,640              9.979            8.67e-03                         43      1.0000           3
++SDPA               1,672              9.847           -8.38e-05                         -1      1.0000           3
++padding            1,675              9.846           -8.01e-05                         -1      1.0000           3
++fused AdamW        1,669              9.865           -9.43e-05                         -1      1.0000           3
+
+2026-11-27 04:35:05 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:25:29
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 1
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-11-27 04:35:06 | Saved memory_fit.csv, memory_fit.md, and memory_fit.png in results/gpt2_full/benchmark_train_gpt2_cfg_cuda
+
+=== 04:35:10 | elapsed 13 min | DDP: single device (scaling baseline, gradient accumulation instead of ranks) ===
+ddp.sh: 1 processes, TORCHINDUCTOR_COMPILE_THREADS=<unset, PyTorch default>
+2026-11-27 04:35:25 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:35:25 | Performing 8 gradient accumulation iterations with 1 devices and (B, T) = (64, 1024) to realize 524288 tokens per batch.
+2026-11-27 04:35:25 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/ddp/n1/tb
+2026-11-27 04:35:54 | step     1 / 60 | 26.396 sec | train 10.3627 | val 10.3579 | lr 6.00e-04 | norm 9.5668 | 19,863 tok/s | mem 40.2 GiB | MFU 5.4 %
+2026-11-27 04:36:17 | step    10 / 60 | 21.670 sec | train 7.7489 | val 7.7495 | lr 6.00e-04 | norm 0.5601 | 217,747 tok/s | mem 41.1 GiB | MFU 59.7 %
+2026-11-27 04:36:42 | step    20 / 60 | 23.647 sec | train 7.6929 | val 7.6934 | lr 6.00e-04 | norm 0.2944 | 221,712 tok/s | mem 41.1 GiB | MFU 60.8 %
+2026-11-27 04:37:07 | step    30 / 60 | 23.712 sec | train 7.6809 | val 7.6620 | lr 6.00e-04 | norm 0.2785 | 221,103 tok/s | mem 41.1 GiB | MFU 60.6 %
+2026-11-27 04:37:32 | step    40 / 60 | 23.763 sec | train 7.5696 | val 7.6131 | lr 6.00e-04 | norm 0.2438 | 220,634 tok/s | mem 41.1 GiB | MFU 60.5 %
+2026-11-27 04:37:57 | step    50 / 60 | 23.800 sec | train 7.4841 | val 7.4771 | lr 6.00e-04 | norm 0.2892 | 220,294 tok/s | mem 41.1 GiB | MFU 60.4 %
+2026-11-27 04:38:22 | step    60 / 60 | 23.827 sec | train 7.3546 | val 7.3711 | lr 6.00e-04 | norm 0.4669 | 220,039 tok/s | mem 41.1 GiB | MFU 60.3 %
+2026-11-27 04:38:22 | 
+Summary: n1
+metric                       value           
+---------------------------------------------
+parameters                   124,475,904     
+steps                        60              
+training time (s)            167             
+tokens                       31,457,280      
+final train loss             7.3546          
+final val loss               7.3711          
+best val loss                7.3711 (step 60)
+mean throughput (tok/s)      220,291         
+peak GPU memory (GiB)        41.1            
+mean MFU (%)                 60.4            
+
+2026-11-27 04:38:23 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:35:25
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 1
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 04:38:37 | elapsed 17 min | DDP: 2 devices (scaling curve) ===
+ddp.sh: 2 processes, TORCHINDUCTOR_COMPILE_THREADS=1
+2026-11-27 04:38:56 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:38:56 | Performing 4 gradient accumulation iterations with 2 devices and (B, T) = (64, 1024) to realize 524288 tokens per batch.
+2026-11-27 04:38:56 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/ddp/n2/tb
+[rank0]:W1127 04:39:00.322000 98154 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank1]:W1127 04:39:00.348000 98155 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+2026-11-27 04:39:12 | step     1 / 60 | 15.450 sec | train 10.3622 | val 10.3588 | lr 6.00e-04 | norm 9.5667 | 33,936 tok/s | mem 39.5 GiB | MFU 4.7 %
+2026-11-27 04:39:24 | step    10 / 60 | 10.830 sec | train 7.7540 | val 7.7256 | lr 6.00e-04 | norm 0.5567 | 435,703 tok/s | mem 40.5 GiB | MFU 59.7 %
+2026-11-27 04:39:36 | step    20 / 60 | 12.032 sec | train 7.7052 | val 7.7210 | lr 6.00e-04 | norm 0.2960 | 435,727 tok/s | mem 40.5 GiB | MFU 59.7 %
+2026-11-27 04:39:49 | step    30 / 60 | 12.066 sec | train 7.6620 | val 7.6795 | lr 6.00e-04 | norm 0.2837 | 434,522 tok/s | mem 40.5 GiB | MFU 59.6 %
+2026-11-27 04:40:01 | step    40 / 60 | 12.106 sec | train 7.6170 | val 7.5883 | lr 6.00e-04 | norm 0.2457 | 433,085 tok/s | mem 40.5 GiB | MFU 59.4 %
+2026-11-27 04:40:14 | step    50 / 60 | 12.133 sec | train 7.4701 | val 7.4311 | lr 6.00e-04 | norm 0.2732 | 432,108 tok/s | mem 40.5 GiB | MFU 59.2 %
+2026-11-27 04:40:27 | step    60 / 60 | 12.162 sec | train 7.3218 | val 7.3181 | lr 6.00e-04 | norm 0.4270 | 431,076 tok/s | mem 40.5 GiB | MFU 59.1 %
+2026-11-27 04:40:29 | 
+Summary: n2
+metric                       value           
+---------------------------------------------
+parameters                   124,475,904     
+steps                        60              
+training time (s)            87              
+tokens                       31,457,280      
+final train loss             7.3218          
+final val loss               7.3181          
+best val loss                7.3181 (step 60)
+mean throughput (tok/s)      433,663         
+peak GPU memory (GiB)        40.5            
+mean MFU (%)                 59.4            
+
+2026-11-27 04:40:30 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:38:56
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 2
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 04:40:37 | elapsed 19 min | DDP: 4 devices (scaling curve) ===
+ddp.sh: 4 processes, TORCHINDUCTOR_COMPILE_THREADS=1
+2026-11-27 04:40:57 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:40:57 | Performing 2 gradient accumulation iterations with 4 devices and (B, T) = (64, 1024) to realize 524288 tokens per batch.
+2026-11-27 04:40:57 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/ddp/n4/tb
+[rank0]:W1127 04:41:00.934000 98523 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank3]:W1127 04:41:00.945000 98526 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank1]:W1127 04:41:00.946000 98524 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank2]:W1127 04:41:01.040000 98525 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+2026-11-27 04:41:14 | step     1 / 60 | 15.532 sec | train 10.3595 | val 10.3502 | lr 6.00e-04 | norm 9.5668 | 33,754 tok/s | mem 39.5 GiB | MFU 2.3 %
+2026-11-27 04:41:20 | step    10 / 60 | 6.412 sec | train 7.7553 | val 7.7641 | lr 6.00e-04 | norm 0.5630 | 735,932 tok/s | mem 40.5 GiB | MFU 50.4 %
+2026-11-27 04:41:27 | step    20 / 60 | 6.078 sec | train 7.7044 | val 7.6942 | lr 6.00e-04 | norm 0.2900 | 862,576 tok/s | mem 40.5 GiB | MFU 59.1 %
+2026-11-27 04:41:33 | step    30 / 60 | 6.089 sec | train 7.6598 | val 7.7041 | lr 6.00e-04 | norm 0.2888 | 861,082 tok/s | mem 40.5 GiB | MFU 59.0 %
+2026-11-27 04:41:39 | step    40 / 60 | 6.099 sec | train 7.6240 | val 7.5871 | lr 6.00e-04 | norm 0.2426 | 859,681 tok/s | mem 40.5 GiB | MFU 58.9 %
+2026-11-27 04:41:46 | step    50 / 60 | 6.116 sec | train 7.4458 | val 7.4810 | lr 6.00e-04 | norm 0.2918 | 857,217 tok/s | mem 40.5 GiB | MFU 58.8 %
+2026-11-27 04:41:52 | step    60 / 60 | 6.128 sec | train 7.3544 | val 7.3748 | lr 6.00e-04 | norm 0.3789 | 855,547 tok/s | mem 40.5 GiB | MFU 58.6 %
+2026-11-27 04:41:54 | 
+Summary: n4
+metric                       value           
+---------------------------------------------
+parameters                   124,475,904     
+steps                        60              
+training time (s)            52              
+tokens                       31,457,280      
+final train loss             7.3544          
+final val loss               7.3748          
+best val loss                7.3748 (step 60)
+mean throughput (tok/s)      837,804         
+peak GPU memory (GiB)        40.5            
+mean MFU (%)                 57.4            
+
+2026-11-27 04:41:55 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:40:57
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 4
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 04:42:06 | elapsed 20 min | DDP: 8 devices, compile after DDP (recompiles logged: the sync toggle should recompile at most once) ===
+ddp.sh: 8 processes, TORCHINDUCTOR_COMPILE_THREADS=1
+2026-11-27 04:42:29 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:42:29 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/ddp/n8_after_ddp/tb
+[rank0]:W1127 04:42:32.934000 98993 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank3]:W1127 04:42:32.936000 98996 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank1]:W1127 04:42:32.939000 98994 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank7]:W1127 04:42:32.944000 99000 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank5]:W1127 04:42:32.950000 98998 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank2]:W1127 04:42:32.957000 98995 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank4]:W1127 04:42:32.966000 98997 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank6]:W1127 04:42:32.967000 98999 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+2026-11-27 04:42:45 | step     1 / 60 | 13.638 sec | train 10.3580 | val 10.3569 | lr 6.00e-04 | norm 9.5668 | 38,444 tok/s | mem 39.1 GiB | MFU 1.3 %
+2026-11-27 04:42:48 | step    10 / 60 | 2.846 sec | train 7.7541 | val 7.7643 | lr 6.00e-04 | norm 0.5567 | 1,658,258 tok/s | mem 40.0 GiB | MFU 56.8 %
+2026-11-27 04:42:51 | step    20 / 60 | 3.125 sec | train 7.7112 | val 7.6982 | lr 6.00e-04 | norm 0.2947 | 1,677,581 tok/s | mem 40.0 GiB | MFU 57.5 %
+2026-11-27 04:42:55 | step    30 / 60 | 3.146 sec | train 7.6718 | val 7.6879 | lr 6.00e-04 | norm 0.2774 | 1,666,616 tok/s | mem 40.0 GiB | MFU 57.1 %
+2026-11-27 04:42:58 | step    40 / 60 | 3.146 sec | train 7.5980 | val 7.5882 | lr 6.00e-04 | norm 0.2452 | 1,666,729 tok/s | mem 40.0 GiB | MFU 57.1 %
+2026-11-27 04:43:01 | step    50 / 60 | 3.141 sec | train 7.4565 | val 7.4745 | lr 6.00e-04 | norm 0.2870 | 1,668,942 tok/s | mem 40.0 GiB | MFU 57.2 %
+2026-11-27 04:43:05 | step    60 / 60 | 3.155 sec | train 7.3508 | val 7.3605 | lr 6.00e-04 | norm 0.4947 | 1,661,931 tok/s | mem 40.0 GiB | MFU 57.0 %
+2026-11-27 04:43:06 | 
+Summary: n8_after_ddp
+metric                       value           
+---------------------------------------------
+parameters                   124,475,904     
+steps                        60              
+training time (s)            32              
+tokens                       31,457,280      
+final train loss             7.3508          
+final val loss               7.3605          
+best val loss                7.3605 (step 60)
+mean throughput (tok/s)      1,666,798       
+peak GPU memory (GiB)        40.0            
+mean MFU (%)                 57.1            
+
+2026-11-27 04:43:07 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:42:29
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 8
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 04:43:17 | elapsed 22 min | DDP: 8 devices, compile before DDP ===
+ddp.sh: 8 processes, TORCHINDUCTOR_COMPILE_THREADS=1
+2026-11-27 04:43:39 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:43:39 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/ddp/n8_before_ddp/tb
+2026-11-27 04:43:53 | step     1 / 60 | 13.137 sec | train 10.3580 | val 10.3569 | lr 6.00e-04 | norm 9.5668 | 39,909 tok/s | mem 39.1 GiB | MFU 1.4 %
+2026-11-27 04:43:56 | step    10 / 60 | 2.857 sec | train 7.7543 | val 7.7645 | lr 6.00e-04 | norm 0.5568 | 1,651,312 tok/s | mem 40.0 GiB | MFU 56.6 %
+2026-11-27 04:43:59 | step    20 / 60 | 3.132 sec | train 7.7114 | val 7.6984 | lr 6.00e-04 | norm 0.2947 | 1,673,976 tok/s | mem 40.0 GiB | MFU 57.4 %
+2026-11-27 04:44:03 | step    30 / 60 | 3.133 sec | train 7.6720 | val 7.6881 | lr 6.00e-04 | norm 0.2801 | 1,673,547 tok/s | mem 40.0 GiB | MFU 57.4 %
+2026-11-27 04:44:06 | step    40 / 60 | 3.151 sec | train 7.5978 | val 7.5880 | lr 6.00e-04 | norm 0.2411 | 1,663,795 tok/s | mem 40.0 GiB | MFU 57.0 %
+2026-11-27 04:44:10 | step    50 / 60 | 3.157 sec | train 7.4547 | val 7.4734 | lr 6.00e-04 | norm 0.2846 | 1,660,882 tok/s | mem 40.0 GiB | MFU 56.9 %
+2026-11-27 04:44:13 | step    60 / 60 | 3.147 sec | train 7.3468 | val 7.3568 | lr 6.00e-04 | norm 0.4302 | 1,665,849 tok/s | mem 40.0 GiB | MFU 57.1 %
+2026-11-27 04:44:14 | 
+Summary: n8_before_ddp
+metric                       value           
+---------------------------------------------
+parameters                   124,475,904     
+steps                        60              
+training time (s)            32              
+tokens                       31,457,280      
+final train loss             7.3468          
+final val loss               7.3568          
+best val loss                7.3568 (step 60)
+mean throughput (tok/s)      1,665,089       
+peak GPU memory (GiB)        40.0            
+mean MFU (%)                 57.1            
+
+2026-11-27 04:44:15 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:43:39
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 8
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+
+=== 04:44:21 | elapsed 23 min | Train gpt2_cfg on FineWeb (8 devices) ===
+ddp.sh: 8 processes, TORCHINDUCTOR_COMPILE_THREADS=1
+2026-11-27 04:44:44 | Built 'gpt2' model with 124.48M parameters.
+2026-11-27 04:44:44 | TensorBoard: uv run tensorboard --logdir runs/gpt2_full/main/tb
+2026-11-27 04:44:49 | Downloaded and tokenized HellaSwag dataset: 157 batches
+
+[rank4]:W1127 04:44:50.894000 100476 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank2]:W1127 04:44:50.900000 100474 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank3]:W1127 04:44:50.909000 100475 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank7]:W1127 04:44:50.910000 100479 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank1]:W1127 04:44:50.911000 100473 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank6]:W1127 04:44:50.933000 100478 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank0]:W1127 04:44:50.954000 100472 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+[rank5]:W1127 04:44:50.981000 100477 torch/_logging/_internal.py:1394] [0/0] Profiler record function <class 'torch.autograd.profiler.record_function'> will be ignored
+2026-11-27 04:45:04 | step     1 / 19073 | 16.560 sec | train 11.0001 | val 11.0004 | lr 8.39e-07 | norm 9.5668 | 31,659 tok/s | mem 39.1 GiB | MFU 1.1 % | HellaSwag acc -----
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  6.90it/s] 10%|█         | 2/20 [00:00<00:02,  7.63it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.01it/s] 20%|██        | 4/20 [00:00<00:02,  7.69it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.82it/s] 30%|███       | 6/20 [00:00<00:01,  8.02it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.03it/s] 40%|████      | 8/20 [00:01<00:01,  7.42it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.80it/s]
+2026-11-27 04:46:31 | step   250 / 19073 | 78.529 sec | train 6.2696 | val 6.2807 | lr 2.10e-04 | norm 0.9936 | 1,662,405 tok/s | mem 40.0 GiB | MFU 57.0 % | HellaSwag acc 0.2474
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 04:48:00 | step   500 / 19073 | 79.207 sec | train 5.4876 | val 5.4874 | lr 4.20e-04 | norm 1.2511 | 1,654,803 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2377
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.11it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 04:49:28 | step   750 / 19073 | 79.252 sec | train 4.7593 | val 4.7626 | lr 6.00e-04 | norm 0.6148 | 1,653,853 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2456
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 04:50:56 | step  1000 / 19073 | 79.124 sec | train 4.2236 | val 4.2166 | lr 6.00e-04 | norm 0.5063 | 1,656,532 tok/s | mem 40.0 GiB | MFU 56.8 % | HellaSwag acc 0.2526
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 04:52:26 | step  1250 / 19073 | 79.169 sec | train 3.9725 | val 3.9694 | lr 5.99e-04 | norm 0.3499 | 1,655,588 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2538
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.35it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 04:53:54 | step  1500 / 19073 | 79.226 sec | train 3.8348 | val 3.8353 | lr 5.98e-04 | norm 0.4270 | 1,654,401 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2571
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.40it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 04:55:23 | step  1750 / 19073 | 79.148 sec | train 3.7196 | val 3.7279 | lr 5.96e-04 | norm 0.2723 | 1,656,046 tok/s | mem 40.0 GiB | MFU 56.8 % | HellaSwag acc 0.2562
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.85it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 04:56:51 | step  2000 / 19073 | 79.272 sec | train 3.6588 | val 3.6686 | lr 5.93e-04 | norm 0.3427 | 1,653,454 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2599
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 04:58:20 | step  2250 / 19073 | 79.257 sec | train 3.6015 | val 3.6047 | lr 5.91e-04 | norm 0.3120 | 1,653,768 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2585
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.59it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.35it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 04:59:49 | step  2500 / 19073 | 79.200 sec | train 3.5603 | val 3.5623 | lr 5.88e-04 | norm 0.2910 | 1,654,956 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2621
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:01:17 | step  2750 / 19073 | 79.182 sec | train 3.5147 | val 3.5154 | lr 5.84e-04 | norm 0.2761 | 1,655,318 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2592
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.16it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:02:45 | step  3000 / 19073 | 79.186 sec | train 3.4849 | val 3.4931 | lr 5.80e-04 | norm 0.2471 | 1,655,235 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2625
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.18it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.33it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  6.99it/s] 50%|█████     | 10/20 [00:01<00:01,  6.79it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.42it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.39it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:04:15 | step  3250 / 19073 | 79.223 sec | train 3.4657 | val 3.4572 | lr 5.75e-04 | norm 0.2744 | 1,654,467 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2616
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.11it/s] 10%|█         | 2/20 [00:00<00:02,  8.18it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.33it/s] 20%|██        | 4/20 [00:00<00:02,  7.85it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.08it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.07it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.83it/s]
+2026-11-27 05:05:43 | step  3500 / 19073 | 79.191 sec | train 3.4350 | val 3.4356 | lr 5.70e-04 | norm 0.3154 | 1,655,136 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2637
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.85it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:07:11 | step  3750 / 19073 | 79.226 sec | train 3.4172 | val 3.4135 | lr 5.64e-04 | norm 0.2717 | 1,654,411 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2631
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.42it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.39it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:08:40 | step  4000 / 19073 | 79.228 sec | train 3.3984 | val 3.4038 | lr 5.58e-04 | norm 0.2789 | 1,654,357 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2693
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:10:09 | step  4250 / 19073 | 79.199 sec | train 3.3726 | val 3.3828 | lr 5.52e-04 | norm 0.2815 | 1,654,971 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2708
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.35it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:11:38 | step  4500 / 19073 | 79.221 sec | train 3.3579 | val 3.3643 | lr 5.45e-04 | norm 0.2870 | 1,654,510 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2712
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.84it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.08it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:13:06 | step  4750 / 19073 | 79.274 sec | train 3.3538 | val 3.3623 | lr 5.38e-04 | norm 0.2876 | 1,653,406 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2688
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:14:34 | step  5000 / 19073 | 79.298 sec | train 3.3276 | val 3.3457 | lr 5.31e-04 | norm 0.2836 | 1,652,895 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2741
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.70it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.40it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:16:04 | step  5250 / 19073 | 79.281 sec | train 3.3211 | val 3.3272 | lr 5.23e-04 | norm 0.2978 | 1,653,263 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2764
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 05:17:32 | step  5500 / 19073 | 79.169 sec | train 3.3018 | val 3.3239 | lr 5.14e-04 | norm 0.3472 | 1,655,597 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2745
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:19:01 | step  5750 / 19073 | 79.331 sec | train 3.2984 | val 3.3083 | lr 5.06e-04 | norm 0.2820 | 1,652,211 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2778
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.40it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.36it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.35it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 05:20:29 | step  6000 / 19073 | 79.258 sec | train 3.2895 | val 3.2966 | lr 4.97e-04 | norm 0.3472 | 1,653,742 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2815
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.85it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:21:58 | step  6250 / 19073 | 79.265 sec | train 3.2831 | val 3.2854 | lr 4.88e-04 | norm 0.3007 | 1,653,591 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2763
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.85it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.08it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.07it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:23:27 | step  6500 / 19073 | 79.243 sec | train 3.2709 | val 3.2689 | lr 4.78e-04 | norm 0.2951 | 1,654,046 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2806
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.95it/s] 30%|███       | 6/20 [00:00<00:01,  8.11it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.35it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 05:24:55 | step  6750 / 19073 | 79.192 sec | train 3.2651 | val 3.2672 | lr 4.68e-04 | norm 0.3028 | 1,655,113 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2754
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:26:24 | step  7000 / 19073 | 79.224 sec | train 3.2541 | val 3.2645 | lr 4.58e-04 | norm 0.2951 | 1,654,458 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2779
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.59it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.35it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 05:27:53 | step  7250 / 19073 | 79.313 sec | train 3.2264 | val 3.2537 | lr 4.48e-04 | norm 0.2905 | 1,652,599 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2861
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.42it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:29:21 | step  7500 / 19073 | 79.265 sec | train 3.2411 | val 3.2393 | lr 4.38e-04 | norm 0.3321 | 1,653,598 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2834
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.10it/s] 10%|█         | 2/20 [00:00<00:02,  8.17it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.32it/s] 20%|██        | 4/20 [00:00<00:02,  7.84it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.90it/s] 30%|███       | 6/20 [00:00<00:01,  8.07it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.07it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.32it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.31it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.83it/s]
+2026-11-27 05:30:50 | step  7750 / 19073 | 79.301 sec | train 3.2261 | val 3.2319 | lr 4.27e-04 | norm 0.3490 | 1,652,837 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2825
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:32:18 | step  8000 / 19073 | 79.169 sec | train 3.2174 | val 3.2282 | lr 4.16e-04 | norm 0.2799 | 1,655,598 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2848
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.00it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:33:48 | step  8250 / 19073 | 79.314 sec | train 3.2263 | val 3.2162 | lr 4.05e-04 | norm 0.2847 | 1,652,570 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2826
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 05:35:16 | step  8500 / 19073 | 79.230 sec | train 3.2069 | val 3.2151 | lr 3.94e-04 | norm 0.2773 | 1,654,322 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2863
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:36:45 | step  8750 / 19073 | 79.324 sec | train 3.1940 | val 3.2022 | lr 3.83e-04 | norm 0.3268 | 1,652,371 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2830
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.36it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:38:12 | step  9000 / 19073 | 79.215 sec | train 3.1878 | val 3.2072 | lr 3.71e-04 | norm 0.2688 | 1,654,630 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2860
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.70it/s] 60%|██████    | 12/20 [00:01<00:01,  6.59it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.36it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 05:39:40 | step  9250 / 19073 | 79.176 sec | train 3.1874 | val 3.2054 | lr 3.60e-04 | norm 0.2774 | 1,655,462 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2869
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.70it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:41:08 | step  9500 / 19073 | 79.285 sec | train 3.1816 | val 3.1957 | lr 3.48e-04 | norm 0.3183 | 1,653,171 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2873
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:42:37 | step  9750 / 19073 | 79.218 sec | train 3.1810 | val 3.1902 | lr 3.37e-04 | norm 0.2924 | 1,654,567 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2882
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.33it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.40it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:44:05 | step 10000 / 19073 | 79.164 sec | train 3.1770 | val 3.1708 | lr 3.25e-04 | norm 0.3091 | 1,655,702 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2853
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.10it/s] 10%|█         | 2/20 [00:00<00:02,  8.18it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.33it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:45:34 | step 10250 / 19073 | 79.176 sec | train 3.1642 | val 3.1649 | lr 3.14e-04 | norm 0.3049 | 1,655,445 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2895
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.16it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.42it/s] 45%|████▌     | 9/20 [00:01<00:01,  6.99it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:47:02 | step 10500 / 19073 | 79.270 sec | train 3.1607 | val 3.1721 | lr 3.02e-04 | norm 0.2892 | 1,653,481 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2929
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.00it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.50it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:48:29 | step 10750 / 19073 | 79.266 sec | train 3.1527 | val 3.1653 | lr 2.91e-04 | norm 0.2856 | 1,653,581 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2859
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.39it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:49:57 | step 11000 / 19073 | 79.262 sec | train 3.1555 | val 3.1584 | lr 2.79e-04 | norm 0.2919 | 1,653,645 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2879
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.07it/s] 40%|████      | 8/20 [00:01<00:01,  7.42it/s] 45%|████▌     | 9/20 [00:01<00:01,  6.99it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.39it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:51:27 | step 11250 / 19073 | 79.225 sec | train 3.1412 | val 3.1536 | lr 2.68e-04 | norm 0.2807 | 1,654,423 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2893
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.40it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:52:55 | step 11500 / 19073 | 79.268 sec | train 3.1433 | val 3.1378 | lr 2.57e-04 | norm 0.2923 | 1,653,534 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2935
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.42it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.39it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:54:22 | step 11750 / 19073 | 79.286 sec | train 3.1419 | val 3.1397 | lr 2.46e-04 | norm 0.2781 | 1,653,147 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2939
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:55:51 | step 12000 / 19073 | 79.284 sec | train 3.1299 | val 3.1327 | lr 2.35e-04 | norm 0.3252 | 1,653,193 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2934
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.17it/s] 10%|█         | 2/20 [00:00<00:02,  8.22it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.59it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.39it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.33it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 05:57:19 | step 12250 / 19073 | 79.175 sec | train 3.1257 | val 3.1407 | lr 2.24e-04 | norm 0.2788 | 1,655,472 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2922
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.00it/s] 50%|█████     | 10/20 [00:01<00:01,  6.79it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 05:58:46 | step 12500 / 19073 | 79.340 sec | train 3.1184 | val 3.1373 | lr 2.14e-04 | norm 0.2869 | 1,652,023 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2915
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.84it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:00:15 | step 12750 / 19073 | 79.312 sec | train 3.1225 | val 3.1250 | lr 2.03e-04 | norm 0.2984 | 1,652,604 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2953
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.79it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.66it/s] 60%|██████    | 12/20 [00:01<00:01,  6.56it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.36it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.31it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.30it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.28it/s]100%|██████████| 20/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.83it/s]
+2026-11-27 06:01:43 | step 13000 / 19073 | 79.236 sec | train 3.1160 | val 3.1139 | lr 1.93e-04 | norm 0.3068 | 1,654,201 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2941
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.59it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.43it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:03:13 | step 13250 / 19073 | 79.245 sec | train 3.1027 | val 3.1126 | lr 1.83e-04 | norm 0.2912 | 1,654,007 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2952
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.16it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.35it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:04:40 | step 13500 / 19073 | 79.301 sec | train 3.1011 | val 3.1186 | lr 1.74e-04 | norm 0.3182 | 1,652,832 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2926
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:06:08 | step 13750 / 19073 | 79.269 sec | train 3.0996 | val 3.1039 | lr 1.64e-04 | norm 0.3214 | 1,653,518 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2962
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.16it/s] 10%|█         | 2/20 [00:00<00:02,  8.22it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.36it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.95it/s] 30%|███       | 6/20 [00:00<00:01,  8.11it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 06:07:37 | step 14000 / 19073 | 79.301 sec | train 3.0931 | val 3.0971 | lr 1.56e-04 | norm 0.2827 | 1,652,832 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2981
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:09:06 | step 14250 / 19073 | 79.302 sec | train 3.0881 | val 3.0930 | lr 1.47e-04 | norm 0.2871 | 1,652,816 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2985
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:10:34 | step 14500 / 19073 | 79.314 sec | train 3.0941 | val 3.1019 | lr 1.39e-04 | norm 0.2990 | 1,652,575 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2966
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:12:02 | step 14750 / 19073 | 79.234 sec | train 3.0817 | val 3.0919 | lr 1.31e-04 | norm 0.3099 | 1,654,231 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2946
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.85it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.08it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.07it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.39it/s] 80%|████████  | 16/20 [00:02<00:00,  6.36it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.32it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:13:30 | step 15000 / 19073 | 79.205 sec | train 3.0816 | val 3.0872 | lr 1.23e-04 | norm 0.2886 | 1,654,854 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2981
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:15:00 | step 15250 / 19073 | 79.337 sec | train 3.0727 | val 3.0841 | lr 1.16e-04 | norm 0.2796 | 1,652,090 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2983
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:16:27 | step 15500 / 19073 | 79.424 sec | train 3.0618 | val 3.0842 | lr 1.09e-04 | norm 0.2733 | 1,650,292 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2990
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:17:55 | step 15750 / 19073 | 79.328 sec | train 3.0638 | val 3.0859 | lr 1.02e-04 | norm 0.2837 | 1,652,288 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2976
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.35it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:19:23 | step 16000 / 19073 | 79.434 sec | train 3.0673 | val 3.0725 | lr 9.65e-05 | norm 0.3048 | 1,650,082 tok/s | mem 40.0 GiB | MFU 56.5 % | HellaSwag acc 0.3000
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.19it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:20:52 | step 16250 / 19073 | 79.357 sec | train 3.0669 | val 3.0781 | lr 9.09e-05 | norm 0.3064 | 1,651,681 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2979
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.00it/s] 50%|█████     | 10/20 [00:01<00:01,  6.79it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.39it/s] 80%|████████  | 16/20 [00:02<00:00,  6.36it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.32it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.83it/s]
+2026-11-27 06:22:20 | step 16500 / 19073 | 79.367 sec | train 3.0716 | val 3.0690 | lr 8.58e-05 | norm 0.3104 | 1,651,478 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2991
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.43it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.36it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.32it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:23:49 | step 16750 / 19073 | 79.299 sec | train 3.0612 | val 3.0624 | lr 8.11e-05 | norm 0.3155 | 1,652,883 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2987
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.14it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.34it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 06:25:16 | step 17000 / 19073 | 79.319 sec | train 3.0672 | val 3.0770 | lr 7.68e-05 | norm 0.2764 | 1,652,459 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2993
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.85it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.08it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.07it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.42it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:26:44 | step 17250 / 19073 | 79.439 sec | train 3.0564 | val 3.0696 | lr 7.30e-05 | norm 0.3000 | 1,649,975 tok/s | mem 40.0 GiB | MFU 56.5 % | HellaSwag acc 0.3000
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.43it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.01it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.42it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:28:12 | step 17500 / 19073 | 79.277 sec | train 3.0496 | val 3.0665 | lr 6.97e-05 | norm 0.2953 | 1,653,352 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.2991
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.18it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.33it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.81it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:29:39 | step 17750 / 19073 | 79.209 sec | train 3.0450 | val 3.0632 | lr 6.69e-05 | norm 0.2725 | 1,654,760 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.3005
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:31:07 | step 18000 / 19073 | 79.316 sec | train 3.0526 | val 3.0599 | lr 6.45e-05 | norm 0.3118 | 1,652,520 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.3010
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.86it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.67it/s] 60%|██████    | 12/20 [00:01<00:01,  6.56it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.83it/s]
+2026-11-27 06:32:36 | step 18250 / 19073 | 79.390 sec | train 3.0486 | val 3.0617 | lr 6.27e-05 | norm 0.2937 | 1,650,983 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.2980
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.12it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.85it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.92it/s] 30%|███       | 6/20 [00:00<00:01,  8.09it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.82it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.52it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.38it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.32it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.29it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.83it/s]
+2026-11-27 06:34:04 | step 18500 / 19073 | 79.283 sec | train 3.0511 | val 3.0598 | lr 6.13e-05 | norm 0.2730 | 1,653,212 tok/s | mem 40.0 GiB | MFU 56.7 % | HellaSwag acc 0.3001
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.16it/s] 10%|█         | 2/20 [00:00<00:02,  8.22it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.95it/s] 30%|███       | 6/20 [00:00<00:01,  8.11it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.04it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.45it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.33it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.31it/s]100%|██████████| 20/20 [00:02<00:00,  6.85it/s]
+2026-11-27 06:35:31 | step 18750 / 19073 | 79.343 sec | train 3.0456 | val 3.0628 | lr 6.04e-05 | norm 0.2868 | 1,651,969 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.3000
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.13it/s] 10%|█         | 2/20 [00:00<00:02,  8.20it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.34it/s] 20%|██        | 4/20 [00:00<00:02,  7.87it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.93it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.08it/s] 40%|████      | 8/20 [00:01<00:01,  7.45it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.03it/s] 50%|█████     | 10/20 [00:01<00:01,  6.83it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.69it/s] 60%|██████    | 12/20 [00:01<00:01,  6.57it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.51it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.41it/s] 80%|████████  | 16/20 [00:02<00:00,  6.39it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.35it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.30it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:36:59 | step 19000 / 19073 | 79.442 sec | train 3.0448 | val 3.0633 | lr 6.00e-05 | norm 0.2881 | 1,649,907 tok/s | mem 40.0 GiB | MFU 56.5 % | HellaSwag acc 0.3010
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:02,  8.15it/s] 10%|█         | 2/20 [00:00<00:02,  8.21it/s] 15%|█▌        | 3/20 [00:00<00:02,  8.35it/s] 20%|██        | 4/20 [00:00<00:02,  7.88it/s] 25%|██▌       | 5/20 [00:00<00:01,  7.94it/s] 30%|███       | 6/20 [00:00<00:01,  8.10it/s] 35%|███▌      | 7/20 [00:00<00:01,  8.09it/s] 40%|████      | 8/20 [00:01<00:01,  7.44it/s] 45%|████▌     | 9/20 [00:01<00:01,  7.02it/s] 50%|█████     | 10/20 [00:01<00:01,  6.80it/s] 55%|█████▌    | 11/20 [00:01<00:01,  6.68it/s] 60%|██████    | 12/20 [00:01<00:01,  6.58it/s] 65%|██████▌   | 13/20 [00:01<00:01,  6.53it/s] 70%|███████   | 14/20 [00:01<00:00,  6.44it/s] 75%|███████▌  | 15/20 [00:02<00:00,  6.40it/s] 80%|████████  | 16/20 [00:02<00:00,  6.37it/s] 85%|████████▌ | 17/20 [00:02<00:00,  6.33it/s] 90%|█████████ | 18/20 [00:02<00:00,  6.34it/s] 95%|█████████▌| 19/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.32it/s]100%|██████████| 20/20 [00:02<00:00,  6.84it/s]
+2026-11-27 06:37:31 | step 19073 / 19073 | 23.164 sec | train 3.0450 | val 3.0604 | lr 6.00e-05 | norm 0.3167 | 1,652,243 tok/s | mem 40.0 GiB | MFU 56.6 % | HellaSwag acc 0.3014
+2026-11-27 06:37:31 | 
+Summary: main
+metric                       value               
+-------------------------------------------------
+parameters                   124,475,904         
+steps                        19,073              
+training time (s)            6,063               
+tokens                       9,999,745,024       
+final train loss             3.0450              
+final val loss               3.0604              
+best val loss                3.0598 (step 18,500)
+mean throughput (tok/s)      1,653,707           
+peak GPU memory (GiB)        40.0                
+mean MFU (%)                 56.7                
+HellaSwag accuracy           0.3014              
+
+2026-11-27 06:37:33 | 
+Environment
+-----------------------------------
+date: 2026-11-27T04:44:44
+git: v1.0.0-39-g96be5de
+python: 3.12.3
+torch: 2.14.1+cu126
+os: Linux-6.14.0-24-generic-x86_64-with-glibc2.39
+cpu: x86_64
+ram (GB): 945
+torch cpu threads: 24
+world size: 8
+device: cuda
+gpu: NVIDIA A100-SXM4-80GB, 79 GB
+
+2026-11-27 06:37:37 | Saved runs/gpt2_full/main/model.pt (311 MiB, logits relative error vs best.pt 3.5e-03)
+
+=== 06:37:45 | elapsed 136 min | Plot the main run ===
+2026-11-27 06:37:55 | Saved runs/gpt2_full/main/loss.png
+2026-11-27 06:37:55 | Saved runs/gpt2_full/main/hellaswag.png
+
+=== 06:37:59 | elapsed 136 min | Bundle outputs ===
